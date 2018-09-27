@@ -1040,6 +1040,16 @@ void ParameterManager::selectImage(const QString imageID)
     filename = name.right(name.size() - name.lastIndexOf(QString("/")) - 1);
     emit filenameChanged();
 
+    // set tiffIn and jpegIn based on the filename
+    auto extPos = m_fullFilename.find_last_of('.');
+    bool noExtension = (extPos == std::string::npos);
+    std::string extension = noExtension? "" : m_fullFilename.substr(extPos);
+    cout << "Extension: " << extension << endl;
+    m_tiffIn = !extension.compare(".tif") | !extension.compare(".tiff");
+    m_jpegIn = !extension.compare(".jpg") | !extension.compare(".jpeg");
+    emit tiffInChanged();
+    emit jpegInChanged();
+
     nameCol = rec.indexOf("FTsensitivity");
     if (-1 == nameCol) { std::cout << "paramManager FTsensitivity" << endl; }
     sensitivity = query.value(nameCol).toInt();
@@ -1216,8 +1226,12 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
     if (copyDefaults == CopyDefaults::loadToParams)
     {
         validity = Valid::none;
-        m_tiffIn = false;
-        m_jpegIn = false;
+        auto extPos = absFilePath.find_last_of('.');
+        bool noExtension = (extPos == std::string::npos);
+        std::string extension = noExtension? "" : absFilePath.substr(extPos);
+        cout << "Extension: " << extension << endl;
+        m_tiffIn = !extension.compare(".tif") | !extension.compare(".tiff");
+        m_jpegIn = !extension.compare(".jpg") | !extension.compare(".jpeg");
     }
 
     //First is caEnabled.
@@ -1574,13 +1588,6 @@ void ParameterManager::loadParams(QString imageID)
     //Each thread needs a unique database connection
     QSqlDatabase db = getDB();
     QSqlQuery query(db);
-
-    //tiffIn should be false.
-    //For now. When we add tiff input, then it'll need to be different.
-    m_tiffIn = false;
-
-    //So should jpegIn.
-    m_jpegIn = false;
 
 
     //Everything else can be pulled from sql.
@@ -2024,6 +2031,16 @@ void ParameterManager::cloneParams(ParameterManager * sourceParams)
     filename = name.right(name.size() - name.lastIndexOf(QString("/")) - 1);
     emit filenameChanged();
 
+    // set tiffIn and jpegIn based on the filename
+    auto extPos = m_fullFilename.find_last_of('.');
+    bool noExtension = (extPos == std::string::npos);
+    std::string extension = noExtension? "" : m_fullFilename.substr(extPos);
+    cout << "Extension: " << extension << endl;
+    m_tiffIn = !extension.compare(".tif") | !extension.compare(".tiff");
+    m_jpegIn = !extension.compare(".jpg") | !extension.compare(".jpeg");
+    emit tiffInChanged();
+    emit jpegInChanged();
+
     nameCol = rec.indexOf("FTsensitivity");
     if (-1 == nameCol) { std::cout << "paramManager FTsensitivity" << endl; }
     sensitivity = query.value(nameCol).toInt();
@@ -2075,7 +2092,6 @@ void ParameterManager::cloneParams(ParameterManager * sourceParams)
     focalLength = query.value(nameCol).toFloat();
     emit focalLengthChanged();
 
-    //tiffIn should be false.
     const bool temp_tiffIn = sourceParams->getTiffIn();
     if (temp_tiffIn != m_tiffIn)
     {
@@ -2083,7 +2099,6 @@ void ParameterManager::cloneParams(ParameterManager * sourceParams)
         validity = min(validity, Valid::none);
     }
 
-    //So should jpegIn.
     const bool temp_jpegIn = sourceParams->getJpegIn();
     if (temp_jpegIn != m_jpegIn)
     {

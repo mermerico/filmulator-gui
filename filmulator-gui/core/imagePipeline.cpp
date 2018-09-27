@@ -77,105 +77,157 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
             return emptyMatrix();
         }
 
-        if (!loadParam.tiffIn && !loadParam.jpegIn && !((HighQuality == quality) && stealData))
+        if (!((HighQuality == quality) && stealData))// Skip if we already have this loaded
         {
-            LibRaw image_processor;
 
-            //Open the file.
-            const char *cstr = loadParam.fullFilename.c_str();
-            if (0 != image_processor.open_file(cstr))
+            if (loadParam.tiffIn)
             {
-                cout << "processImage: Could not read input file!" << endl;
-                return emptyMatrix();
-            }
-             //Make abbreviations for brevity in accessing data.
-#define RSIZE image_processor.imgdata.sizes
-#define PARAM image_processor.imgdata.params
-#define IMAGE image_processor.imgdata.image
-#define RAW   image_processor.imgdata.rawdata.raw_image
-//#define COLOR image_processor.imgdata.color
-
-            //This makes IMAGE contains the sensel value and 3 blank values at every
-            //location.
-            if (0 != image_processor.unpack())
-            {
-                cerr << "processImage: Could not read input file, or was canceled" << endl;
-                return emptyMatrix();
-            }
-
-            //get dimensions
-            raw_width  = RSIZE.width;
-            raw_height = RSIZE.height;
-
-            int topmargin = RSIZE.top_margin;
-            int leftmargin = RSIZE.left_margin;
-            int full_width = RSIZE.raw_width;
-            //int full_height = RSIZE.raw_height;
-
-            //get color matrix
-            for (int i = 0; i < 3; i++)
-            {
-                cout << "camToRGB: ";
-                for (int j = 0; j < 3; j++)
+                if (imread_tiff(loadParam.fullFilename, input_image, exifData))
                 {
-                    camToRGB[i][j] = image_processor.imgdata.color.rgb_cam[i][j];
-                    cout << camToRGB[i][j] << " ";
+                    cerr << "Could not open image " << loadParam.fullFilename << "; Exiting..." << endl;
+                    return emptyMatrix();
                 }
-                cout << endl;
-            }
-            rMult = image_processor.imgdata.color.cam_mul[0];
-            gMult = image_processor.imgdata.color.cam_mul[1];
-            bMult = image_processor.imgdata.color.cam_mul[2];
-            float minMult = min(min(rMult, gMult), bMult);
-            rMult /= minMult;
-            gMult /= minMult;
-            bMult /= minMult;
 
-            //get black subtraction values
-            rBlack = image_processor.imgdata.color.cblack[0];
-            gBlack = image_processor.imgdata.color.cblack[1];
-            bBlack = image_processor.imgdata.color.cblack[2];
-            float blackpoint = image_processor.imgdata.color.black;
-
-            //get white saturation values
-            cout << "data_maximum: " << image_processor.imgdata.color.data_maximum << endl;
-            cout << "maximum: " << image_processor.imgdata.color.maximum << endl;
-            maxValue = image_processor.imgdata.color.maximum;
-            cout << "fmaximum: " << image_processor.imgdata.color.fmaximum << endl;
-            cout << "fnorm: " << image_processor.imgdata.color.fnorm << endl;
-
-            //get color filter array
-            //bayer only for now
-            for (unsigned int i=0; i<2; i++)
-            {
-                for (unsigned int j=0; j<2; j++)
+                //Set WB params to identity
+                for (int i = 0; i < 3; i++)
                 {
-                    cfa[i][j] = unsigned(image_processor.COLOR(int(i), int(j)));
-                    if (cfa[i][j] == 3) //Auto CA correct doesn't like 0123 for RGBG; we change it to 0121.
+                    cout << "camToRGB: ";
+                    for (int j = 0; j < 3; j++)
                     {
-                        cfa[i][j] = 1;
+                        camToRGB[i][j] = (i == j);
+                        cout << camToRGB[i][j] << " ";
+                    }
+                    cout << endl;
+                }
+                rMult = 1.0f;
+                gMult = 1.0f;
+                bMult = 1.0f;
+
+
+            }
+            else if (loadParam.jpegIn)
+            {
+                if (imread_jpeg(loadParam.fullFilename, input_image, exifData))
+                {
+                    cerr << "Could not open image " << loadParam.fullFilename << "; Exiting..." << endl;
+                    return emptyMatrix();
+                }
+
+                //Set WB params to identity
+                for (int i = 0; i < 3; i++)
+                {
+                    cout << "camToRGB: ";
+                    for (int j = 0; j < 3; j++)
+                    {
+                        camToRGB[i][j] = (i == j);
+                        cout << camToRGB[i][j] << " ";
+                    }
+                    cout << endl;
+                }
+                rMult = 1.0f;
+                gMult = 1.0f;
+                bMult = 1.0f;
+            }
+            else //RAW
+            {
+                LibRaw image_processor;
+
+                //Open the file.
+                const char *cstr = loadParam.fullFilename.c_str();
+                if (0 != image_processor.open_file(cstr))
+                {
+                    cout << "processImage: Could not read input file!" << endl;
+                    return emptyMatrix();
+                }
+                 //Make abbreviations for brevity in accessing data.
+    #define RSIZE image_processor.imgdata.sizes
+    #define PARAM image_processor.imgdata.params
+    #define IMAGE image_processor.imgdata.image
+    #define RAW   image_processor.imgdata.rawdata.raw_image
+    //#define COLOR image_processor.imgdata.color
+
+                //This makes IMAGE contains the sensel value and 3 blank values at every
+                //location.
+                if (0 != image_processor.unpack())
+                {
+                    cerr << "processImage: Could not read input file, or was canceled" << endl;
+                    return emptyMatrix();
+                }
+
+                //get dimensions
+                raw_width  = RSIZE.width;
+                raw_height = RSIZE.height;
+
+                int topmargin = RSIZE.top_margin;
+                int leftmargin = RSIZE.left_margin;
+                int full_width = RSIZE.raw_width;
+                //int full_height = RSIZE.raw_height;
+
+                //get color matrix
+                for (int i = 0; i < 3; i++)
+                {
+                    cout << "camToRGB: ";
+                    for (int j = 0; j < 3; j++)
+                    {
+                        camToRGB[i][j] = image_processor.imgdata.color.rgb_cam[i][j];
+                        cout << camToRGB[i][j] << " ";
+                    }
+                    cout << endl;
+                }
+                rMult = image_processor.imgdata.color.cam_mul[0];
+                gMult = image_processor.imgdata.color.cam_mul[1];
+                bMult = image_processor.imgdata.color.cam_mul[2];
+                float minMult = min(min(rMult, gMult), bMult);
+                rMult /= minMult;
+                gMult /= minMult;
+                bMult /= minMult;
+
+                //get black subtraction values
+                rBlack = image_processor.imgdata.color.cblack[0];
+                gBlack = image_processor.imgdata.color.cblack[1];
+                bBlack = image_processor.imgdata.color.cblack[2];
+                float blackpoint = image_processor.imgdata.color.black;
+
+                //get white saturation values
+                cout << "data_maximum: " << image_processor.imgdata.color.data_maximum << endl;
+                cout << "maximum: " << image_processor.imgdata.color.maximum << endl;
+                maxValue = image_processor.imgdata.color.maximum;
+                cout << "fmaximum: " << image_processor.imgdata.color.fmaximum << endl;
+                cout << "fnorm: " << image_processor.imgdata.color.fnorm << endl;
+
+                //get color filter array
+                //bayer only for now
+                for (unsigned int i=0; i<2; i++)
+                {
+                    for (unsigned int j=0; j<2; j++)
+                    {
+                        cfa[i][j] = unsigned(image_processor.COLOR(int(i), int(j)));
+                        if (cfa[i][j] == 3) //Auto CA correct doesn't like 0123 for RGBG; we change it to 0121.
+                        {
+                            cfa[i][j] = 1;
+                        }
                     }
                 }
-            }
 
-            Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(loadParam.fullFilename);
-            assert(image.get() != 0);
-            image->readMetadata();
-            exifData = image->exifData();
+                Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(loadParam.fullFilename);
+                assert(image.get() != 0);
+                image->readMetadata();
+                exifData = image->exifData();
 
 
-            raw_image.set_size(raw_height, raw_width);
+                raw_image.set_size(raw_height, raw_width);
 
-            //copy raw data
-            for (int row = 0; row < raw_height; row++)
-            {
-                //IMAGE is an (width*height) by 4 array, not width by height by 4.
-                int rowoffset = (row + topmargin)*full_width;
-                for (int col = 0; col < raw_width; col++)
+                //copy raw data
+                for (int row = 0; row < raw_height; row++)
                 {
-                    raw_image[row][col] = max(0.0f,RAW[rowoffset + col + leftmargin] - blackpoint);
+                    //IMAGE is an (width*height) by 4 array, not width by height by 4.
+                    int rowoffset = (row + topmargin)*full_width;
+                    for (int col = 0; col < raw_width; col++)
+                    {
+                        raw_image[row][col] = max(0.0f,RAW[rowoffset + col + leftmargin] - blackpoint);
+                    }
                 }
-            }
+            }//Done with RAW handling
 
 //            cout << "max of raw_image" << raw_image.max() << endl;
         }
@@ -225,23 +277,7 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
                 cout << endl;
             }
         }
-        else if (loadParam.tiffIn)
-        {
-            if (imread_tiff(loadParam.fullFilename, input_image, exifData))
-            {
-                cerr << "Could not open image " << loadParam.fullFilename << "; Exiting..." << endl;
-                return emptyMatrix();
-            }
-        }
-        else if (loadParam.jpegIn)
-        {
-            if (imread_jpeg(loadParam.fullFilename, input_image, exifData))
-            {
-                cerr << "Could not open image " << loadParam.fullFilename << "; Exiting..." << endl;
-                return emptyMatrix();
-            }
-        }
-        else //raw
+        else if(!(loadParam.tiffIn|loadParam.jpegIn))//raw
         {
             matrix<float>   red(raw_height, raw_width);
             matrix<float> green(raw_height, raw_width);
