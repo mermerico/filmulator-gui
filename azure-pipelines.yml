@@ -16,7 +16,7 @@ variables:
 
 steps:
   - script: |
-      choco install msys2 --params="/InstallDir:%CD:~0,2%\msys64 /NoUpdate /NoPath"
+      choco install msys2 --params="/InstallDir:%MSYS2_ROOT% /NoUpdate /NoPath"
     displayName: Install MSYS2
   - script: |
       %MYYS_PAC% --noconfirm --Syyuu
