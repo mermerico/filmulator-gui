@@ -11,8 +11,8 @@ pool:
 
 variables:
   MSYS2_ROOT: $(System.Workfolder)\msys64
-  MSYS_PAC: $(System.Workfolder)\msys64\usr\bin\pacman
-  MSYS_BASH: $(System.Workfolder)\msys64\usr\bin\bash
+  MSYS_PAC: $(System.Workfolder)\msys64\usr\bin\pacman.exe
+  MSYS_BASH: $(System.Workfolder)\msys64\usr\bin\bash.exe
 
 steps:
   - script: |
