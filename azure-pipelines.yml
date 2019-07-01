@@ -35,7 +35,7 @@ steps:
       popd
       mkdir build
       pushd build
-      %MSYS_BASH% cmake -G MSYS Makefiles"-DCMAKE_INSTALL_PREFIX="$MSYSTEM_PREFIX" -DCMAKE_BUILD_TYPE="Release" ../lrt
+      %MSYS_BASH% cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX="$MSYSTEM_PREFIX" -DCMAKE_BUILD_TYPE="Release" ../lrt
       %MSYS_BASH% make -j4
       %MSYS_BASH% make install
       popd
