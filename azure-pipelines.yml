@@ -26,15 +26,14 @@ steps:
      # mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
   - bash: |
-      set -m
       mkdir librt
-      pushd librt
+      cd librt
       git clone https://github.com/CarVac/librtprocess lrt
+      echo "done clone"
       mkdir build
-      pushd build
+      cd build
+      echo "starting build script"
       $MSYS_BASH -lc "azure_build_librt.sh > out.log 2>err.log"
-      popd
-      popd
     displayName: build librtprocess
     timeoutInMinutes: 5
     continueOnError: true
