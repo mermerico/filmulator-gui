@@ -82,7 +82,9 @@ steps:
         libwinpthread-1.dll
         libzstd.dll
         zlib1.dll"
+      find build/
       cp %MSYS2_ROOT%/MINGW64/bin/{$listdll} build/installed/bin/
+      cd build/installed/bin
       %MSYS_BASH% /mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.MSYSTEM_PREFIX
     displayName: package dlls
   - task: PublishBuildArtifacts@1
