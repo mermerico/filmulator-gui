@@ -36,10 +36,16 @@ steps:
       popd
       mkdir build
       pushd build
-      $MSYS_BASH -c "azure_build_librt.sh"
+      $MSYS_BASH -lc "azure_build_librt.sh > out.log 2>err.log"
       popd
       popd
     displayName: build librtprocess
+    timeoutInMinutes: 5
+    continueOnError: true
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: 'build/installed' 
+      artifactName: 'filmulator_built_folder_error'
   - bash: |
       set -m
       mkdir build
