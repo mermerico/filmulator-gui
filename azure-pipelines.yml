@@ -36,10 +36,7 @@ steps:
       popd
       mkdir build
       pushd build
-      $MSYS_BASH -c "echo hello"
-      $MSYS_BASH -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt"
-      $MSYS_BASH -c "make -j4"
-      $MSYS_BASH -c "make install"
+      $MSYS_BASH -c "azure_build_librt.sh"
       popd
       popd
     displayName: build librtprocess
