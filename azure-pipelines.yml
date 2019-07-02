@@ -44,7 +44,7 @@ steps:
     continueOnError: true
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: 'build/installed' 
+      pathtoPublish: 'librt' 
       artifactName: 'filmulator_built_folder_error'
   - bash: |
       set -m
