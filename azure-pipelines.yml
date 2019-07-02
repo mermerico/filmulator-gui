@@ -23,17 +23,13 @@ steps:
       %MSYS_PAC% --noconfirm --needed -S ^
       tar gzip nano make diffutils intltool git ^
       mingw-w64-x86_64-{gcc,gdb,make,pkg-config,cmake} ^
-      mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
+     # mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
   - bash: |
       set -m
       mkdir lbrt
       pushd lbrt
       git clone https://github.com/CarVac/librtprocess lrt
-      pushd lrt
-      git checkout -b master
-      git pull origin master
-      popd
       mkdir build
       pushd build
       $MSYS_BASH -lc "azure_build_librt.sh > out.log 2>err.log"
