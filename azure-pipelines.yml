@@ -33,6 +33,7 @@ steps:
       mkdir buildDir
       cd buildDir
       echo "starting build script"
+      set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin
       %MSYS_BASH% -lc "azure_build_librt.sh > out.log 2>err.log"
     displayName: build librtprocess
     timeoutInMinutes: 5
