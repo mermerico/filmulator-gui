@@ -1,3 +1,3 @@
-cmake -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui >output.log 2>err.log
+cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX="$MSYSTEM_PREFIX" -DCMAKE_BUILD_TYPE="Release" ../lrt
 make -j4
 make install
