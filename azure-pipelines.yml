@@ -26,6 +26,7 @@ steps:
       mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
   - bash: |
+      set -m
       mkdir lbrt
       pushd lbrt
       git clone https://github.com/CarVac/librtprocess lrt
@@ -42,6 +43,7 @@ steps:
       popd
     displayName: build librtprocess
   - bash: |
+      set -m
       mkdir build
       pushd build
       mkdir installed
@@ -52,6 +54,7 @@ steps:
       popd
     displayName: build filmulator
   - bash: |
+      set -m
       listdll="libbz2-1.dll
         libdouble-conversion.dll
         libexiv2.dll
