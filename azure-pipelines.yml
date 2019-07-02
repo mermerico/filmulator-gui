@@ -47,7 +47,7 @@ steps:
       mkdir installed
       INSTALLDIR=installed
       %MSYS_BASH% cmake -G"MSYS Makefiles"-
-      DCMAKE_BUILD_TYPE="$BUILD_TYPE"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator/filmulator-gui
+      DCMAKE_BUILD_TYPE="$BUILD_TYPE"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui
       %MSYS_BASH% make -j4
       %MSYS_BASH% make install
       popd
