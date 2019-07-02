@@ -33,6 +33,7 @@ steps:
       mkdir buildDir
       cd buildDir
       echo "starting build script"
+      echo $MSYS_BASH -lc "azure_build_librt.sh > out.log 2>err.log"
       $MSYS_BASH -lc "azure_build_librt.sh > out.log 2>err.log"
     displayName: build librtprocess
     timeoutInMinutes: 5
