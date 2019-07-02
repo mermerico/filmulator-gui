@@ -48,9 +48,9 @@ steps:
       pushd build
       mkdir installed
       INSTALLDIR=installed
-      $MSYS_BASH -lc "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui"
-      $MSYS_BASH -lc "make -j4"
-      $MSYS_BASH -lc "make install"
+      $MSYS_BASH -c "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui >output.log 2>err.log"
+      $MSYS_BASH -c "make -j4"
+      $MSYS_BASH -c "make install"
       popd
     displayName: build filmulator
   - bash: |
