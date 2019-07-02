@@ -35,9 +35,9 @@ steps:
       popd
       mkdir build
       pushd build
-      %MSYS_BASH% cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX="$MSYSTEM_PREFIX" -DCMAKE_BUILD_TYPE="Release" ../lrt
-      %MSYS_BASH% make -j4
-      %MSYS_BASH% make install
+      %MSYS_BASH% -lc "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt"
+      %MSYS_BASH% -lc "make -j4"
+      %MSYS_BASH% -lc "make install"
       popd
       popd
     displayName: build librtprocess
@@ -46,9 +46,9 @@ steps:
       pushd build
       mkdir installed
       INSTALLDIR=installed
-      %MSYS_BASH% cmake -G"MSYS Makefiles" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui
-      %MSYS_BASH% make -j4
-      %MSYS_BASH% make install
+      %MSYS_BASH% -lc "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui"
+      %MSYS_BASH% -lc "make -j4"
+      %MSYS_BASH% -lc "make install"
       popd
     displayName: build filmulator
   - bash: |
@@ -84,7 +84,7 @@ steps:
       find build/
       cp %MSYS2_ROOT%/MINGW64/bin/{$listdll} build/installed/bin/
       cd build/installed/bin
-      %MSYS_BASH% /mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.MSYSTEM_PREFIX
+      %MSYS_BASH% -lc "/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
     displayName: package dlls
   - task: PublishBuildArtifacts@1
     inputs:
