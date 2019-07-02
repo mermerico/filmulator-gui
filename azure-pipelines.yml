@@ -27,8 +27,8 @@ steps:
     displayName: Install Dependencies
   - bash: |
       set -m
-      mkdir lbrt
-      pushd lbrt
+      mkdir librt
+      pushd librt
       git clone https://github.com/CarVac/librtprocess lrt
       mkdir build
       pushd build
