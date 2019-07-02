@@ -7,8 +7,7 @@ trigger:
 - highlightrecovery
 
 pool:
-  name: "Default"
-  #vmImage: "vs2017-win2016"
+  vmImage: "vs2017-win2016"
 
 variables:
   MSYS2_ROOT: $(System.Workfolder)\msys64
