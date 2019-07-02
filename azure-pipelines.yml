@@ -30,8 +30,8 @@ steps:
       cd librt
       git clone https://github.com/CarVac/librtprocess lrt
       echo "done clone"
-      mkdir build
-      cd build
+      mkdir buildDir
+      cd buildDir
       echo "starting build script"
       $MSYS_BASH -lc "azure_build_librt.sh > out.log 2>err.log"
     displayName: build librtprocess
