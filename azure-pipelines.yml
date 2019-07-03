@@ -44,7 +44,7 @@ steps:
       artifactName: 'filmulator_built_folder_error'
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: 'msys64' 
+      pathtoPublish: '$(System.Workfolder)\msys64' 
       artifactName: 'msys folder'
   - bash: |
       set -m
