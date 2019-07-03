@@ -33,7 +33,7 @@ steps:
       mkdir buildDir
       cd buildDir
       echo "starting build script"
-      set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin
+      set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin;%MSYS2_ROOT%\usr\bin
       %MSYS_BASH% -lc "azure_build_librt.sh > out.log 2>err.log"
     displayName: build librtprocess
     timeoutInMinutes: 5
@@ -42,6 +42,10 @@ steps:
     inputs:
       pathtoPublish: 'librt/buildDir' 
       artifactName: 'filmulator_built_folder_error'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: 'msys64' 
+      artifactName: 'msys folder'
   - bash: |
       set -m
       mkdir build
