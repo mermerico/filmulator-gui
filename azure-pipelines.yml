@@ -86,7 +86,7 @@ steps:
         libtiff-5.dll ^
         libwinpthread-1.dll ^
         libzstd.dll ^
-        zlib1.dll" ^
+        zlib1.dll"
       #find build/
       #cp $MSYS2_ROOT/MINGW64/bin/{$listdll} build/installed/bin/
       robocopy %MSYS2_ROOT%/MINGW64/bin "%INSTALLDIR%"/bin $listdll
