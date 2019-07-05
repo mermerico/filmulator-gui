@@ -34,9 +34,9 @@ steps:
       cd buildDir
       echo "starting build script"
       set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin;%MSYS2_ROOT%\usr\bin
-      %MSYS_BASH% -lc "echo from inside bash"
+      %MSYS_BASH% -lc "echo $PWD"
       echo "after first bash call"
-      %MSYS_BASH% -lc "../../azure_build_librt.sh > out.log 2>err.log"
+      %MSYS_BASH% -lc "../../../azure_build_librt.sh > out.log 2>err.log"
     displayName: build librtprocess
     timeoutInMinutes: 5
     continueOnError: true
