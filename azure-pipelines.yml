@@ -34,9 +34,10 @@ steps:
       cd buildDir
       echo "starting build script"
       set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin;%MSYS2_ROOT%\usr\bin
+      set HOME=.
       %MSYS_BASH% -lc "echo $PWD"
       echo "after first bash call"
-      %MSYS_BASH% -lc "../../../azure_build_librt.sh > out.log 2>err.log"
+      %MSYS_BASH% -lc "../../azure_build_librt.sh > out.log 2>err.log"
     displayName: build librtprocess
     timeoutInMinutes: 5
     continueOnError: true
@@ -44,23 +45,18 @@ steps:
     inputs:
       pathtoPublish: 'librt/buildDir' 
       artifactName: 'filmulator_built_folder_error'
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(System.Workfolder)\msys64\usr\bin' 
-      artifactName: 'msys folder'
-  - bash: |
-      set -m
+  - script: |
       mkdir build
       pushd build
       mkdir installed
       INSTALLDIR=installed
-      $MSYS_BASH -c "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui >output.log 2>err.log"
-      $MSYS_BASH -c "make -j4"
-      $MSYS_BASH -c "make install"
+      set HOME=.
+      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui >output.log 2>err.log"
+      %MSYS_BASH% -c "make -j4"
+      %MSYS_BASH% -c "make install"
       popd
     displayName: build filmulator
-  - bash: |
-      set -m
+  - script: |
       listdll="libbz2-1.dll
         libdouble-conversion.dll
         libexiv2.dll
@@ -93,7 +89,7 @@ steps:
       find build/
       cp $MSYS2_ROOT/MINGW64/bin/{$listdll} build/installed/bin/
       cd build/installed/bin
-      $MSYS_BASH -lc "/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
+      $MSYS_BASH -lc "/usr/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
     displayName: package dlls
   - task: PublishBuildArtifacts@1
     inputs:
