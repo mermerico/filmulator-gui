@@ -33,7 +33,7 @@ steps:
       mkdir buildDir
       cd buildDir
       echo "starting build script"
-      set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin;%MSYS2_ROOT%\usr\bin
+      ::set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin;%MSYS2_ROOT%\usr\bin
       set HOME=.
       %MSYS_BASH% -lc "echo $PWD"
       echo "after first bash call"
