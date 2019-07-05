@@ -55,7 +55,7 @@ steps:
     displayName: build filmulator
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: 'build/installed'
+      pathtoPublish: 'build'
       artifactName: 'filmulator_build_intermediate'
   - script: |
       listdll="libbz2-1.dll \
