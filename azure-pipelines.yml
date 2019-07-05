@@ -47,10 +47,11 @@ steps:
       mkdir installed
       set INSTALLDIR=installed
       set HOME=.
-      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui >output.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=. -DCMAKE_BUILD_TYPE=\"Release\" ../filmulator-gui >output.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
       popd
+    continueOnError: true
     displayName: build filmulator
   - script: |
       listdll="libbz2-1.dll
@@ -85,7 +86,9 @@ steps:
       find build/
       cp $MSYS2_ROOT/MINGW64/bin/{$listdll} build/installed/bin/
       cd build/installed/bin
-      $MSYS_BASH -lc "/usr/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
+      set HOME=.
+      $MSYS_BASH -c "/usr/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
+    continueOnError: true
     displayName: package dlls
   - task: PublishBuildArtifacts@1
     inputs:
