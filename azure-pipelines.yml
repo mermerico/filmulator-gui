@@ -23,7 +23,7 @@ steps:
       %MSYS_PAC% --noconfirm --needed -S ^
       tar gzip nano make diffutils intltool git ^
       mingw-w64-x86_64-{gcc,gdb,make,pkg-config,cmake} ^
-     # mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
+      mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
   - script: |
       mkdir librt
@@ -49,7 +49,7 @@ steps:
       mkdir build
       pushd build
       mkdir installed
-      INSTALLDIR=installed
+      set INSTALLDIR=installed
       set HOME=.
       %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_BUILD_TYPE=\"$BUILD_TYPE\"-DCMAKE_INSTALL_PREFIX=$INSTALLDIR ../filmulator-gui >output.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
