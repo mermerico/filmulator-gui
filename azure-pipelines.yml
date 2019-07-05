@@ -21,7 +21,7 @@ steps:
   - script: |
       %MSYS_PAC% --noconfirm --Syyuu
       %MSYS_PAC% --noconfirm --needed -S ^
-      tar gzip nano make diffutils intltool git ^
+      tar gzip nano make diffutils intltool git cmake ^
       mingw-w64-x86_64-{gcc,gdb,make,pkg-config,cmake} ^
       mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
@@ -32,15 +32,11 @@ steps:
       echo "done clone"
       mkdir buildDir
       cd buildDir
-      echo "starting build script"
-      ::set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;%MSYS2_ROOT%\mingw64\bin;%MSYS2_ROOT%\usr\bin
       set HOME=.
-      %MSYS_BASH% -lc "echo $PWD"
-      echo "after first bash call"
-      %MSYS_BASH% -lc "../../azure_build_librt.sh > out.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G"MSYS Makefiles" -DCMAKE_INSTALL_PREFIX="$MSYSTEM_PREFIX" -DCMAKE_BUILD_TYPE="Release" ../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c "make -j4"
+      %MSYS_BASH% -c "make install"
     displayName: build librtprocess
-    timeoutInMinutes: 5
-    continueOnError: true
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: 'librt/buildDir' 
