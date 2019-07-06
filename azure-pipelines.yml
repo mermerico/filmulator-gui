@@ -59,7 +59,7 @@ steps:
       artifactName: 'filmulator_build_intermediate'
   - script: |
       set listdll="libbz2-1.dll libdouble-conversion.dll libexiv2.dll libexpat-1.dll libfreetype-6.dl libgcc_s_seh-1.dll libglib-2.0-0.dll libgomp-1.dlll libgraphite2.dll libharfbuzz-0.dll libiconv-2.dll libicudt*.dll libicuin*.dll libicuuc*.dll libintl-8.dll libjasper-4.dll libjpeg-8.dll liblcms2-2.dll liblzma-5.dll libpcre-1.dll libpcre2-16-0.dll libpng16-16.dll libraw_r-*.dll librtprocess.dll libstdc++-6.dll libtiff-5.dll libwinpthread-1.dll libzstd.dll zlib1.dll"
-      robocopy %MSYS2_ROOT%/MINGW64/bin "%INSTALLDIR%"/bin $listdll
+      robocopy %MSYS2_ROOT%/MINGW64/bin build/installed/bin $listdll
       cd build/installed/bin
       set HOME=.
       $MSYS_BASH -c "/usr/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
