@@ -25,6 +25,10 @@ steps:
       mingw-w64-x86_64-{gcc,gdb,make,pkg-config,cmake} ^
       mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: 'msys64/mingw64/lib/cmake' 
+      artifactName: 'msys_cmake_files'
   - script: |
       mkdir librt
       cd librt
@@ -62,7 +66,7 @@ steps:
       robocopy %MSYS2_ROOT%/MINGW64/bin build/installed/bin $listdll
       cd build/installed/bin
       set HOME=.
-      $MSYS_BASH -c "/usr/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
+      %MSYS_BASH% -c "/usr/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
     continueOnError: true
     displayName: package dlls
   - task: PublishBuildArtifacts@1
