@@ -58,7 +58,7 @@ steps:
       pathtoPublish: 'build'
       artifactName: 'filmulator_build_intermediate'
   - script: |
-      listdll="libbz2-1.dll \
+      set listdll="libbz2-1.dll \
         libdouble-conversion.dll \
         libexiv2.dll \
         libexpat-1.dll \
