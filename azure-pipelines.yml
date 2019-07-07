@@ -27,7 +27,7 @@ steps:
     displayName: Install Dependencies
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: 'msys64/mingw64/lib/cmake' 
+      pathtoPublish: '$(System.Workfolder)/msys64/mingw64/lib/cmake' 
       artifactName: 'msys_cmake_files'
   - script: |
       mkdir librt
