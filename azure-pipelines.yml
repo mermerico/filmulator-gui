@@ -37,7 +37,7 @@ steps:
       mkdir buildDir
       cd buildDir
       set HOME=.
-      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_INSTALL_LIBDIR=\"%MSYS2_ROOT%/mingw64/lib/\"../lrt > out.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
@@ -63,7 +63,7 @@ steps:
       artifactName: 'filmulator_build_intermediate'
   - script: |
       set listdll="libbz2-1.dll libdouble-conversion.dll libexiv2.dll libexpat-1.dll libfreetype-6.dl libgcc_s_seh-1.dll libglib-2.0-0.dll libgomp-1.dlll libgraphite2.dll libharfbuzz-0.dll libiconv-2.dll libicudt*.dll libicuin*.dll libicuuc*.dll libintl-8.dll libjasper-4.dll libjpeg-8.dll liblcms2-2.dll liblzma-5.dll libpcre-1.dll libpcre2-16-0.dll libpng16-16.dll libraw_r-*.dll librtprocess.dll libstdc++-6.dll libtiff-5.dll libwinpthread-1.dll libzstd.dll zlib1.dll"
-      for %I in (%listdll%) do copy %MSYS2_ROOT%/mingw64/bin/%I build/installed/bin
+      for %%I in (%listdll%) do copy %MSYS2_ROOT%/mingw64/bin/%%I build/installed/bin
       cd build/installed/bin
       set HOME=.
       %MSYS_BASH% -c "windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
