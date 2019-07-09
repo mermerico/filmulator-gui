@@ -10,9 +10,9 @@ pool:
   vmImage: "vs2017-win2016"
 
 variables:
-  MSYS2_ROOT: $(System.Workfolder)\msys64
-  MSYS_PAC: $(System.Workfolder)\msys64\usr\bin\pacman.exe
-  MSYS_BASH: $(System.Workfolder)\msys64\usr\bin\bash.exe
+  MSYS2_ROOT: $(System.Workfolder)/msys64
+  MSYS_PAC: $(System.Workfolder)/msys64/usr/bin/pacman.exe
+  MSYS_BASH: $(System.Workfolder)/msys64/usr/bin/bash.exe
 
 steps:
   - script: |
@@ -28,7 +28,7 @@ steps:
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: '$(System.Workfolder)/msys64/mingw64/lib/cmake' 
-      artifactName: 'msys_cmake_files'
+      artifactName: 'msys_bins'
   - script: |
       mkdir librt
       cd librt
@@ -52,6 +52,7 @@ steps:
       mkdir installed
       set INSTALLDIR=installed
       set HOME=.
+      set PATH=%SystemRoot%\system32;%SystemRoot%;%SystemRoot%\System32\Wbem
       %MSYS_BASH% -c "echo %MSYS2_ROOT%"
       %MSYS_BASH% -c "echo cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"%INSTALLDIR%\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"%MSYS2_ROOT%/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"MSYS2_ROOT%/mingw64/lib/\" -DCMAKE_INCLUDE_PATH=\"MSYS2_ROOT%/mingw64/include/\" ../filmulator-gui >output.log 2>err.log"
       %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"%INSTALLDIR%\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"%MSYS2_ROOT%/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"MSYS2_ROOT%/mingw64/lib/\" -DCMAKE_INCLUDE_PATH=\"MSYS2_ROOT%/mingw64/include/\" ../filmulator-gui >output.log 2>err.log"
