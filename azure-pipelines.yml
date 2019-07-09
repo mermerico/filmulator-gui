@@ -37,7 +37,7 @@ steps:
       mkdir buildDir
       cd buildDir
       set HOME=.
-      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_INSTALL_LIBDIR=\"%MSYS2_ROOT%/mingw64/lib/\"../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_INSTALL_LIBDIR=\"%MSYS2_ROOT%/mingw64/lib/\" ../lrt > out.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
