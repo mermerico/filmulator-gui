@@ -54,7 +54,7 @@ steps:
       set HOME=.
       set PATH=%SystemRoot%\system32;%SystemRoot%;%SystemRoot%\System32\Wbem;/usr/bin/;/mingw64/bin/
       set CXX=g++
-      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"%INSTALLDIR%\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"%MSYS2_ROOT%/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"MSYS2_ROOT%/mingw64/lib/\" -DCMAKE_INCLUDE_PATH=\"MSYS2_ROOT%/mingw64/include/\" ../filmulator-gui >output.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"%INSTALLDIR%\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"/mingw64/lib/\" -DCMAKE_INCLUDE_PATH=\"/mingw64/include/\" ../filmulator-gui >output.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
       popd
