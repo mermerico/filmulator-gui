@@ -20,7 +20,7 @@ steps:
     displayName: Install MSYS2
   - script: |
       %MSYS_PAC% --noconfirm --Syyuu
-      %MSYS_PAC% --noconfirm --needed -S ^
+      %MSYS_PAC% --noconfirm --needed -S --verbose --debug ^
       tar gzip nano make diffutils intltool git cmake ^
       mingw-w64-x86_64-{gcc,gdb,make,pkg-config,cmake} ^
       mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
@@ -67,7 +67,7 @@ steps:
       for %%I in (%listdll%) do copy %MSYS2_ROOT%/mingw64/bin/%%I build/installed/bin
       cd build/installed/bin
       set HOME=.
-      %MSYS_BASH% -c "windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
+      %MSYS_BASH% -c "%MSYS2_ROOT%/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
     continueOnError: true
     displayName: package dlls
   - task: PublishBuildArtifacts@1
