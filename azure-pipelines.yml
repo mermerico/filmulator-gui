@@ -52,7 +52,7 @@ steps:
       mkdir installed
       set INSTALLDIR=installed
       set HOME=.
-      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"%INSTALLDIR%\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"%MSYS2_ROOT%/mingw64/lib/cmake/\" ../filmulator-gui >output.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"%INSTALLDIR%\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"%MSYS2_ROOT%/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"MSYS2_ROOT%/mingw64/lib/\" -DCMAKE_INCLUDE_PATH=\"MSYS2_ROOT%/mingw64/include/\" ../filmulator-gui >output.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
       popd
@@ -67,6 +67,7 @@ steps:
       for %%I in (%listdll%) do copy %MSYS2_ROOT%/mingw64/bin/%%I build/installed/bin
       cd build/installed/bin
       set HOME=.
+      %MSYS_BASH% -c "echo %MSYS2_ROOT%/mingw64/bin/windeployqt.exe"
       %MSYS_BASH% -c "%MSYS2_ROOT%/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
     continueOnError: true
     displayName: package dlls
