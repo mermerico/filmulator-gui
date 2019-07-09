@@ -41,6 +41,7 @@ steps:
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
+    continueOnError: true
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: 'librt/buildDir' 
