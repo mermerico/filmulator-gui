@@ -39,7 +39,7 @@ steps:
       set HOME=.
       set PATH=%SystemRoot%\system32;%SystemRoot%;%SystemRoot%\System32\Wbem;/usr/bin/;/mingw64/bin/
       set CXX=g++
-      %MSYS_BASH% -c "cmake -G\"MSYS Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"$MSYSTEM_PREFIX\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
       %MSYS_BASH% -c "make -j4"
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
