@@ -67,8 +67,8 @@ steps:
       cd build/installed/bin
       set HOME=.
       %MSYS_BASH% -c "echo /mingw/bin/{%listdll%} -t ./"
-      %MSYS_BASH% -c "echo cp /mingw/bin/{%listdll%} -t ./"
-      %MSYS_BASH% -c "/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
+      %MSYS_BASH% -c "echo cp --verbose /mingw/bin/{%listdll%} -t ./"
+      %MSYS_BASH% -c "/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe && echo $PWD"
     continueOnError: true
     displayName: package dlls
   - task: PublishBuildArtifacts@1
