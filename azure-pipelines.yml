@@ -25,10 +25,6 @@ steps:
       mingw-w64-x86_64-{gcc,gdb,make,pkg-config,cmake} ^
       mingw-w64-x86_64-{lcms2,libtiff,exiv2,libjpeg-turbo,libraw,qt5,qtwebkit}
     displayName: Install Dependencies
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: '$(System.Workfolder)/msys64/mingw64/lib/cmake' 
-      artifactName: 'msys_bins'
   - script: |
       mkdir librt
       cd librt
@@ -41,11 +37,6 @@ steps:
       %MSYS_BASH% -c "make -j2"
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
-    continueOnError: true
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: 'librt/buildDir' 
-      artifactName: 'librt_build_errors'
   - script: |
       mkdir build
       pushd build
@@ -56,12 +47,7 @@ steps:
       %MSYS_BASH% -c "make -j2"
       %MSYS_BASH% -c "make install"
       popd
-    continueOnError: true
     displayName: build filmulator
-  - task: PublishBuildArtifacts@1
-    inputs:
-      pathtoPublish: 'build'
-      artifactName: 'filmulator_build_intermediate'
   - script: |
       set listdll=libbz2-1.dll,libdouble-conversion.dll,libexiv2.dll,libexpat-1.dll,libfreetype-6.dll,libgcc_s_seh-1.dll,libglib-2.0-0.dll,libgomp-1.dll,libgraphite2.dll,libharfbuzz-0.dll,libiconv-2.dll,libicudt*.dll,libicuin*.dll,libicuuc*.dll,libintl-8.dll,libjasper-4.dll,libjpeg-8.dll,liblcms2-2.dll,liblzma-5.dll,libpcre-1.dll,libpcre2-16-0.dll,libpng16-16.dll,libraw_r-*.dll,librtprocess.dll,libstdc++-6.dll,libtiff-5.dll,libwinpthread-1.dll,libzstd.dll,zlib1.dll
       cd build/installed/bin
@@ -69,9 +55,8 @@ steps:
       set HOME=.
       %MSYS_BASH% -c "/bin/cp --verbose /MINGW64/bin/{%listdll%} -t ./"
       %MSYS_BASH% -c "/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
-    continueOnError: true
     displayName: package dlls
   - task: PublishBuildArtifacts@1
     inputs:
       pathtoPublish: 'build/installed' 
-      artifactName: 'filmulator_built_folder' 
+      artifactName: 'filmulator' 
