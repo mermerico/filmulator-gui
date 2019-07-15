@@ -67,9 +67,9 @@ steps:
       cd build/installed/bin
       set PATH=C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem
       set HOME=.
-      %MSYS_BASH% -c "echo --verbose /mingw/bin/{%listdll%} -t ./"
-      %MSYS_BASH% -c "cp --verbose /mingw/bin/{%listdll%} -t ./"
-      %MSYS_BASH% -c "cp --verbose /mingw/bin/libbz2-1.dll -t ./"
+      %MSYS_BASH% -c "/bin/echo --verbose /mingw/bin/{%listdll%} -t ./"
+      %MSYS_BASH% -c "/bin/cp --verbose /mingw/bin/{%listdll%} -t ./"
+      %MSYS_BASH% -c "/bin/cp --verbose /mingw/bin/libbz2-1.dll -t ./"
       %MSYS_BASH% -c "/mingw64/bin/windeployqt.exe --release --qmldir qml/filmulator-gui filmulator.exe"
     continueOnError: true
     displayName: package dlls
