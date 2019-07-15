@@ -1,5 +1,4 @@
 #include "imagePipeline.h"
-
 ImagePipeline::ImagePipeline(Cache cacheIn, Histo histoIn, QuickQuality qualityIn)
 {
     cache = cacheIn;
@@ -39,7 +38,7 @@ int ImagePipeline::libraw_callback(void *data, LibRaw_progress, int, int)
     }
 }
 
-matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManager,
+matrix<unsigned short>& ImagePipeline::processImage(ParameterManager * paramManager,
                                                    Interface * interface_in,
                                                    Exiv2::ExifData &exifOutput)
 {
@@ -239,6 +238,9 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
             raw_image.set_size(raw_height, raw_width);
 
             //copy raw data
+            float rawMin = std::numeric_limits<float>::max();
+            float rawMax = std::numeric_limits<float>::min();
+            #pragma omp parallel for reduction (min:rawMin) reduction(max:rawMax)
             for (int row = 0; row < raw_height; row++)
             {
                 //IMAGE is an (width*height) by 4 array, not width by height by 4.
@@ -251,11 +253,13 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
                         tempBlackpoint = tempBlackpoint + image_processor->imgdata.color.cblack[6 + (row%blackRow)*blackCol + col%blackCol];
                     }
                     raw_image[row][col] = RAW[rowoffset + col + leftmargin] - tempBlackpoint;
+                    rawMin = std::min(rawMin, raw_image[row][col]);
+                    rawMax = std::max(rawMax, raw_image[row][col]);
                 }
             }
 
-            cout << "max of raw_image: " << raw_image.max() << " ===============================================" << endl;
-            cout << "min of raw_image: " << raw_image.min() << endl;
+            cout << "max of raw_image: " << rawMax << " ===============================================" << endl;
+            cout << "min of raw_image: " << rawMin << endl;
         }
         valid = paramManager->markLoadComplete();
         updateProgress(valid, 0.0f);
@@ -279,7 +283,7 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
         struct timeval imload_time;
         gettimeofday( &imload_time, nullptr );
 
-        matrix<float> scaled_image;
+        matrix<float>& scaled_image = recovered_image;
         if ((HighQuality == quality) && stealData)//only full pipelines may steal data
         {
             scaled_image = stealVictim->input_image;
@@ -339,14 +343,6 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
 
             //before demosaic, you want to apply raw white balance
             matrix<float> premultiplied(raw_height, raw_width);
-            for (int row = 0; row < raw_height; row++)
-            {
-                for (int col = 0; col < raw_width; col++)
-                {
-                    uint color = cfa[uint(row) & 1][uint(col) & 1];
-                    premultiplied(row, col) = raw_image(row, col) * ((color==0) ? rCamMul : (color == 1) ? gCamMul : bCamMul);
-                }
-            }
 
             cout << "demosaic start" << timeDiff(timeRequested) << endl;
             struct timeval demosaic_time;
@@ -354,26 +350,44 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
 
             if (maxXtrans > 0)
             {
+                #pragma omp parallel for
+                for (int row = 0; row < raw_height; row++)
+                {
+                    for (int col = 0; col < raw_width; col++)
+                    {
+                        uint color = xtrans[uint(row) % 6][uint(col) % 6];
+                        premultiplied(row, col) = raw_image(row, col) * ((color==0) ? rCamMul : (color == 1) ? gCamMul : bCamMul);
+                    }
+                }
                 markesteijn_demosaic(raw_width, raw_height, premultiplied, red, green, blue, xtrans, camToRGB4, setProg, 3, true);
             }
             else
             {
+                #pragma omp parallel for
+                for (int row = 0; row < raw_height; row++)
+                {
+                    for (int col = 0; col < raw_width; col++)
+                    {
+                        uint color = cfa[uint(row) & 1][uint(col) & 1];
+                        premultiplied(row, col) = raw_image(row, col) * ((color==0) ? rCamMul : (color == 1) ? gCamMul : bCamMul);
+                    }
+                }
                 if (demosaicParam.caEnabled)
                 {
                     //we need to apply white balance and then remove it for Auto CA Correct to work properly
-                    matrix<float> raw_fixed(raw_height, raw_width);
                     double fitparams[2][2][16];
-                    CA_correct(0, 0, raw_width, raw_height, true, 1, 0.0, 0.0, true, premultiplied, raw_fixed, cfa, setProg, fitparams, false);
-                    premultiplied = raw_fixed;
+                    CA_correct(0, 0, raw_width, raw_height, true, 1, 0.0, 0.0, true, premultiplied, premultiplied, cfa, setProg, fitparams, false);
                 }
                 amaze_demosaic(raw_width, raw_height, 0, 0, raw_width, raw_height, premultiplied, red, green, blue, cfa, setProg, initialGain, border, inputscale, outputscale);
                 //matrix<float> normalized_image(raw_height, raw_width);
                 //normalized_image = premultiplied * (outputscale/inputscale);
                 //lmmse_demosaic(raw_width, raw_height, normalized_image, red, green, blue, cfa, setProg, 3);//needs inputscale and output scale to be implemented
             }
+            premultiplied.set_size(0, 0);
             cout << "demosaic end: " << timeDiff(demosaic_time) << endl;
 
             input_image.set_size(raw_height, raw_width*3);
+            #pragma omp parallel for
             for (int row = 0; row < raw_height; row++)
             {
                 for (int col = 0; col < raw_width; col++)
@@ -419,70 +433,64 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
         struct timeval hlrecovery_time;
         gettimeofday(&hlrecovery_time, nullptr);
 
-        //For highlight recovery, we need to split up the image into three separate layers.
-        matrix<float> rChannel, gChannel, bChannel;
         int height = scaled_image.nr();
         int width  = scaled_image.nc()/3;
-        rChannel.set_size(height, width);
-        gChannel.set_size(height, width);
-        bChannel.set_size(height, width);
-
-        for (int row = 0; row < height; row++)
-        {
-            for (int col = 0; col < width; col++)
-            {
-                rChannel(row, col) = scaled_image(row, col*3    );
-                gChannel(row, col) = scaled_image(row, col*3 + 1);
-                bChannel(row, col) = scaled_image(row, col*3 + 2);
-            }
-        }
-
-        //We applied the camMul camera multipliers before applying white balance.
-        //Now we need to calculate the channel max and the raw clip levels.
-        //Channel max:
-        float chmax[3];
-        chmax[0] = rChannel.max();
-        chmax[1] = gChannel.max();
-        chmax[2] = bChannel.max();
-        //Max clip point:
-        float clmax[3];
-        clmax[0] = 65535.0f*rCamMul;
-        clmax[1] = 65535.0f*gCamMul;
-        clmax[2] = 65535.0f*bCamMul;
 
         //Now, recover highlights.
         std::function<bool(double)> setProg = [](double) -> bool {return false;};
+        //And return it back to a single layer
         if (demosaicParam.highlights >= 2)
         {
             cout << "Highlight Recovery ================================================================================" << endl;
-            HLRecovery_inpaint(width, height, rChannel, gChannel, bChannel, chmax, clmax, setProg);
-        } else if (demosaicParam.highlights == 0)
-        {
+            recovered_image.set_size(height, width*3);
+            //For highlight recovery, we need to split up the image into three separate layers.
+            matrix<float> rChannel(height, width), gChannel(height, width), bChannel(height, width);
+
+            #pragma omp parallel for
             for (int row = 0; row < height; row++)
             {
                 for (int col = 0; col < width; col++)
                 {
-                    rChannel(row,col) = min(rChannel(row,col), 65535.0f);
-                    gChannel(row,col) = min(gChannel(row,col), 65535.0f);
-                    bChannel(row,col) = min(bChannel(row,col), 65535.0f);
+                    rChannel(row, col) = scaled_image(row, col*3    );
+                    gChannel(row, col) = scaled_image(row, col*3 + 1);
+                    bChannel(row, col) = scaled_image(row, col*3 + 2);
                 }
             }
-        }
 
-        //And return it back to a single layer
-        recovered_image.set_size(height, width*3);
-        for (int row = 0; row < height; row++)
-        {
-            for (int col = 0; col < width; col++)
+            //We applied the camMul camera multipliers before applying white balance.
+            //Now we need to calculate the channel max and the raw clip levels.
+            //Channel max:
+            const float chmax[3] = {rChannel.max(), gChannel.max(), bChannel.max()};
+            //Max clip point:
+            const float clmax[3] = {65535.0f*rCamMul, 65535.0f*gCamMul, 65535.0f*bCamMul};
+
+            HLRecovery_inpaint(width, height, rChannel, gChannel, bChannel, chmax, clmax, setProg);
+            #pragma omp parallel for
+            for (int row = 0; row < height; row++)
             {
-                recovered_image(row, col*3    ) = rChannel(row, col);
-                recovered_image(row, col*3 + 1) = gChannel(row, col);
-                recovered_image(row, col*3 + 2) = bChannel(row, col);
+                for (int col = 0; col < width; col++)
+                {
+                    recovered_image(row, col*3    ) = rChannel(row, col);
+                    recovered_image(row, col*3 + 1) = gChannel(row, col);
+                    recovered_image(row, col*3 + 2) = bChannel(row, col);
+                }
             }
+        } else if (demosaicParam.highlights == 0)
+        {
+            recovered_image.set_size(height, width*3);
+            #pragma omp parallel for
+            for (int row = 0; row < height; row++)
+            {
+                for (int col = 0; col < width; col++)
+                {
+                    recovered_image(row, col*3    ) = min(scaled_image(row, col*3    ), 65535.0f);
+                    recovered_image(row, col*3 + 1) = min(scaled_image(row, col*3 + 1), 65535.0f);
+                    recovered_image(row, col*3 + 2) = min(scaled_image(row, col*3 + 2), 65535.0f);
+                }
+            }
+        } else {
+            recovered_image = std::move(scaled_image);
         }
-        rChannel.set_size(0,0);
-        gChannel.set_size(0,0);
-        bChannel.set_size(0,0);
 
         cout << "hlrecovery end: " << timeDiff(hlrecovery_time) << endl;
 
@@ -502,17 +510,14 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
 
 
         //Here we apply the exposure compensation and white balance and color conversion matrix.
-        matrix<float> wbImage;
         whiteBalance(recovered_image,
-                     wbImage,
+                     pre_film_image,
                      prefilmParam.temperature,
                      prefilmParam.tint,
                      camToRGB,
                      rCamMul, gCamMul, bCamMul,//needed as a reference but not actually applied
                      rPreMul, gPreMul, bPreMul,
-                     65535.0f);
-
-        pre_film_image = wbImage * pow(2, prefilmParam.exposureComp);
+                     65535.0f, pow(2, prefilmParam.exposureComp));
 
         if (NoCache == cache)
         {
@@ -629,6 +634,9 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
 
 
         matrix<float> cropped_image;
+        cout << "crop start:" << timeDiff (timeRequested) << endl;
+        struct timeval crop_time;
+        gettimeofday(&crop_time, nullptr);
 
         downscale_and_crop(rotated_image,
                            cropped_image,
@@ -639,6 +647,7 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
                            width,
                            height);
 
+        cout << "crop end: " << timeDiff(crop_time) << endl;
 
         rotated_image.set_size(0, 0);// clean up ram that's not needed anymore
 
@@ -702,7 +711,7 @@ matrix<unsigned short> ImagePipeline::processImage(ParameterManager * paramManag
                 return ushort(65535*default_tonecurve(shResult));
             }
         );
-        matrix<unsigned short> film_curve_image;
+        matrix<unsigned short>& film_curve_image = vibrance_saturation_image;
         film_like_curve(color_curve_image,
                         film_curve_image,
                         filmLikeLUT);

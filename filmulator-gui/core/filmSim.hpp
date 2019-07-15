@@ -68,7 +68,7 @@ struct filmulateParams {//TODO: adjust variable names.
     float rolloffBoundary;
 };
 
-matrix<float> exposure(matrix<float> input_image, float crystals_per_pixel,
+void exposure(matrix<float> &input_image, float crystals_per_pixel,
         float rolloff_boundary);
 
 //Equalizes the concentration of developer across the reservoir and all pixels.
@@ -150,7 +150,7 @@ bool merge_exps(matrix<float> &input_image, const matrix<float> &temp_image,
 string convert_from_raw(char* raw_filename, int i, string tempdir,
         int highlights);
 
-bool imwrite_tiff(matrix<unsigned short> output, string outputfilename,
+bool imwrite_tiff(const matrix<unsigned short>& output, string outputfilename,
                   Exiv2::ExifData exifData);
 
 bool imwrite_jpeg(matrix<unsigned short> &output, string outputfilename,
@@ -218,17 +218,17 @@ void whiteBalance(matrix<float> &input, matrix<float> &output,
                   float temperature, float tint, float cam2rgb[3][3],
                   float rCamMul, float gCamMul, float bCamMul,
                   float rPreMul, float gPreMul, float bPreMul,
-                  float maxValue);
+                  float maxValue, float factor = 1.f);
 
-void vibrance_saturation(matrix<unsigned short> &input,
+void vibrance_saturation(const matrix<unsigned short> &input,
                          matrix<unsigned short> &output,
                          float vibrance, float saturation);
 
-void monochrome_convert(matrix<unsigned short> &input,
+void monochrome_convert(const matrix<unsigned short> &input,
                         matrix<unsigned short> &output,
                         float rmult, float gmult, float bmult);
 
-void downscale_and_crop(const matrix<float> input,
+void downscale_and_crop(const matrix<float> &input,
                         matrix<float> &output,
                         const int inputStartX,
                         const int inputStartY,
