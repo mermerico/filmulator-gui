@@ -44,11 +44,12 @@ steps:
       cd lensfun
       git apply ../patches/lensfun-0001-Fix-underscore-capital-letter-identifiers.patch
       git apply ../patches/lensfun-0002-Replace-instances-of-strdup-with-g_strdup.patch
+      git apply ../patches/lensfun-0003-Add-search-path-for-msys-glib2.patch
       echo "done clone"
       mkdir build
       cd build
       set HOME=.
-      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DINSTALL_PYTHON_MODULE=OFF -DINSTALL_HELPER_SCRIPTS=OFF -DCMAKE_LEGACY_CYGWIN_WIN32=1 -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"/mingw64/\" -DGLIB2_LIBRARY_DIRS=\"/mingw64/bin/\" -DCMAKE_INCLUDE_PATH=\"/mingw64/include/\" .. --trace-source=cmake/modules/FindGLIB2.cmake --trace-expand"
+      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DINSTALL_PYTHON_MODULE=OFF -DINSTALL_HELPER_SCRIPTS=OFF -DCMAKE_LEGACY_CYGWIN_WIN32=1 -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"/mingw64/\" -DGLIB2_LIBRARY_DIRS=\"/usr/\" -DCMAKE_INCLUDE_PATH=\"/mingw64/include/\" .. --trace-source=cmake/modules/FindGLIB2.cmake --trace-expand"
       %MSYS_BASH% -c "make"
       %MSYS_BASH% -c "make install"
     displayName: build lensfun
