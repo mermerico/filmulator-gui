@@ -55,6 +55,11 @@ steps:
       %MSYS_BASH% -c "make -j2"
       %MSYS_BASH% -c "make install"
     displayName: build lensfun
+  - task: PublishBuildArtifacts@2
+    inputs:
+      pathtoPublish: 'liblensfun' 
+      artifactName: 'wholedir'
+      condition: succeededOrFailed()      
   - script: |
       mkdir build
       pushd build
