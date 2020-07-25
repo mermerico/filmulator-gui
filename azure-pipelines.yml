@@ -40,7 +40,7 @@ steps:
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
   - script: |
-      git clone https://github.com/lensfun/lensfun.git lensfun
+      git clone https://github.com/lensfun/lensfun.git
       cd lensfun
       git apply ../patches/lensfun-0001-Fix-underscore-capital-letter-identifiers.patch
       git apply ../patches/lensfun-0002-Replace-instances-of-strdup-with-g_strdup.patch
@@ -49,12 +49,12 @@ steps:
       cd build
       set HOME=.
       %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" -DCMAKE_PREFIX_PATH=\"/mingw64/lib/cmake/\" -DCMAKE_LIBRARY_PATH=\"/mingw64/lib/\" -DCMAKE_INCLUDE_PATH=\"/mingw64/include/\" .."
-      %MSYS_BASH% -c "make -j2"
+      %MSYS_BASH% -c "make"
       %MSYS_BASH% -c "make install"
     displayName: build lensfun
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: 'liblensfun' 
+      pathtoPublish: 'lensfun' 
       artifactName: 'wholedir'
     condition: succeededOrFailed()      
   - script: |
