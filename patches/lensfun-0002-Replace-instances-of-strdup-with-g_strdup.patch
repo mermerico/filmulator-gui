@@ -1,0 +1,60 @@
+From 2110ec6b08317fcdb86f735444ed0d6ba9679340 Mon Sep 17 00:00:00 2001
+From: Omer Mano <mermerico@gmail.com>
+Date: Sat, 25 Jul 2020 00:07:32 -0400
+Subject: [PATCH 2/2] Replace instances of strdup with g_strdup
+
+strdup is going to be included in the C standard in C2X, but is not in the C++ standard. Replace it with g_strdup from GLib which provides this functionality.
+---
+ libs/lensfun/database.cpp | 8 ++++----
+ libs/lensfun/lens.cpp     | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/libs/lensfun/database.cpp b/libs/lensfun/database.cpp
+index 2b2a7315..01527704 100644
+--- a/libs/lensfun/database.cpp
++++ b/libs/lensfun/database.cpp
+@@ -36,8 +36,8 @@ lfDatabase::lfDatabase ()
+ 
+     // Take care to replace all occurences with the respective static variables
+     // when the deprecated HomeDataDir and UserUpdatesDir variables are removed.
+-    HomeDataDir = strdup(lfDatabase::UserLocation);
+-    UserUpdatesDir = strdup(lfDatabase::UserUpdatesLocation);
++    HomeDataDir = g_strdup(lfDatabase::UserLocation);
++    UserUpdatesDir = g_strdup(lfDatabase::UserUpdatesLocation);
+ }
+ 
+ lfDatabase::~lfDatabase ()
+@@ -820,7 +820,7 @@ lfError lfDatabase::Load (const char *errcontext, const char *data, size_t data_
+ 
+     /* Temporarily drop numeric format to "C" */
+     char *old_numeric = setlocale (LC_NUMERIC, NULL);
+-    old_numeric = strdup(old_numeric);
++    old_numeric = g_strdup(old_numeric);
+     setlocale(LC_NUMERIC,"C");
+ 
+     lfParserData pd;
+@@ -886,7 +886,7 @@ lfError lfDatabase::Save (char*& xml, size_t& data_size) const
+ {
+     /* Temporarily drop numeric format to "C" */
+     char *old_numeric = setlocale (LC_NUMERIC, NULL);
+-    old_numeric = strdup(old_numeric);
++    old_numeric = g_strdup(old_numeric);
+     setlocale(LC_NUMERIC,"C");
+ 
+     GString *output = g_string_sized_new (1024);
+diff --git a/libs/lensfun/lens.cpp b/libs/lensfun/lens.cpp
+index 0ab8720a..98074154 100644
+--- a/libs/lensfun/lens.cpp
++++ b/libs/lensfun/lens.cpp
+@@ -165,7 +165,7 @@ void lfLens::GuessParameters ()
+     float mina = float (INT_MAX), maxa = float (INT_MIN);
+ 
+     char *old_numeric = setlocale (LC_NUMERIC, NULL);
+-    old_numeric = strdup (old_numeric);
++    old_numeric = g_strdup (old_numeric);
+     setlocale (LC_NUMERIC, "C");
+ 
+     if (Model && (!MinAperture || !MinFocal) &&
+-- 
+2.27.0
+

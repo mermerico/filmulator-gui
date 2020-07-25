@@ -1,0 +1,54 @@
+From 2f95f0daee5cc2cb3b271143d537776a750fc31f Mon Sep 17 00:00:00 2001
+From: Omer Mano <mermerico@gmail.com>
+Date: Fri, 24 Jul 2020 23:58:15 -0400
+Subject: [PATCH 1/2] Fix underscore-capital letter identifiers
+
+C++ does not allow identifiers that begin with an underscore and then a capital letter (like "_D"). This caused compilation issues in msys2. Fix these names identifiers by removing the underscore.
+---
+ libs/lensfun/mod-pc.cpp | 18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/libs/lensfun/mod-pc.cpp b/libs/lensfun/mod-pc.cpp
+index 78cae8fa..92803975 100644
+--- a/libs/lensfun/mod-pc.cpp
++++ b/libs/lensfun/mod-pc.cpp
+@@ -212,7 +212,7 @@ void ellipse_analysis (dvector x, dvector y, double f_normalized, double &x_v, d
+                        double &center_x, double &center_y)
+ {
+     matrix M;
+-    double a, b, c, d, f, g, _D, x0, y0, phi, _N, _S, _R, a_, b_, radius_vertex;
++    double a, b, c, d, f, g, D, x0, y0, phi, N, S, R, a_, b_, radius_vertex;
+ 
+     // Taken from http://math.stackexchange.com/a/767126/248694
+     for (int i = 0; i < 5; i++)
+@@ -230,19 +230,19 @@ void ellipse_analysis (dvector x, dvector y, double f_normalized, double &x_v, d
+     f = parameters [4] / 2;
+     g = parameters [5];
+ 
+-    _D = pow (b, 2) - a * c;
+-    x0 = (c * d - b * f) / _D;
+-    y0 = (a * f - b * d) / _D;
++    D = pow (b, 2) - a * c;
++    x0 = (c * d - b * f) / D;
++    y0 = (a * f - b * d) / D;
+ 
+     phi = 1./2 * atan (2 * b / (a - c));
+     if (a > c)
+         phi += M_PI_2;
+ 
+-    _N = 2 * (a * pow (f, 2) + c * pow (d, 2) + g * pow (b, 2) - 2 * b * d * f - a * c * g) / _D;
+-    _S = sqrt (pow ((a - c), 2) + 4 * pow (b, 2));
+-    _R = a + c;
+-    a_ = sqrt (_N / (_S - _R));
+-    b_ = sqrt (_N / (- _S - _R));
++    N = 2 * (a * pow (f, 2) + c * pow (d, 2) + g * pow (b, 2) - 2 * b * d * f - a * c * g) / D;
++    S = sqrt (pow ((a - c), 2) + 4 * pow (b, 2));
++    R = a + c;
++    a_ = sqrt (N / (S - R));
++    b_ = sqrt (N / (- S - R));
+     // End taken from mathworld
+     if (a_ < b_)
+     {
+-- 
+2.27.0
+
