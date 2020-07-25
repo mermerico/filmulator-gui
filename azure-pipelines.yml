@@ -50,7 +50,7 @@ steps:
       mkdir build
       cd build
       set HOME=.
-      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DINSTALL_PYTHON_MODULE=OFF -DGLIB2_INCLUDE_DIRS=\"/mingw64/usr/include/glib-2.0/\" -DGLIB2_LIBRARY_DIRS=\"/mingw64/usr/lib/\" -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" .."
+      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DINSTALL_PYTHON_MODULE=OFF -DGLIB2_GLIB2CONFIG_INCLUDE_PATH=\"/usr/lib/glib-2.0/include/glibconfig.h\" -DGLIB2_INCLUDE_DIRS=\"/mingw64/usr/include/glib-2.0/\" -DGLIB2_LIBRARY_DIRS=\"/mingw64/usr/lib/\" -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" .."
       %MSYS_BASH% -c "make"
       %MSYS_BASH% -c "make install"
     displayName: build lensfun
