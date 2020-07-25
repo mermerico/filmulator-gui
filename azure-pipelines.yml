@@ -8,8 +8,7 @@ trigger:
 - dev
 - testbuild
 
-pool:
-  vmImage: "vs2017-win2016"
+pool: Default
 
 variables:
   MSYS2_ROOT: $(System.Workfolder)/msys64
