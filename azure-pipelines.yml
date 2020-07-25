@@ -45,6 +45,7 @@ steps:
       git apply ../patches/lensfun-0001-Fix-underscore-capital-letter-identifiers.patch
       git apply ../patches/lensfun-0002-Replace-instances-of-strdup-with-g_strdup.patch
       git apply ../patches/lensfun-0003-Add-search-path-for-msys-glib2.patch
+      git apply ../patches/lensfun-0004-Add-another-alias-for-the-glib-library-name.patch
       echo "done clone"
       mkdir build
       cd build
