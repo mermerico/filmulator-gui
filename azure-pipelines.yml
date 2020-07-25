@@ -60,9 +60,9 @@ steps:
     condition: succeededOrFailed()
   - task: PublishBuildArtifacts@1
     inputs:
-      pathtoPublish: '$(System.Workfolder)/msys64' 
-      artifactName: 'msysdir'
-    condition: succeededOrFailed()      
+      pathtoPublish: '$(System.Workfolder)/msys64/mingw64/bin' 
+      artifactName: 'msys-mingw-bin'
+    condition: succeededOrFailed()       
   - script: |
       mkdir build
       pushd build
