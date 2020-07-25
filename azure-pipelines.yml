@@ -57,6 +57,11 @@ steps:
     inputs:
       pathtoPublish: 'lensfun' 
       artifactName: 'wholedir'
+    condition: succeededOrFailed()
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathtoPublish: '$(System.Workfolder)/msys64' 
+      artifactName: 'msysdir'
     condition: succeededOrFailed()      
   - script: |
       mkdir build
