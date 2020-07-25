@@ -1,0 +1,26 @@
+From 987c24c995823470e65b96c48865b34e22872492 Mon Sep 17 00:00:00 2001
+From: Omer Mano <mermerico@gmail.com>
+Date: Sat, 25 Jul 2020 11:09:13 -0400
+Subject: [PATCH 3/3] Add search path for msys glib2
+
+The glib2 dll is named msys-glib-2.0-0.dll when running under msys. Add this as a possible name to search for dlls.
+---
+ cmake/modules/FindGLIB2.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmake/modules/FindGLIB2.cmake b/cmake/modules/FindGLIB2.cmake
+index 44d76ca8..1b041764 100644
+--- a/cmake/modules/FindGLIB2.cmake
++++ b/cmake/modules/FindGLIB2.cmake
+@@ -3,7 +3,7 @@ IF (NOT MSVC)
+     PKG_SEARCH_MODULE( GLIB2 glib-2.0 )
+     IF(WIN32 AND NOT BUILD_STATIC)
+         FIND_FILE(GLIB2_DLL 
+-                NAMES glib-2.dll glib-2-vs9.dll libglib-2.0-0.dll
++                NAMES glib-2.dll glib-2-vs9.dll libglib-2.0-0.dll msys-glib-2.0-0.dll
+                 PATHS "${GLIB2_LIBRARY_DIRS}/../bin"
+                 NO_SYSTEM_ENVIRONMENT_PATH)
+     ENDIF()
+-- 
+2.27.0
+
