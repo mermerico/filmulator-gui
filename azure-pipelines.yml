@@ -35,7 +35,7 @@ steps:
       mkdir buildDir
       cd buildDir
       set HOME=.
-      %MSYS_BASH% -c -l "cmake -G\"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c -l "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=g++ -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
       %MSYS_BASH% -c -l "make -j`nproc`"
       %MSYS_BASH% -c -l "make install"
     displayName: build librtprocess
