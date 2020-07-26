@@ -8,8 +8,8 @@ trigger:
 - dev
 - testbuild
 
-pool: default
-  #vmImage: 'windows-latest'
+pool: #default
+  vmImage: 'windows-latest'
 
 variables:
   MSYS2_ROOT: $(System.Workfolder)/msys64
@@ -35,7 +35,7 @@ steps:
       mkdir buildDir
       cd buildDir
       set HOME=.
-      %MSYS_BASH% -c -l "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=g++ -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c -l "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=/mingw/bin/g++ -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
       %MSYS_BASH% -c -l "make -j`nproc`"
       %MSYS_BASH% -c -l "make install"
     displayName: build librtprocess
@@ -50,7 +50,7 @@ steps:
       mkdir build
       cd build
       set HOME=.
-      %MSYS_BASH% -c -l "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=/mingw64/bin/g++.exe -DCMAKE_CXX_COMPILER_WORKS=1 -DCMAKE_FIND_DEBUG_MODE=1 -DINSTALL_PYTHON_MODULE=OFF -DCMAKE_FIND_USE_CMAKE_PATH=0 -DCMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH=0 -DCMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH=0 -DCMAKE_FIND_USE_CMAKE_SYSTEM_PATH=1 -DGLIB2_GLIB2CONFIG_INCLUDE_PATH=\"/usr/lib/glib-2.0/include/\" -DGLIB2_INCLUDE_DIRS=\"/usr/include/glib-2.0/\" -DGLIB2_LIBRARY_DIRS=\"/usr/lib/\" -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" .."
+      %MSYS_BASH% -c -l "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=/mingw64/bin/g++.exe -DCMAKE_CXX_COMPILER_WORKS=1 -DCMAKE_FIND_DEBUG_MODE=1 -DINSTALL_PYTHON_MODULE=OFF -DGLIB2_GLIB2CONFIG_INCLUDE_PATH=\"/usr/lib/glib-2.0/include/\" -DGLIB2_INCLUDE_DIRS=\"/usr/include/glib-2.0/\" -DGLIB2_LIBRARY_DIRS=\"/usr/lib/\" -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" .. --trace-source=cmake/modules/FindGLIB2.cmake trace-expand"
       %MSYS_BASH% -c -l "make -j`nproc` VERBOSE=1"
       %MSYS_BASH% -c -l "make install"
     displayName: build lensfun
