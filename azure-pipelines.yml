@@ -36,7 +36,7 @@ steps:
       cd buildDir
       set HOME=.
       set BASH_ENV=/etc/profile
-      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=/mingw/bin/g++ -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
+      %MSYS_BASH% -c "cmake -G\"Unix Makefiles\" -DCMAKE_CXX_COMPILER=/mingw64/bin/g++ -DCMAKE_INSTALL_PREFIX=\"/mingw64/\" -DCMAKE_BUILD_TYPE=\"Release\" ../lrt > out.log 2>err.log"
       %MSYS_BASH% -c "make -j`nproc`"
       %MSYS_BASH% -c "make install"
     displayName: build librtprocess
