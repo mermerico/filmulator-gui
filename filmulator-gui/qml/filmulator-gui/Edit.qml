@@ -1931,7 +1931,7 @@ SlimSplitView {
                                     var newAngle = Math.atan2(mouse.y-imageRect.displayRotationPointY, mouse.x-imageRect.displayRotationPointX)*180/Math.PI
                                     var delta = newAngle - oldAngle
                                     imageRect.rotationAngle += delta
-                                    while ((imageRect.rotationAngle < -45) || (imageRect.rotationAngle > 45)) {
+                                    while ((imageRect.rotationAngle < -45) || (imageRect.rotationAngle >= 45)) {
                                         if (imageRect.rotationAngle > 45) { //more than 45 degrees either way
                                             imageRect.rotationAngle -= 90
                                         } else if (imageRect.rotationAngle < -45) {
