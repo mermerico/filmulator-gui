@@ -1982,6 +1982,9 @@ void ImagePipeline::swapPipeline(ImagePipeline * swapTarget)
     std::swap(bUserMul, swapTarget->bUserMul);
 
     std::swap(maxValue, swapTarget->maxValue);
+    std::swap(colorMaxValue[0], swapTarget->colorMaxValue[0]);
+    std::swap(colorMaxValue[1], swapTarget->colorMaxValue[1]);
+    std::swap(colorMaxValue[2], swapTarget->colorMaxValue[2]);
     std::swap(isSraw, swapTarget->isSraw);
     std::swap(isNikonSraw, swapTarget->isNikonSraw);
     std::swap(isMonochrome, swapTarget->isMonochrome);
