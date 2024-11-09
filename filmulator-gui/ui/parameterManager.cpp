@@ -1573,54 +1573,54 @@ void ParameterManager::writeToDB(QString imageID)
     QSqlQuery query(db);
     query.exec("BEGIN;");//Stick these all into one db action for speed.
     query.prepare("REPLACE INTO ProcessingTable ("
-                  "ProcTprocID, "                         // 0
-                  "ProcTinitialDeveloperConcentration, "  // 1
-                  "ProcTreservoirThickness, "             // 2
-                  "ProcTactiveLayerThickness, "           // 3
-                  "ProcTcrystalsPerPixel, "               // 4
-                  "ProcTinitialCrystalRadius, "           // 5
-                  "ProcTinitialSilverSaltDensity, "       // 6
-                  "ProcTdeveloperConsumptionConst, "      // 7
-                  "ProcTcrystalGrowthConst, "             // 8
-                  "ProcTsilverSaltConsumptionConst, "     // 9
-                  "ProcTtotalDevelopmentTime, "           //10
-                  "ProcTagitateCount, "                   //11
-                  "ProcTdevelopmentSteps, "               //12
-                  "ProcTfilmArea, "                       //13
-                  "ProcTsigmaConst, "                     //14
-                  "ProcTlayerMixConst, "                  //15
-                  "ProcTlayerTimeDivisor, "               //16
-                  "ProcTrolloffBoundary, "                //17
-                  "ProcTexposureComp, "                   //18
-                  "ProcTwhitepoint, "                     //19
-                  "ProcTblackpoint, "                     //20
-                  "ProcTshadowsX, "                       //21
-                  "ProcTshadowsY, "                       //22
-                  "ProcThighlightsX, "                    //23
-                  "ProcThighlightsY, "                    //24
-                  "ProcThighlightRecovery, "              //25
-                  "ProcTcaEnabled, "                      //26
-                  "ProcTtemperature, "                    //27
-                  "ProcTtint, "                           //28
-                  "ProcTvibrance, "                       //29
-                  "ProcTsaturation, "                     //30
-                  "ProcTrotation, "                       //31
-                  "ProcTcropHeight, "                     //32
-                  "ProcTcropAspect, "                     //33
-                  "ProcTcropVoffset, "                    //34
-                  "ProcTcropHoffset, "                    //35
-                  "ProcTmonochrome, "                     //36
-                  "ProcTbwRmult, "                        //37
-                  "ProcTbwGmult, "                        //38
-                  "ProcTbwBmult, "                        //39
-                  "ProcTtoeBoundary, "                    //40
-                  "ProcTlensfunName, "                    //41
-                  "ProcTlensfunCa, "                      //42
-                  "ProcTlensfunVign, "                    //43
-                  "ProcTlensfunDist, "                    //44
-                  "ProcTrotationAngle, "                  //45
-                  "ProcTrotationPointX, "                 //46
-                  "ProcTrotationPointY) "                 //47
+                  "ProcTprocID"                          // 0
+                  ",ProcTinitialDeveloperConcentration"  // 1
+                  ",ProcTreservoirThickness"             // 2
+                  ",ProcTactiveLayerThickness"           // 3
+                  ",ProcTcrystalsPerPixel"               // 4
+                  ",ProcTinitialCrystalRadius"           // 5
+                  ",ProcTinitialSilverSaltDensity"       // 6
+                  ",ProcTdeveloperConsumptionConst"      // 7
+                  ",ProcTcrystalGrowthConst"             // 8
+                  ",ProcTsilverSaltConsumptionConst"     // 9
+                  ",ProcTtotalDevelopmentTime"           //10
+                  ",ProcTagitateCount"                   //11
+                  ",ProcTdevelopmentSteps"               //12
+                  ",ProcTfilmArea"                       //13
+                  ",ProcTsigmaConst"                     //14
+                  ",ProcTlayerMixConst"                  //15
+                  ",ProcTlayerTimeDivisor"               //16
+                  ",ProcTrolloffBoundary"                //17
+                  ",ProcTexposureComp"                   //18
+                  ",ProcTwhitepoint"                     //19
+                  ",ProcTblackpoint"                     //20
+                  ",ProcTshadowsX"                       //21
+                  ",ProcTshadowsY"                       //22
+                  ",ProcThighlightsX"                    //23
+                  ",ProcThighlightsY"                    //24
+                  ",ProcThighlightRecovery"              //25
+                  ",ProcTcaEnabled"                      //26
+                  ",ProcTtemperature"                    //27
+                  ",ProcTtint"                           //28
+                  ",ProcTvibrance"                       //29
+                  ",ProcTsaturation"                     //30
+                  ",ProcTrotation"                       //31
+                  ",ProcTcropHeight"                     //32
+                  ",ProcTcropAspect"                     //33
+                  ",ProcTcropVoffset"                    //34
+                  ",ProcTcropHoffset"                    //35
+                  ",ProcTmonochrome"                     //36
+                  ",ProcTbwRmult"                        //37
+                  ",ProcTbwGmult"                        //38
+                  ",ProcTbwBmult"                        //39
+                  ",ProcTtoeBoundary"                    //40
+                  ",ProcTlensfunName"                    //41
+                  ",ProcTlensfunCa"                      //42
+                  ",ProcTlensfunVign"                    //43
+                  ",ProcTlensfunDist"                    //44
+                  ",ProcTrotationAngle"                  //45
+                  ",ProcTrotationPointX"                 //46
+                  ",ProcTrotationPointY)"                //47
                   " values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
                   //                            1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4
                   //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7

@@ -113,20 +113,20 @@ QString createNewProfile(const QString fileHash,
 
     //Create a new search table entry
     query.prepare("INSERT INTO SearchTable ("
-                  "STsearchID, "
-                  "STcaptureTime, "
-                  "STname, "
-                  "STfilename, "
-                  "STsourceHash, "
-                  "STrating, "
-                  "STlatitude, "
-                  "STlongitude, "
-                  "STimportTime, "
-                  "STlastProcessedTime, "
-                  "STimportStartTime, "
-                  "STthumbWritten, "
-                  "STbigThumbWritten) "
-                  "values (?,?,?,?,?,?,?,?,?,?,?,?,?);");
+                  "STsearchID"
+                  ",STcaptureTime"
+                  ",STname"
+                  ",STfilename"
+                  ",STsourceHash"
+                  ",STrating"
+                  ",STlatitude"
+                  ",STlongitude"
+                  ",STimportTime"
+                  ",STlastProcessedTime"
+                  ",STimportStartTime"
+                  ",STthumbWritten"
+                  ",STbigThumbWritten)"
+                  " values (?,?,?,?,?,?,?,?,?,?,?,?,?);");
                          //0 1 2 3 4 5 6 7 8 9 101112
 
     //searchID (filehash with the increment appended)

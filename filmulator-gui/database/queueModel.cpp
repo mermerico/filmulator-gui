@@ -295,11 +295,11 @@ void QueueModel::batchForget()
     query.exec("BEGIN TRANSACTION;");
 
     //Read out the parameters of images in the queue that we don't want to delete
-    query.prepare("SELECT QTsortedIndex, "  //0
-                  "       QTprocessed, "    //1
-                  "       QTexported, "     //2
-                  "       QToutput, "       //3
-                  "       QTsearchID "      //4
+    query.prepare("SELECT QTsortedIndex "  //0
+                  "      ,QTprocessed "    //1
+                  "      ,QTexported "     //2
+                  "      ,QToutput "       //3
+                  "      ,QTsearchID "     //4
                   "FROM QueueTable "
                   "INNER JOIN ( "
                   "    SELECT STsearchID "
