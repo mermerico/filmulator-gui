@@ -1620,10 +1620,17 @@ void ParameterManager::writeToDB(QString imageID)
                   ",ProcTlensfunDist"                    //44
                   ",ProcTrotationAngle"                  //45
                   ",ProcTrotationPointX"                 //46
-                  ",ProcTrotationPointY)"                //47
-                  " values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
-                  //                            1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4
-                  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+                  ",ProcTrotationPointY"                 //47
+                  ",ProcTdemosaicMethod"                 //48
+                  ",ProcTnrEnabled"                      //49
+                  ",ProcTnlClusters"                     //50
+                  ",ProcTnlThresh"                       //51
+                  ",ProcTnlStrength"                     //52
+                  ",ProcTimpulseThresh"                  //53
+                  ",ProcTchromaStrength"                 //54
+                  ") values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+                  //                            1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5
+                  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
     query.bindValue( 0, imageID);
     query.bindValue( 1, m_initialDeveloperConcentration);
     query.bindValue( 2, m_reservoirThickness);
@@ -1672,6 +1679,13 @@ void ParameterManager::writeToDB(QString imageID)
     query.bindValue(45, m_rotationAngle);
     query.bindValue(46, m_rotationPointX);
     query.bindValue(47, m_rotationPointY);
+    query.bindValue(48, m_demosaicMethod);
+    query.bindValue(49, m_nrEnabled);
+    query.bindValue(50, m_nlClusters);
+    query.bindValue(51, m_nlThresh);
+    query.bindValue(52, m_nlStrength);
+    query.bindValue(53, m_impulseThresh);
+    query.bindValue(54, m_chromaStrength);
     query.exec();
     //Write that it's been edited to the SearchTable (actually writing the edit time)
     QDateTime now = QDateTime::currentDateTime();
@@ -2034,7 +2048,7 @@ void ParameterManager::selectImage(const QString imageID)
     paramLocker.unlock();
 
     //Emit that the things have changed.
-    emit demosaicMethodChanged();//===========================
+    emit demosaicMethodChanged();
     emit caEnabledChanged();
     emit highlightsChanged();
     emit lensfunNameChanged();
@@ -2044,11 +2058,11 @@ void ParameterManager::selectImage(const QString imageID)
     emit rotationAngleChanged();
     emit rotationPointXChanged();
     emit rotationPointYChanged();
-    emit nrEnabledChanged();//======================
-    emit nlClustersChanged();//=============================
-    emit nlThreshChanged();//========================
-    emit nlStrengthChanged();//====================
-    emit chromaStrengthChanged();//===============
+    emit nrEnabledChanged();
+    emit nlClustersChanged();
+    emit nlThreshChanged();
+    emit nlStrengthChanged();
+    emit chromaStrengthChanged();
     emit exposureCompChanged();
     emit temperatureChanged();
     emit tintChanged();
@@ -2088,7 +2102,7 @@ void ParameterManager::selectImage(const QString imageID)
     emit bwBmultChanged();
     emit toeBoundaryChanged();
 
-    emit defDemosaicMethodChanged();//================
+    emit defDemosaicMethodChanged();
     emit defCaEnabledChanged();
     emit defHighlightsChanged();
     emit defLensfunNameChanged();
@@ -2098,11 +2112,11 @@ void ParameterManager::selectImage(const QString imageID)
     emit defRotationAngleChanged();
     emit defRotationPointXChanged();
     emit defRotationPointYChanged();
-    emit defNrEnabledChanged();//====================
-    emit defNlClustersChanged();//========================
-    emit defNlThreshChanged();//========================
-    emit defNlStrengthChanged();//========================
-    emit defChromaStrengthChanged();//==================
+    emit defNrEnabledChanged();
+    emit defNlClustersChanged();
+    emit defNlThreshChanged();
+    emit defNlStrengthChanged();
+    emit defChromaStrengthChanged();
     emit defExposureCompChanged();
     emit defTemperatureChanged();
     emit defTintChanged();
@@ -2181,11 +2195,14 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
         m_caEnabled = query.value(nameCol).toInt();
     }
 
-    //Demosaic (temporary)
-    d_demosaicMethod = 0;
+    //Demosaic algorithm
+    nameCol = rec.indexOf("ProfTdemosaicMethod");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTdemosaicMethod" << endl; }
+    const int temp_demosaicMethod = query.value(nameCol).toInt();
+    d_demosaicMethod = temp_demosaicMethod;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_demosaicMethod = d_demosaicMethod;
+        m_demosaicMethod = temp_demosaicMethod;
     }
 
     //Highlights (highlight recovery)
@@ -2208,36 +2225,54 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
         m_exposureComp = temp_exposureComp;
     }
 
-    //noise reduction stuff (temporary)
-    d_nrEnabled = false;
+    //noise reduction stuff
+    nameCol = rec.indexOf("ProfTnrEnabled");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTnrEnabled" << endl; }
+    const int temp_nrEnabled = query.value(nameCol).toInt();
+    d_nrEnabled = temp_nrEnabled;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_nrEnabled = d_nrEnabled;
+        m_nrEnabled = temp_nrEnabled;
     }
-    d_nlClusters = 30;
+    nameCol = rec.indexOf("ProfTnlClusters");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTnlClusters" << endl; }
+    const int temp_nlClusters = query.value(nameCol).toInt();
+    d_nlClusters = temp_nlClusters;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_nlClusters = d_nlClusters;
+        m_nlClusters = temp_nlClusters;
     }
-    d_nlThresh = 1e-5;
+    nameCol = rec.indexOf("ProfTnlThresh");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTnlThresh" << endl; }
+    const float temp_nlThresh = query.value(nameCol).toFloat();
+    d_nlThresh = temp_nlThresh;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_nlThresh = d_nlThresh;
+        m_nlThresh = temp_nlThresh;
     }
-    d_nlStrength = 0;
+    nameCol = rec.indexOf("ProfTnlStrength");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTnlStrength" << endl; }
+    const float temp_nlStrength = query.value(nameCol).toFloat();
+    d_nlStrength = temp_nlStrength;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_nlStrength = d_nlStrength;
+        m_nlStrength = temp_nlStrength;
     }
-    d_chromaStrength = 0;
+    nameCol = rec.indexOf("ProfTimpulseThresh");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTimpulseThresh" << endl; }
+    const float temp_impulseThresh = query.value(nameCol).toFloat();
+    d_impulseThresh = temp_impulseThresh;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_chromaStrength = d_chromaStrength;
+        m_impulseThresh = temp_impulseThresh;
     }
-    d_impulseThresh = 0;
+    nameCol = rec.indexOf("ProfTchromaStrength");
+    if (-1 == nameCol) { std::cout << "paramManager ProfTchromaStrength" << endl; }
+    const float temp_chromaStrength = query.value(nameCol).toFloat();
+    d_chromaStrength = temp_chromaStrength;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
-        m_impulseThresh = d_impulseThresh;
+        m_chromaStrength = temp_chromaStrength;
     }
 
     //The lens correction parameters don't actually have the defaults loaded into the d_ params.
@@ -2697,10 +2732,14 @@ void ParameterManager::loadParams(QString imageID)
         validity = min(validity, Valid::load);
     }
 
-    //Demosaic stuff (temp)
-    if (m_demosaicMethod != d_demosaicMethod)
+    //Demosaic stuff
+    nameCol = rec.indexOf("ProcTdemosaicMethod");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTdemosaicMethod" << endl; }
+    const int temp_demosaicMethod = query.value(nameCol).toInt();
+    if (temp_demosaicMethod != m_demosaicMethod)
     {
-        m_demosaicMethod = d_demosaicMethod;
+        m_demosaicMethod = temp_demosaicMethod;
+        std::cout << "demosaicMethod read as: " << m_demosaicMethod << endl;
         validity = min(validity, Valid::load);
     }
 
@@ -2748,35 +2787,53 @@ void ParameterManager::loadParams(QString imageID)
         validity = min(validity, Valid::demosaic);
     }
 
-    //Noise reduction stuff (temp)
-    if (m_nrEnabled != d_nrEnabled)
+    //Noise reduction stuff
+    nameCol = rec.indexOf("ProcTnrEnabled");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTnrEnabled" << endl; }
+    const int temp_nrEnabled = query.value(nameCol).toInt();
+    if (temp_nrEnabled != m_nrEnabled)
     {
-        m_nrEnabled = d_nrEnabled;
+        m_nrEnabled = temp_nrEnabled;
         validity = min(validity, Valid::postdemosaic);
     }
-    if (m_nlClusters != d_nlClusters)
+    nameCol = rec.indexOf("ProcTnlClusters");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTnlClusters" << endl; }
+    const int temp_nlClusters = query.value(nameCol).toInt();
+    if (temp_nlClusters != m_nlClusters)
     {
-        m_nlClusters = d_nlClusters;
+        m_nlClusters = temp_nlClusters;
         validity = min(validity, Valid::postdemosaic);
     }
-    if (m_nlThresh != d_nlThresh)
+    nameCol = rec.indexOf("ProcTnlThresh");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTnlThresh" << endl; }
+    const float temp_nlThresh = query.value(nameCol).toFloat();
+    if (temp_nlThresh != m_nlThresh)
     {
-        m_nlThresh = d_nlThresh;
+        m_nlThresh = temp_nlThresh;
         validity = min(validity, Valid::postdemosaic);
     }
-    if (m_nlStrength != d_nlStrength)
+    nameCol = rec.indexOf("ProcTnlStrength");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTnlStrength" << endl; }
+    const float temp_nlStrength = query.value(nameCol).toFloat();
+    if (temp_nlStrength != m_nlStrength)
     {
-        m_nlStrength = d_nlStrength;
+        m_nlStrength = temp_nlStrength;
         validity = min(validity, Valid::postdemosaic);
     }
-    if (m_impulseThresh != d_impulseThresh)
+    nameCol = rec.indexOf("ProcTimpulseThresh");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTimpulseThresh" << endl; }
+    const float temp_impulseThresh = query.value(nameCol).toFloat();
+    if (temp_impulseThresh != m_impulseThresh)
     {
-        m_impulseThresh = d_impulseThresh;
+        m_impulseThresh = temp_impulseThresh;
         validity = min(validity, Valid::nrnlmeans);
     }
-    if (m_chromaStrength != d_chromaStrength)
+    nameCol = rec.indexOf("ProcTchromaStrength");
+    if (-1 == nameCol) { std::cout << "paramManager ProcTchromaStrength" << endl; }
+    const float temp_chromaStrength = query.value(nameCol).toFloat();
+    if (temp_chromaStrength != m_chromaStrength)
     {
-        m_chromaStrength = d_chromaStrength;
+        m_chromaStrength = temp_chromaStrength;
         validity = min(validity, Valid::nrimpulse);
     }
 
@@ -4073,7 +4130,7 @@ void ParameterManager::updateCustomWbAvailability()
     QString makemodel = make;
     makemodel.append(model);
     customWbAvail = false;
-    for (uint64 i = 0; i < wbList.size(); i++)
+    for (uint64_t i = 0; i < wbList.size(); i++)
     {
         const QString currModel = std::get<0>(wbList.at(i));
         if (currModel == makemodel)
@@ -4089,7 +4146,7 @@ void ParameterManager::saveCustomWb()
     QString makemodel = make;
     makemodel.append(model);
     int index = -1;
-    for (uint64 i = 0; i < wbList.size(); i++)
+    for (uint64_t i = 0; i < wbList.size(); i++)
     {
         const QString currModel = std::get<0>(wbList.at(i));
         if (currModel == makemodel)
@@ -4115,7 +4172,7 @@ void ParameterManager::recallCustomWb()
 {
     QString makemodel = make;
     makemodel.append(model);
-    for (uint64 i = 0; i < wbList.size(); i++)
+    for (uint64_t i = 0; i < wbList.size(); i++)
     {
         const QString currModel = std::get<0>(wbList.at(i));
         if (currModel == makemodel)

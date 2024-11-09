@@ -46,12 +46,12 @@ DBSuccess setupDB(QSqlDatabase *db)
     {
         std::cout << "First initialization." << std::endl;
     }
-    else if (oldVersion > 13)//=================================================================version check here!
+    else if (oldVersion > 14)//=================================================================version check here!
     {
         std::cout << "Newer database format. Aborting." << std::endl;
         return DBSuccess::failure;
     }
-    else if (oldVersion < 13)//============================================================version check here!
+    else if (oldVersion < 14)//============================================================version check here!
     {
         std::cout << "Backing up old database" << std::endl;
         QFile file(dir.absoluteFilePath("filmulatorDB"));
@@ -148,6 +148,13 @@ DBSuccess setupDB(QSqlDatabase *db)
                ",ProcTrotationAngle real"                  //45
                ",ProcTrotationPointX real"                 //46
                ",ProcTrotationPointY real"                 //47
+               ",ProcTdemosaicMethod integer"              //48
+               ",ProcTnrEnabled integer"                   //49
+               ",ProcTnlClusters integer"                  //50
+               ",ProcTnlThresh real"                       //51
+               ",ProcTnlStrength real"                     //52
+               ",ProcTimpulseThresh real"                  //53
+               ",ProcTchromaStrength real"                 //54
                ");"
                );
 
@@ -197,6 +204,13 @@ DBSuccess setupDB(QSqlDatabase *db)
                ",ProfTrotationAngle real"                  //40
                ",ProfTrotationPointX real"                 //41
                ",ProfTrotationPointY real"                 //42
+               ",ProfTdemosaicMethod integer"              //43
+               ",ProfTnrEnabled integer"                   //44
+               ",ProfTnlClusters integer"                  //45
+               ",ProfTnlThresh real"                       //46
+               ",ProfTnlStrength real"                     //47
+               ",ProfTimpulseThresh real"                  //48
+               ",ProfTchromaStrength real"                 //49
                ");"
                );
 
@@ -228,9 +242,9 @@ DBSuccess setupDB(QSqlDatabase *db)
 
     //Now we set the default Default profile.
     query.prepare("REPLACE INTO ProfileTable values "
-                  "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
-                  //                    1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4
-                  //0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
+                  "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+                  //                    1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4
+                  //0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
     //Name of profile; must be unique.
     query.bindValue(0, "Default");
     //Initial Developer Concentration
@@ -310,6 +324,15 @@ DBSuccess setupDB(QSqlDatabase *db)
     //where the ui point about which we adjust rotation is, relative to the image dimensions
     query.bindValue(41, -1.f); //rotationPointX
     query.bindValue(42, -1.f); //rotationPointY
+    //demosaic method
+    query.bindValue(43, 0);//aMaZE
+    //noise reduction
+    query.bindValue(44, 0);//nrEnabled - off
+    query.bindValue(45, 30);//nlClusters
+    query.bindValue(46, 1e-5f);//nlThresh
+    query.bindValue(47, 0);//nlStrength
+    query.bindValue(48, 0);//impulseStrength
+    query.bindValue(49, 0);//chromaStrength
 
     //Well, orientation and crop obviously don't get presets.
     query.exec();
@@ -489,6 +512,38 @@ DBSuccess setupDB(QSqlDatabase *db)
         query.exec("UPDATE ProfileTable SET ProfTrotationPointY = -1;");
         versionString = "PRAGMA user_version = 13;";
         std::cout << "Upgrading from old db version 12" << std::endl;
+        [[fallthrough]];
+    case 13:
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTdemosaicMethod;");
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTnrEnabled;");
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTnlClusters;");
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTnlThresh;");
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTnlStrength;");
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTimpulseThresh;");
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcTchromaStrength;");
+        query.exec("UPDATE ProcessingTable SET ProcTdemosaicMethod = 0;");
+        query.exec("UPDATE ProcessingTable SET ProcTnrEnabled = 0;");
+        query.exec("UPDATE ProcessingTable SET ProcTnlClusters = 30;");
+        query.exec("UPDATE ProcessingTable SET ProcTnlThresh = 1e-5;");
+        query.exec("UPDATE ProcessingTable SET ProcTnlStrength = 0;");
+        query.exec("UPDATE ProcessingTable SET ProcTimpulseThresh = 0;");
+        query.exec("UPDATE ProcessingTable SET ProcTchromaStrength = 0;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTdemosaicMethod;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTnrEnabled;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTnlClusters;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTnlThresh;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTnlStrength;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTimpulseThresh;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfTchromaStrength;");
+        query.exec("UPDATE ProfileTable SET ProfTdemosaicMethod = 0;");
+        query.exec("UPDATE ProfileTable SET ProfTnrEnabled = 0;");
+        query.exec("UPDATE ProfileTable SET ProfTnlClusters = 30;");
+        query.exec("UPDATE ProfileTable SET ProfTnlThresh = 1e-5;");
+        query.exec("UPDATE ProfileTable SET ProfTnlStrength = 0;");
+        query.exec("UPDATE ProfileTable SET ProfTimpulseThresh = 0;");
+        query.exec("UPDATE ProfileTable SET ProfTchromaStrength = 0;");
+        versionString = "PRAGMA user_version = 14;";
+        std::cout << "Upgrading from old db version 13" << std::endl;
     }
     query.exec(versionString);
     query.exec("COMMIT TRANSACTION;");//finalize the transaction only after writing the version.

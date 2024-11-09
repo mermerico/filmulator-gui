@@ -385,11 +385,11 @@ SlimSplitView {
                     defaultOn: paramManager.defNrEnabled
                     onIsOnChanged: {
                         paramManager.nrEnabled = isOn
-                        //paramManager.writeback()
+                        paramManager.writeback()
                     }
                     onResetToDefault: {
                         paramManager.nrEnabled = defaultOn
-                        //paramManager.writeback()
+                        paramManager.writeback()
                     }
                     Connections {
                         target: paramManager
@@ -426,7 +426,7 @@ SlimSplitView {
                             paramManager.nlStrength = value*value
                         }
                     }
-                    //onEditComplete: paramManager.writeback()//it's not stored in the database
+                    onEditComplete: paramManager.writeback()
                     Connections {
                         target: paramManager
                         function onNlStrengthChanged() {
@@ -464,7 +464,7 @@ SlimSplitView {
                             paramManager.nlThresh = Math.exp(value)
                         }
                     }
-                    //onEditComplete: paramManager.writeback()//it's not stored in the database
+                    onEditComplete: paramManager.writeback()
                     Connections {
                         target: paramManager
                         function onNlClustersChanged() {
@@ -502,7 +502,7 @@ SlimSplitView {
                             paramManager.nlClusters = value
                         }
                     }
-                    //onEditComplete: paramManager.writeback()//it's not stored in the database
+                    onEditComplete: paramManager.writeback()
                     Connections {
                         target: paramManager
                         function onNlClustersChanged() {
@@ -539,7 +539,7 @@ SlimSplitView {
                             paramManager.impulseThresh = value
                         }
                     }
-                    //onEditComplete: paramManager.writeback()//it's not stored in the database
+                    onEditComplete: paramManager.writeback()
                     Connections {
                         target: paramManager
                         function onChromaStrengthChanged() {
@@ -576,7 +576,7 @@ SlimSplitView {
                             paramManager.chromaStrength = value
                         }
                     }
-                    //onEditComplete: paramManager.writeback()//it's not stored in the database
+                    onEditComplete: paramManager.writeback()
                     Connections {
                         target: paramManager
                         function onChromaStrengthChanged() {
