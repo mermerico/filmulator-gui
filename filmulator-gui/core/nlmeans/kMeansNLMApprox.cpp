@@ -23,7 +23,10 @@ bool kMeansNLMApprox(float* __restrict const I, const int maxNumClusters, const 
 		ptrdiff_t xBlockStart = blockSize * (blockIdx / numBlocksY);
 		ptrdiff_t yBlockStart = blockSize * (blockIdx % numBlocksY);
 
-		std::array<float, expandedBlockSize * expandedBlockSize * numChannels> IBlockCopy;
+ 		//std::array<float, expandedBlockSize * expandedBlockSize * numChannels> IBlockCopy;
+		std::vector<float> IBlockCopy(expandedBlockSize * expandedBlockSize * numChannels);  // move from stack to global memory (avoid crashes on MacOs, with its small thread stack)
+
+
 		for (ptrdiff_t c = 0; c < numChannels; c++) {
 			for (ptrdiff_t xWriteIdx = 0; xWriteIdx < expandedBlockSize; xWriteIdx++) {
 				for (ptrdiff_t yWriteIdx = 0; yWriteIdx < expandedBlockSize; yWriteIdx++) {
@@ -41,7 +44,9 @@ bool kMeansNLMApprox(float* __restrict const I, const int maxNumClusters, const 
 		}
 
 
-		std::array<float, expandedBlockSize * expandedBlockSize * numChannels * patchSize> expandedDimensions;
+		//std::array<float, expandedBlockSize * expandedBlockSize * numChannels * patchSize> expandedDimensions;
+		std::vector<float> expandedDimensions(expandedBlockSize * expandedBlockSize * numChannels * patchSize);	// move from stack to global memory (avoid crashes on MacOs, with its small thread stack)
+
 		expandDims(IBlockCopy.data(), expandedBlockSize, expandedBlockSize, expandedDimensions.data());
 
 
