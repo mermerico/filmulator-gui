@@ -1206,7 +1206,7 @@ matrix<unsigned short>& ImagePipeline::processImage(ParameterManager * paramMana
 
         //Lensfun processing
         cout << "lensfun start" << endl;
-        lfDatabase *ldb = lf_db_create();
+        lfDatabase *ldb = lf_db_new();
         QDir dir = QDir::home();
         QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
         dirstr.append("/filmulator/version_2");
@@ -1253,39 +1253,27 @@ matrix<unsigned short>& ImagePipeline::processImage(ParameterManager * paramMana
                 lens = lensList[0];
 
                 //Now we set up the modifier itself with the lens and processing flags
-#ifdef LF_GIT
-                lfModifier * mod = new lfModifier(lens, prefilmParam.focalLength, cropFactor, width, height, LF_PF_F32);
-#else //lensfun v0.3.95
-                lfModifier * mod = new lfModifier(cropFactor, width, height, LF_PF_F32);
-#endif
+                lfModifier * mod = new lfModifier(lens, cropFactor, width, height);
 
-                int modflags = 0;
+                int flags = 0;
                 if (prefilmParam.lensfunCA && !isMonochrome)
                 {
-#ifdef LF_GIT
-                    modflags |= mod->EnableTCACorrection();
-#else //lensfun v0.3.95
-                    modflags |= mod->EnableTCACorrection(lens, prefilmParam.focalLength);
-#endif
+                    flags |= LF_MODIFY_TCA;
                 }
                 if (prefilmParam.lensfunVignetting)
                 {
-#ifdef LF_GIT
-                    modflags |= mod->EnableVignettingCorrection(prefilmParam.fnumber, 1000.0f);
-#else //lensfun v0.3.95
-                    modflags |= mod->EnableVignettingCorrection(lens, prefilmParam.focalLength, demosaicParam.fnumber, 1000.0f);
-#endif
+                    flags |= LF_MODIFY_VIGNETTING;
                 }
                 if (prefilmParam.lensfunDistortion)
                 {
-#ifdef LF_GIT
-                    modflags |= mod->EnableDistortionCorrection();
-#else //lensfun v0.3.95
-                    modflags |= mod->EnableDistortionCorrection(lens, prefilmParam.focalLength);
-#endif
-                    modflags |= mod->EnableScaling(mod->GetAutoScale(false));
+                    flags |= LF_MODIFY_DISTORTION | LF_MODIFY_SCALE;
                     cout << "Auto scale factor: " << mod->GetAutoScale(false) << endl;
                 }
+
+                float scale = (flags & LF_MODIFY_SCALE) ? mod->GetAutoScale(false) : 1.0f;
+                mod->Initialize(lens, LF_PF_F32, prefilmParam.focalLength,
+                                               prefilmParam.fnumber, 1000.0f, scale,
+                                               LF_RECTILINEAR, flags, false);
 
                 //Now we actually perform the required processing.
                 //First is vignetting.
