@@ -16,25 +16,58 @@ The program's design ideology is to have the best tool for any job, and only tha
 
 # Building Filmulator
 
-This program depends on:
+## Building with vcpkg (Recommended)
+
+**vcpkg** is the recommended way to build Filmulator. It automatically manages all dependencies across Windows, macOS, and Linux.
+
+### Prerequisites
+
+1. Install vcpkg:
+```bash
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg && ./bootstrap-vcpkg.sh  # or bootstrap-vcpkg.bat on Windows
 ```
-libtiff
-libgomp
-libexiv2
-libjpeg
-libraw
-librtprocess 0.10
-liblensfun 0.3.4
-libcurl
-libarchive
+
+2. Install system dependencies (for building some packages in vcpkg):
+- **macOS**: `brew install pkg-config ninja`
+- **Linux**: `sudo apt install pkg-config ninja-build`
+
+3. Set the `VCPKG_ROOT` environment variable:
+```bash
+export VCPKG_ROOT=/path/to/vcpkg  # Add to your shell profile
 ```
+
+### Build Steps
+
+```bash
+cd filmulator-gui/filmulator-gui
+cmake --preset relwithdebinfo
+cmake --build build/relwithdebinfo -j$(nproc)
+```
+
+The first build will take time as vcpkg downloads and compiles dependencies. Subsequent builds use cached packages.
+
+### Available Presets
+
+- `debug` - Debug build with symbols
+- `release` - Optimized release build  
+- `relwithdebinfo` - Release with debug info (recommended for development)
+
+---
+
+## Legacy Build Methods
+
+### Dependencies (Manual Installation)
+
+If not using vcpkg, you need these libraries installed:
+```
+libtiff, libgomp, libexiv2, libjpeg, libraw, librtprocess, liblensfun, libcurl, libarchive
+```
+And Qt 5.15 or newer.
+
 We highly encourage you to compile libraw yourself to ensure you have support for recent cameras.
 
-It also requires Qt 5.15 or newer: open the `.pro` file from Qt Creator and select `Build` in order to run it. You may have to initialize the build configurations upon first loading the project; I suggest you add the `-j#` flag to the `Make build` parameters to speed compilation.
-
-A note: Use a standalone git client to clone the repository initially, and then you can use Qt Creator's built-in git tools.
-
-## Building with CMake:
+### Building with CMake (Linux)
 
 Create a build directory and navigate to inside that directory.
 
@@ -42,7 +75,7 @@ Run `cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr ..` If 
 
 Then run `make` and run `make install` as root.
 
-## Building on MacOS:
+### Building on macOS (Legacy)
 
 You'll need to know the locations of a couple things in order to build this. They're not hard to find, just use Finder's search functionality to find them. Wherever they are, we need the real dynamic libraries (.dylib), not the symbolic links that point to them. That's important! If you find a symbolic link, follow it to get the real dynamic library.  We need:
 

@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.21)
 
+# Custom cmake modules (always needed for DefineCMakeDefaults, CompilerChecks, etc.)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 include(DefineCMakeDefaults)
@@ -27,17 +28,17 @@ find_package(Qt5Qml CONFIG REQUIRED)
 find_package(Qt5QuickCompiler CONFIG REQUIRED)
 # find_package(Qt5LinguistTools CONFIG REQUIRED)
 
-# find a bunch of packages
+# find a bunch of packages (vcpkg provides CONFIG mode packages)
 find_package(rtprocess CONFIG REQUIRED)
-find_package(Exiv2 REQUIRED)
-find_package(libraw REQUIRED)
+find_package(exiv2 CONFIG REQUIRED)
+find_package(libraw CONFIG REQUIRED)
 find_package(JPEG REQUIRED)
-find_package(TIFF REQUIRED)
+find_package(TIFF CONFIG REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(LENSFUN REQUIRED)
-find_package(CURL REQUIRED)
-find_package(LibArchive REQUIRED)
-find_package(ZLIB REQUIRED)
+find_package(lensfun CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(LibArchive CONFIG REQUIRED)
+find_package(ZLIB CONFIG REQUIRED)
 
 # SET( EIGEN3_INCLUDE_DIR "$ENV{EIGEN3_INCLUDE_DIR}" )
 # IF( NOT EIGEN3_INCLUDE_DIR )
@@ -148,45 +149,37 @@ target_compile_options(filmulator
         -DHAVE_CONFIG_H
 )
 
+# Note: Modern CMake imported targets handle include directories automatically
+# when linked via target_link_libraries. Only local directories need explicit listing.
 target_include_directories(filmulator
     PRIVATE
-        filmulator-gui/core
-        filmulator-gui/database
-        filmulator-gui/ui
-        filmulator-gui/qtquick2applicationviewer
-        ${EXIV2_INCLUDE_DIR}
-        ${LIBRAW_INCLUDE_DIR}
-        ${LIBRAW_INCLUDE_DIRS}
-        ${JPEG_INCLUDE_DIRS}
-        ${TIFF_INCLUDE_DIR}
-        ${RTPROCESS_INCLUDE_DIR}
-        ${LENSFUN_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
-        ${LibArchive_INCLUDE_DIRS}
-        ${GLIB2_INCLUDE_DIRS}
-        ${ZLIB_INCLUDE_DIRS}
+        core
+        database
+        ui
+        qtquick2applicationviewer
         ${CMAKE_CURRENT_BINARY_DIR}
 )
 #glib2 needed for static lensfun on windows above and below
 #libraw_include_dirs for pointing windows build at it
 
+# Use modern CMake imported targets for proper include/link handling
 target_link_libraries(filmulator
-    Qt::Core
-    Qt::Sql
-    Qt::Widgets
-    Qt::Quick
-    Qt::Qml
-    ${EXIV2_LIBRARIES}
-    ${LIBRAW_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${TIFF_LIBRARIES}
-    ${LENSFUN_LIBRARY}
-    ${CURL_LIBRARIES}
-    ${LibArchive_LIBRARIES}
-    ${OpenMP_CXX_LIBRARIES}
-    ${GLIB2_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    rtprocess::rtprocess
+    PRIVATE
+        Qt5::Core
+        Qt5::Sql
+        Qt5::Widgets
+        Qt5::Quick
+        Qt5::Qml
+        exiv2lib              # exiv2 modern target
+        libraw::libraw_r      # libraw modern target
+        JPEG::JPEG            # CMake built-in JPEG target
+        TIFF::TIFF            # TIFF modern target
+        lensfun::lensfun      # lensfun modern target
+        CURL::libcurl         # CURL modern target
+        LibArchive::LibArchive
+        ZLIB::ZLIB            # ZLIB modern target
+        OpenMP::OpenMP_CXX
+        rtprocess::rtprocess
 )
 
     # let's see where all this stuff is...
@@ -321,4 +314,4 @@ else()
 
 endif()
 
-add_subdirectory(filmulator-gui/qml)
+add_subdirectory(qml)
