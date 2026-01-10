@@ -34,7 +34,9 @@
 #include "cplx_wavelet_dec.h"
 //#include "color.h"
 //#include "curves.h"
+#ifdef __SSE2__
 #include "helpersse2.h"
+#endif
 //#include "iccmatrices.h"
 //#include "iccstore.h"
 //#include "imagefloat.h"

@@ -29,7 +29,7 @@ cd vcpkg && ./bootstrap-vcpkg.sh  # or bootstrap-vcpkg.bat on Windows
 ```
 
 2. Install system dependencies (for building some packages in vcpkg):
-- **macOS**: `brew install pkg-config ninja`
+- **macOS**: `brew install pkg-config ninja libomp autoconf autoconf-archive automake libtool`
 - **Linux**: `sudo apt install pkg-config ninja-build`
 
 3. Set the `VCPKG_ROOT` environment variable:
