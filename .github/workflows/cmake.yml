@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "master", "main", "dev" ]
 
+permissions:
+  packages: write
+  contents: read
+
 jobs:
   build:
     name: ${{ matrix.os }}-build
@@ -23,9 +27,8 @@ jobs:
             preset: release
 
     env:
-      # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
       BUILD_TYPE: Release
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
 
     steps:
     - uses: actions/checkout@v4
@@ -45,19 +48,68 @@ jobs:
           libxinerama-dev \
           libxcursor-dev \
           libxi-dev \
-          mold
+          mold \
+          autoconf \
+          autoconf-archive \
+          automake \
+          libtool \
+          mono-complete
 
-    - uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+    - name: Install macOS Dependencies
+      if: runner.os == 'macOS'
+      run: brew install libomp
 
     - name: Setup vcpkg (lukka/run-vcpkg)
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgGitCommitId: 25b458671af03578e6a34edd8f0d1ac85e084df4 # Matches builtin-baseline in vcpkg.json
         vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: Setup NuGet Credentials (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $nuget = $(vcpkg fetch nuget | Select-Object -Last 1)
+        & $nuget sources add `
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+          -StorePasswordInClearText `
+          -Name GitHubPackages `
+          -UserName "${{ github.repository_owner }}" `
+          -Password "${{ secrets.GITHUB_TOKEN }}"
+        & $nuget setapikey "${{ secrets.GITHUB_TOKEN }}" `
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+    - name: Setup NuGet Credentials (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
+        mono "$nuget_exe" \
+          sources add \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+          -StorePasswordInClearText \
+          -Name GitHubPackages \
+          -UserName "${{ github.repository_owner }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}" || true
+        mono "$nuget_exe" \
+          setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+    - name: Setup NuGet Credentials (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
+        "$nuget_exe" \
+          sources add \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+          -StorePasswordInClearText \
+          -Name GitHubPackages \
+          -UserName "${{ github.repository_owner }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}" || true
+        "$nuget_exe" \
+          setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
