@@ -54,8 +54,7 @@ find_package(ZLIB REQUIRED)
 include(ConfigureChecks.cmake)
 configure_file(config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
-set(filmulator_SRCS
-    filmulator-gui/main.cpp
+set(filmulator_CORE_SRCS
     filmulator-gui/core/agitate.cpp
     filmulator-gui/core/colorCurves.cpp
     filmulator-gui/core/colorSpaces.cpp
@@ -125,66 +124,77 @@ qtquick_compiler_add_resources(filmulator_RSCS
     filmulator-gui/resources/pixmaps.qrc
 )
 
-if(APPLE)
-    add_executable(filmulator MACOSX_BUNDLE
-        ${filmulator_SRCS}
-        ${filmulator_RSCS}
-    )
-    target_compile_definitions(filmulator PRIVATE)
-elseif(WIN32)
-    add_executable(filmulator # WIN32 # comment out WIN32 to get a terminal window
-        ${filmulator_SRCS}
-        ${filmulator_RSCS}
-    )
-    target_link_directories(filmulator PRIVATE ${GLIB2_LIBRARY_DIRS})
-    target_compile_definitions(filmulator PRIVATE)
-else()
-    add_executable(filmulator
-        ${filmulator_SRCS}
-        ${filmulator_RSCS}
-    )
-    target_compile_definitions(filmulator PRIVATE)
-endif()
+# Create the core library
+add_library(filmulator-lib STATIC
+    ${filmulator_CORE_SRCS}
+    ${filmulator_RSCS}
+)
 
-target_compile_options(filmulator
+# Compile options for the library
+target_compile_options(filmulator-lib
     PRIVATE
         ${DEFAULT_CXX_COMPILER_FLAGS}
         -DHAVE_CONFIG_H
 )
 
-# Note: Modern CMake imported targets handle include directories automatically
-# when linked via target_link_libraries. Only local directories need explicit listing.
-target_include_directories(filmulator
-    PRIVATE
+# Include directories for the library
+target_include_directories(filmulator-lib
+    PUBLIC
         filmulator-gui/core
         filmulator-gui/database
         filmulator-gui/ui
         filmulator-gui/qtquick2applicationviewer
         ${CMAKE_CURRENT_BINARY_DIR}
 )
-#glib2 needed for static lensfun on windows above and below
-#libraw_include_dirs for pointing windows build at it
 
-# Use modern CMake imported targets for proper include/link handling
-target_link_libraries(filmulator
-    PRIVATE
+# Link libraries for the library
+target_link_libraries(filmulator-lib
+    PUBLIC
         Qt5::Core
         Qt5::Sql
         Qt5::Widgets
         Qt5::Quick
         Qt5::Qml
-        Exiv2::exiv2lib       # exiv2 modern target
-        libraw::raw_r         # libraw modern target
-        JPEG::JPEG            # CMake built-in JPEG target
-        TIFF::TIFF            # TIFF modern target
-        ${LENSFUN_LIBRARY}    # lensfun legacy variable
+        Exiv2::exiv2lib
+        libraw::raw_r
+        JPEG::JPEG
+        TIFF::TIFF
+        ${LENSFUN_LIBRARY}
         PkgConfig::GLIB
-        CURL::libcurl         # CURL modern target
+        CURL::libcurl
         LibArchive::LibArchive
-        ZLIB::ZLIB            # ZLIB modern target
+        ZLIB::ZLIB
         OpenMP::OpenMP_CXX
         rtprocess::rtprocess
 )
+
+# Define the executable
+if(APPLE)
+    add_executable(filmulator MACOSX_BUNDLE
+        filmulator-gui/main.cpp
+    )
+    target_compile_definitions(filmulator PRIVATE)
+elseif(WIN32)
+    add_executable(filmulator
+        filmulator-gui/main.cpp
+    )
+    target_link_directories(filmulator PRIVATE ${GLIB2_LIBRARY_DIRS})
+    target_compile_definitions(filmulator PRIVATE)
+else()
+    add_executable(filmulator
+        filmulator-gui/main.cpp
+    )
+    target_compile_definitions(filmulator PRIVATE)
+endif()
+
+# Link the executable to the library
+target_link_libraries(filmulator
+    PRIVATE
+        filmulator-lib
+)
+
+enable_testing()
+add_subdirectory(tests)
 
     # let's see where all this stuff is...
     #message(STATUS "EXIV2_VERSION=${EXIV2_VERSION}")

@@ -68,6 +68,5 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
 
-    # Tests will be added later when the test framework is set up
-    # - name: Test
-    #   run: ctest --preset ${{ matrix.preset }}
+    - name: Test
+      run: ctest --preset ${{ matrix.preset }} --output-on-failure
