@@ -2,7 +2,7 @@ name: CMake Build
 
 on:
   push:
-    branches: [ "master", "main", "dev" ]
+    branches: [ "master", "main", "dev", "setup-cicd" ]
   pull_request:
     branches: [ "master", "main", "dev" ]
 
