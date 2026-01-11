@@ -52,7 +52,11 @@ jobs:
           libxcursor-dev \
           libxi-dev \
           libxtst-dev \
-          '^libxcb.*-dev' \
+          libxcb1-dev \
+          libxcb-keysyms1-dev \
+          libxcb-util-dev \
+          libxcb-icccm4-dev \
+          libxcb-image0-dev \
           libx11-xcb-dev \ 
           libxrender-dev \ 
           libxkbcommon-dev \ 
