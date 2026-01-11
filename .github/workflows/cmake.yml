@@ -53,6 +53,7 @@ jobs:
           autoconf-archive \
           automake \
           libtool \
+          libltdl-dev \
           mono-complete
 
     - name: Install macOS Dependencies
@@ -100,14 +101,14 @@ jobs:
       shell: bash
       run: |
         nuget_exe=$(vcpkg fetch nuget | tail -n 1)
-        "$nuget_exe" \
+        mono "$nuget_exe" \
           sources add \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
           -StorePasswordInClearText \
           -Name GitHubPackages \
           -UserName "${{ github.repository_owner }}" \
           -Password "${{ secrets.GITHUB_TOKEN }}" || true
-        "$nuget_exe" \
+        mono "$nuget_exe" \
           setapikey "${{ secrets.GITHUB_TOKEN }}" \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
