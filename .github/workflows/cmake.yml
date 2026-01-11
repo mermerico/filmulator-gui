@@ -79,7 +79,8 @@ jobs:
           automake \
           libtool \
           libltdl-dev \
-          mono-complete
+          mono-complete \
+          xvfb
 
     - name: Install macOS Dependencies
       if: runner.os == 'macOS'
@@ -156,10 +157,33 @@ jobs:
       uses: lukka/get-cmake@latest
 
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.preset }}
+      run: cmake --preset ${{ matrix.preset }} -DENABLE_SPIX_TESTING=ON
 
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
 
     - name: Test
       run: ctest --preset ${{ matrix.preset }} --output-on-failure
+
+    - name: Run E2E Tests (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        xvfb-run -a bash -c "./build/${{ matrix.preset }}/filmulator --test-mode & sleep 10 && python3 tests/e2e/test_basic_workflow.py"
+
+    - name: Run E2E Tests (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        ./build/${{ matrix.preset }}/filmulator.app/Contents/MacOS/filmulator --test-mode &
+        PID=$!
+        sleep 10
+        python3 tests/e2e/test_basic_workflow.py
+        kill $PID || true
+
+    - name: Run E2E Tests (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Start-Process -FilePath ".\build\${{ matrix.preset }}\filmulator.exe" -ArgumentList "--test-mode" -PassThru
+        Start-Sleep -Seconds 10
+        python tests/e2e/test_basic_workflow.py
+        Stop-Process -Name "filmulator" -Force -ErrorAction SilentlyContinue
