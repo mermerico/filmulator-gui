@@ -150,6 +150,12 @@ target_compile_options(filmulator
     PRIVATE
         ${DEFAULT_CXX_COMPILER_FLAGS}
         -DHAVE_CONFIG_H
+        $<$<CXX_COMPILER_ID:MSVC>:/openmp:experimental>
+)
+
+set_target_properties(filmulator PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
 )
 
 # Note: Modern CMake imported targets handle include directories automatically
