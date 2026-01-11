@@ -130,20 +130,19 @@ if(APPLE)
         ${filmulator_SRCS}
         ${filmulator_RSCS}
     )
-    target_compile_definitions(filmulator PRIVATE)
 elseif(WIN32)
     add_executable(filmulator # WIN32 # comment out WIN32 to get a terminal window
         ${filmulator_SRCS}
         ${filmulator_RSCS}
     )
     target_link_directories(filmulator PRIVATE ${GLIB2_LIBRARY_DIRS})
-    target_compile_definitions(filmulator PRIVATE)
+else()
     add_executable(filmulator
         ${filmulator_SRCS}
         ${filmulator_RSCS}
     )
-    target_compile_definitions(filmulator PRIVATE)
 endif()
+target_compile_definitions(filmulator PRIVATE)
 
 if(WIN32 OR MINGW)
     add_compile_definitions(QT_NO_VERSION_TAGGING)
