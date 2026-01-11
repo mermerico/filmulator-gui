@@ -44,6 +44,28 @@ find_package(CURL CONFIG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(ZLIB REQUIRED)
 
+# Spix E2E testing support (optional)
+option(ENABLE_SPIX_TESTING "Enable Spix-based E2E testing" OFF)
+
+if(ENABLE_SPIX_TESTING)
+    # AnyRPC from vcpkg (no CMake config, so set paths manually)
+    set(AnyRPC_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/include")
+    set(AnyRPC_LIBRARIES "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib/libanyrpc.a")
+    
+    include(FetchContent)
+    
+    # Spix - UI test automation library (not in vcpkg, so fetch it)
+    FetchContent_Declare(
+        spix
+        GIT_REPOSITORY https://github.com/faaxm/spix.git
+        GIT_TAG v0.9
+    )
+    set(SPIX_QT_MAJOR 5 CACHE STRING "" FORCE)
+    set(SPIX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    
+    FetchContent_MakeAvailable(spix)
+endif()
+
 # SET( EIGEN3_INCLUDE_DIR "$ENV{EIGEN3_INCLUDE_DIR}" )
 # IF( NOT EIGEN3_INCLUDE_DIR )
 #     MESSAGE( FATAL_ERROR "Please point the environment variable EIGEN3_INCLUDE_DIR to the include directory of your Eigen3 installation.")
@@ -192,6 +214,15 @@ target_link_libraries(filmulator
     PRIVATE
         filmulator-lib
 )
+
+# Conditionally link Spix for E2E testing
+if(ENABLE_SPIX_TESTING)
+    target_link_libraries(filmulator PRIVATE Spix ${AnyRPC_LIBRARIES})
+    target_include_directories(filmulator PRIVATE 
+        ${spix_SOURCE_DIR}/lib/include
+    )
+    target_compile_definitions(filmulator PRIVATE ENABLE_SPIX_TESTING)
+endif()
 
 enable_testing()
 add_subdirectory(tests)

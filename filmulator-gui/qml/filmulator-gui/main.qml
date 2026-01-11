@@ -6,6 +6,7 @@ import "colors.js" as Colors
 
 ApplicationWindow {
     id: root
+    objectName: "mainWindow"
     title: qsTr("Filmulator")
     property real uiScale: settings.getUiScale()
     property int tempVisibility
@@ -42,6 +43,7 @@ ApplicationWindow {
             Layout.minimumHeight: 200 * uiScale
             TabBar {
                 id: tabs
+                objectName: "mainTabBar"
 
                 background:  Rectangle {
                     //needs to be invisible
@@ -78,6 +80,7 @@ ApplicationWindow {
 
                 TabButton {
                     id: importButton
+                    objectName: "importTabButton"
                     text: qsTr("Import")
                     width: tabs.tabwidth * uiScale
                     height: tabs.tabheight * uiScale
@@ -134,6 +137,7 @@ ApplicationWindow {
                 }
                 TabButton {
                     id: organizeButton
+                    objectName: "organizeTabButton"
                     text: qsTr("Organize")
                     width: tabs.tabwidth * uiScale
                     height: tabs.tabheight * uiScale
@@ -173,6 +177,7 @@ ApplicationWindow {
                 }
                 TabButton {
                     id: filmulateButton
+                    objectName: "filmulateTabButton"
                     text: qsTr("Filmulate")
                     width: tabs.tabwidth * uiScale
                     height: tabs.tabheight * uiScale
@@ -262,6 +267,7 @@ ApplicationWindow {
 
                 Import {
                     id: importItem
+                    objectName: "importView"
                     helpMode: root.helpMode
                     Component.onCompleted: {
                         importItem.tooltipWanted.connect(root.tooltipWanted)
@@ -281,6 +287,7 @@ ApplicationWindow {
 
                 Edit {
                     id: editItem
+                    objectName: "editView"
                     onEditTab: tabs.currentIndex == 2
                     helpMode: root.helpMode
                     Component.onCompleted: {
