@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "master", "main", "dev" ]
 
+permissions:
+  packages: write
+  contents: read
+
 jobs:
   build:
     name: ${{ matrix.os }}-build
@@ -23,9 +27,8 @@ jobs:
             preset: release
 
     env:
-      # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
       BUILD_TYPE: Release
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
 
     steps:
     - uses: actions/checkout@v4
@@ -37,6 +40,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
+          build-essential \
+          ninja-build \
+          pkg-config \
           libgl1-mesa-dev \
           libglu1-mesa-dev \
           mesa-common-dev \
@@ -44,20 +50,107 @@ jobs:
           libxrandr-dev \
           libxinerama-dev \
           libxcursor-dev \
+          libfontconfig1-dev \
+          libfreetype6-dev \
+          libx11-xcb-dev \
+          libxext-dev \
+          libxfixes-dev \
           libxi-dev \
-          mold
+          libxtst-dev \
+          libxcb1-dev \
+          libxcb-glx0-dev \
+          libxcb-keysyms1-dev \
+          libxcb-image0-dev \
+          libxcb-shm0-dev \
+          libxcb-icccm4-dev \
+          libxcb-sync-dev \
+          libxcb-xfixes0-dev \
+          libxcb-shape0-dev \
+          libxcb-randr0-dev \
+          libxcb-render-util0-dev \
+          libxcb-xinerama0-dev \
+          libxcb-image0-dev \
+          libxrender-dev \
+          libxkbcommon-dev \
+          libxkbcommon-x11-dev \
+          mold \
+          autoconf \
+          autoconf-archive \
+          automake \
+          libtool \
+          libltdl-dev \
+          mono-complete
 
-    - uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+    - name: Install macOS Dependencies
+      if: runner.os == 'macOS'
+      run: brew install libomp mono autoconf autoconf-archive automake libtool
 
     - name: Setup vcpkg (lukka/run-vcpkg)
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgGitCommitId: 25b458671af03578e6a34edd8f0d1ac85e084df4 # Matches builtin-baseline in vcpkg.json
         vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: Setup NuGet Credentials (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $nuget = $(vcpkg fetch nuget | Select-Object -Last 1)
+        & $nuget sources add `
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+          -StorePasswordInClearText `
+          -Name GitHubPackages `
+          -UserName "${{ github.repository_owner }}" `
+          -Password "${{ secrets.GITHUB_TOKEN }}"
+        & $nuget setapikey "${{ secrets.GITHUB_TOKEN }}" `
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+    - name: Setup NuGet Credentials (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
+        mono "$nuget_exe" \
+          sources add \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+          -StorePasswordInClearText \
+          -Name GitHubPackages \
+          -UserName "${{ github.repository_owner }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}" || true
+        mono "$nuget_exe" \
+          setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+    - name: Download NuGet (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -sSL -o "$RUNNER_TEMP/nuget.exe" https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        echo "NUGET=$RUNNER_TEMP/nuget.exe" >> "$GITHUB_ENV"
+
+    - name: Provide working 'nuget' on PATH (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        printf '#!/usr/bin/env bash\nexec mono "$NUGET" "$@"\n' > "$RUNNER_TEMP/nuget"
+        chmod +x "$RUNNER_TEMP/nuget"
+        echo "PATH=$RUNNER_TEMP:$PATH" >> "$GITHUB_ENV"
+
+    - name: Setup NuGet Credentials (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        mono "$NUGET" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
+        mono "$NUGET" sources add -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+          -Username "${{ github.repository_owner }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}" \
+          -StorePasswordInClearText
+        if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+          mono "$NUGET" setapikey "${{ secrets.GITHUB_TOKEN }}" -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+        fi
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
