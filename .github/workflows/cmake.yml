@@ -79,6 +79,9 @@ jobs:
           automake \
           libtool \
           libltdl-dev \
+          libatspi-dev \
+          libdbus-1-dev \
+          libudev-dev \
           mono-complete
 
     - name: Install macOS Dependencies
