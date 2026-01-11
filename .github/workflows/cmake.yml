@@ -21,14 +21,22 @@ jobs:
         include:
           - os: ubuntu-latest
             preset: release
+            triplet: x64-linux
+            generator: "Unix Makefiles"
           - os: windows-latest
             preset: release
+            triplet: x64-mingw-dynamic
+            generator: "MinGW Makefiles"
           - os: macos-latest
             preset: release
+            triplet: arm64-osx
+            generator: "Unix Makefiles"
 
     env:
       BUILD_TYPE: Release
       VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
+      VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+      CMAKE_GENERATOR: ${{ matrix.generator }}
 
     steps:
     - uses: actions/checkout@v4
