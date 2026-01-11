@@ -144,9 +144,7 @@ else()
 endif()
 target_compile_definitions(filmulator PRIVATE)
 
-if(WIN32 OR MINGW)
-    add_compile_definitions(QT_NO_VERSION_TAGGING)
-endif()
+
 
 target_compile_options(filmulator
     PRIVATE
