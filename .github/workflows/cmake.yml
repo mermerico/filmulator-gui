@@ -46,7 +46,7 @@ jobs:
     - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: |
-        sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
+        sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
         sudo apt-get update
         sudo apt-get build-dep -y qtbase5-dev
         sudo apt-get install -y \
