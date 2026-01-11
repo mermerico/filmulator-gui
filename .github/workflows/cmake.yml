@@ -74,6 +74,18 @@ jobs:
           libltdl-dev \
           mono-complete
 
+    - name: Setup MSYS2 (Windows)
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          make
+
     - name: Install macOS Dependencies
       if: runner.os == 'macOS'
       run: brew install libomp mono autoconf autoconf-archive automake libtool
@@ -149,10 +161,12 @@ jobs:
       uses: lukka/get-cmake@latest
 
     - name: Configure CMake
+      shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
       run: cmake --preset ${{ matrix.preset }}
 
     - name: Build
-      run: cmake --build --preset ${{ matrix.preset }}
+      shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      run: cmake --build --preset ${{ matrix.preset }} --parallel
 
     # Tests will be added later when the test framework is set up
     # - name: Test
