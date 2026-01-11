@@ -39,7 +39,10 @@ find_package(libraw CONFIG REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(lensfun REQUIRED)
+find_package(Lensfun CONFIG QUIET)
+if(NOT Lensfun_FOUND)
+    find_package(lensfun REQUIRED)
+endif()
 find_package(CURL CONFIG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -171,6 +174,16 @@ target_include_directories(filmulator
 #glib2 needed for static lensfun on windows above and below
 #libraw_include_dirs for pointing windows build at it
 
+if(TARGET Lensfun::lensfun)
+    set(LENSFUN_TARGET Lensfun::lensfun)
+elseif(TARGET lensfun::lensfun)
+    set(LENSFUN_TARGET lensfun::lensfun)
+elseif(DEFINED LENSFUN_LIBRARY)
+    set(LENSFUN_TARGET ${LENSFUN_LIBRARY})
+else()
+    message(FATAL_ERROR "lensfun target not found")
+endif()
+
 # Use modern CMake imported targets for proper include/link handling
 target_link_libraries(filmulator
     PRIVATE
@@ -183,7 +196,7 @@ target_link_libraries(filmulator
         libraw::raw_r         # libraw modern target
         JPEG::JPEG            # CMake built-in JPEG target
         TIFF::TIFF            # TIFF modern target
-        ${LENSFUN_LIBRARY}    # lensfun legacy variable
+        ${LENSFUN_TARGET}
         PkgConfig::GLIB
         CURL::libcurl         # CURL modern target
         LibArchive::LibArchive
