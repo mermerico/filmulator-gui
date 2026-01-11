@@ -20,6 +20,8 @@
 #ifndef FILMSIM_H
 #define FILMSIM_H
 
+#define NOMINMAX
+
 #include "interface.h"
 #include "jpeglib.h"
 #include "lut.hpp"

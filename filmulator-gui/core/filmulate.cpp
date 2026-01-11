@@ -19,7 +19,6 @@
 #include "imagePipeline.h"
 #include <algorithm>
 #include <stdio.h>
-#include <unistd.h>
 
 // Function-------------------------------------------------------------------------
 bool ImagePipeline::filmulate(matrix<float> &input_image,
