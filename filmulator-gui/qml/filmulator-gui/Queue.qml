@@ -123,12 +123,13 @@ Item {
 
             delegate: MouseArea {
                 id: delegateRoot
-                objectName: "queueDelegateMouseArea"
+                objectName: "queueDelegateMouseArea_" + QTsearchID
                 width: listView.height
                 height: listView.height
 
                 property int visualIndex: DelegateModel.itemsIndex
                 property int oldVisualIndex
+                property string searchID: QTsearchID
 
                 /*DEBUG for QUEUE DRAG&DROP
                 Text {

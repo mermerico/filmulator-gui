@@ -19,6 +19,12 @@ ApplicationWindow {
     signal imageURL(string newURL)
     property bool cropping: false
     property bool helpMode: false
+    function currentImageIndex() {
+        return paramManager.imageIndex
+    }
+    function selectImageBySearchID(searchID) {
+        paramManager.selectImage(searchID)
+    }
 
     onClosing: {
         close.accepted = false

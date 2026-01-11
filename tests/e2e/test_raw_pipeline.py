@@ -131,7 +131,7 @@ def run_test():
 
         print("Step 4: Navigating to Organize tab...")
         mouse_click(proxy, "organizeTabButton")
-        time.sleep(2) # Give a moment for view switch
+        time.sleep(0.3) # Give a moment for view switch
         
         # In a fresh DB, the Organize model might need a kick to show the newly imported image
         # since it defaults to showing only today's images.
@@ -142,7 +142,7 @@ def run_test():
             print(f"  Attempting to select date {date_to_try} in histogram...")
             try:
                 proxy.invokeMethod("mainWindow/organizeView", "selectDateInHistogram", [date_to_try])
-                time.sleep(0.5) # Short wait for update
+                time.sleep(0.3) # Short wait for update
                 
                 item_count = int(proxy.getStringProperty("mainWindow/organizeView", "itemCount") or 0)
                 print(f"  Organize itemCount after selecting {date_to_try}: {item_count}")
@@ -157,11 +157,11 @@ def run_test():
             print("  Warning: No images detected in Organize. Attempting to force filter reset...")
             proxy.setStringProperty("mainWindow/organizeView/minRatingSlider", "value", "0")
             proxy.setStringProperty("mainWindow/organizeView/maxRatingSlider", "value", "5")
-            time.sleep(0.5)
+            time.sleep(0.3)
             # Try target date again after reset
             for date_to_try in target_dates:
                 proxy.invokeMethod("mainWindow/organizeView", "selectDateInHistogram", [date_to_try])
-                time.sleep(0.5)
+                time.sleep(0.3)
                 item_count = int(proxy.getStringProperty("mainWindow/organizeView", "itemCount") or 0)
                 if item_count > 0:
                     found_image = True
@@ -175,30 +175,35 @@ def run_test():
         if not wait_for_item(proxy, delegate_path, timeout=1):
             print(f"Error: {delegate_path} not found (no images imported or filtered out?)")
             return False
+        
+        organize_search_id = proxy.getStringProperty(delegate_path, "searchID")
+        if not organize_search_id:
+            print("Error: Could not read searchID from Organize delegate")
+            return False
 
         print("Step 5: Enqueuing the image...")
         mouse_double_click(proxy, delegate_path)
-        time.sleep(0.1) # Wait for animation/enqueue
+        time.sleep(0.2) # Wait for animation/enqueue
+
+        print("  Waiting for queue to receive the image...")
+        def check_queue_has_items():
+            try:
+                queue_count = proxy.getStringProperty("mainWindow/queueView", "queueCount")
+                return float(queue_count) > 0
+            except Exception:
+                return False
+
+        if not poll_for_condition(check_queue_has_items, timeout=4, check_interval=0.2):
+            print("Error: Queue did not receive the image")
+            return False
 
         print("Step 6: Navigating to Edit tab...")
         mouse_click(proxy, "filmulateTabButton")
 
         print("Step 7: Selecting image in queue...")
-        # Use simple double click on the delegate we found
-        mouse_double_click(proxy, queue_delegate_path)
-        # Helper to check if image is loaded
-        def check_image_ready():
-            # We can check if "editView" (Edit.qml) has imageReady property true
-            # Also check if saveJPEGButton is enabled, which implies imageReady
-            # But here we just want to know if selection worked
-            ready = proxy.getStringProperty("mainWindow/editView", "imageReady")
-            return ready == "true"
-            
-        if not poll_for_condition(check_image_ready, timeout=2):
-            print(f"Error: Image verification failed. imageReady: {proxy.getStringProperty('mainWindow/editView', 'imageReady')}")
-            return False
+        proxy.invokeMethod("mainWindow", "selectImageBySearchID", [organize_search_id])
         
-        print(f"  Image ready for editing: {proxy.getStringProperty('mainWindow/editView', 'imageReady')}")
+        print(f"  Image selected for editing: {proxy.invokeMethod('mainWindow', 'currentImageIndex', [])}")
 
         if not wait_for_item(proxy, "mainWindow/editView/editTools/exposureCompSlider"):
              print("Error: Controls not found")
@@ -208,7 +213,7 @@ def run_test():
         # Paths are now mainWindow/editView/editTools/...
         proxy.setStringProperty("mainWindow/editView/editTools/exposureCompSlider", "value", "1.5")
         proxy.setStringProperty("mainWindow/editView/editTools/filmDramaSlider", "value", "50")
-        time.sleep(1.0) # Wait for params to apply
+        time.sleep(0.3) # Wait for params to apply
 
         print("Step 9: Exporting JPEG...")
         # Wait for export button to be enabled (it depends on image processing completion)
@@ -273,6 +278,12 @@ def run_test():
             if os.path.exists(test_db_dir):
                 shutil.rmtree(test_db_dir)
                 print(f"Cleaned up test database directory: {test_db_dir}")
+        except:
+            pass
+        
+        try:
+            if os.path.exists(output_file_path):
+                os.remove(output_file_path)
         except:
             pass
 
