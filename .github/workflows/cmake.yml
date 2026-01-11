@@ -43,6 +43,18 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Setup MSYS2 (Windows)
+      if: runner.os == 'Windows'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-pkgconf
+
     - name: Free Disk Space (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -146,12 +158,25 @@ jobs:
         fi
 
     - name: Setup CMake
+      if: runner.os != 'Windows'
       uses: lukka/get-cmake@latest
 
-    - name: Configure CMake
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
       run: cmake --preset ${{ matrix.preset }}
 
-    - name: Build
+    - name: Configure CMake (Non-Windows)
+      if: runner.os != 'Windows'
+      run: cmake --preset ${{ matrix.preset }}
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: cmake --build --preset ${{ matrix.preset }}
+
+    - name: Build (Non-Windows)
+      if: runner.os != 'Windows'
       run: cmake --build --preset ${{ matrix.preset }}
 
     # Tests will be added later when the test framework is set up
