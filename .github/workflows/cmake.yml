@@ -40,6 +40,9 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
+          build-essential \
+          ninja-build \
+          pkg-config \
           libgl1-mesa-dev \
           libglu1-mesa-dev \
           mesa-common-dev \
@@ -58,7 +61,7 @@ jobs:
 
     - name: Install macOS Dependencies
       if: runner.os == 'macOS'
-      run: brew install libomp
+      run: brew install libomp nuget
 
     - name: Setup vcpkg (lukka/run-vcpkg)
       uses: lukka/run-vcpkg@v11
@@ -100,16 +103,13 @@ jobs:
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
-        mono "$nuget_exe" \
-          sources add \
+        nuget sources add \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
           -StorePasswordInClearText \
           -Name GitHubPackages \
           -UserName "${{ github.repository_owner }}" \
           -Password "${{ secrets.GITHUB_TOKEN }}" || true
-        mono "$nuget_exe" \
-          setapikey "${{ secrets.GITHUB_TOKEN }}" \
+        nuget setapikey "${{ secrets.GITHUB_TOKEN }}" \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
     - name: Setup CMake
