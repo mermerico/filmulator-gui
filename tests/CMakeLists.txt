@@ -9,6 +9,17 @@ set(UNIT_TEST_SOURCES
     unit/test_white_balance.cpp
 )
 
+# Collect golden/acceptance test source files
+set(GOLDEN_TEST_SOURCES
+    main.cpp
+    golden/test_curves_golden.cpp
+    golden/test_white_balance_golden.cpp
+    golden/test_color_adjustments_golden.cpp
+    golden/test_filmulate_golden.cpp
+    golden/test_nlmeans_golden.cpp
+)
+
+# Unit tests executable
 add_executable(unit_tests
     ${UNIT_TEST_SOURCES}
 )
@@ -20,6 +31,30 @@ target_link_libraries(unit_tests
     filmulator-lib
 )
 
+# Golden tests executable
+add_executable(golden_tests
+    ${GOLDEN_TEST_SOURCES}
+)
+
+target_include_directories(golden_tests
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/filmulator-gui
+)
+
+target_compile_definitions(golden_tests
+    PRIVATE
+    GOLDEN_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/golden/data/"
+)
+
+target_link_libraries(golden_tests
+    PRIVATE
+    Catch2::Catch2
+    Catch2::Catch2WithMain
+    filmulator-lib
+)
+
 # Discover tests for CTest integration
 include(Catch)
 catch_discover_tests(unit_tests)
+catch_discover_tests(golden_tests)
