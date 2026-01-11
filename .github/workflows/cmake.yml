@@ -50,12 +50,25 @@ jobs:
           libxrandr-dev \
           libxinerama-dev \
           libxcursor-dev \
+          libfontconfig1-dev \
+          libfreetype6-dev \
+          libx11-xcb-dev \
+          libxext-dev \
+          libxfixes-dev \
           libxi-dev \
           libxtst-dev \
           libxcb1-dev \
+          libxcb-glx0-dev \
           libxcb-keysyms1-dev \
-          libxcb-util-dev \
+          libxcb-image0-dev \
+          libxcb-shm0-dev \
           libxcb-icccm4-dev \
+          libxcb-sync-dev \
+          libxcb-xfixes0-dev \
+          libxcb-shape0-dev \
+          libxcb-randr0-dev \
+          libxcb-render-util0-dev \
+          libxcb-xinerama-dev \
           libxcb-image0-dev \
           libxrender-dev \
           libxkbcommon-dev \
@@ -112,7 +125,8 @@ jobs:
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
+        nuget_exe=$(vcpkg fetch nuget | grep "nuget.exe" | tail -n 1)
+        echo "Found nuget at: $nuget_exe"
         mono "$nuget_exe" \
           sources add \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
