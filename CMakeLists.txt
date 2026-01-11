@@ -157,6 +157,12 @@ target_compile_options(filmulator-lib
     PRIVATE
         ${DEFAULT_CXX_COMPILER_FLAGS}
         -DHAVE_CONFIG_H
+        $<$<CXX_COMPILER_ID:MSVC>:/openmp:experimental>
+)
+
+set_target_properties(filmulator PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
 )
 
 # Include directories for the library
@@ -195,19 +201,18 @@ if(APPLE)
     add_executable(filmulator MACOSX_BUNDLE
         filmulator-gui/main.cpp
     )
-    target_compile_definitions(filmulator PRIVATE)
+
 elseif(WIN32)
     add_executable(filmulator
         filmulator-gui/main.cpp
     )
     target_link_directories(filmulator PRIVATE ${GLIB2_LIBRARY_DIRS})
-    target_compile_definitions(filmulator PRIVATE)
 else()
     add_executable(filmulator
         filmulator-gui/main.cpp
     )
-    target_compile_definitions(filmulator PRIVATE)
 endif()
+target_compile_definitions(filmulator PRIVATE)
 
 # Link the executable to the library
 target_link_libraries(filmulator
