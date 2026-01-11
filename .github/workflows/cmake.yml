@@ -51,6 +51,7 @@ jobs:
           libxinerama-dev \
           libxcursor-dev \
           libxi-dev \
+          libxtst-dev \
           mold \
           autoconf \
           autoconf-archive \
@@ -61,7 +62,7 @@ jobs:
 
     - name: Install macOS Dependencies
       if: runner.os == 'macOS'
-      run: brew install libomp nuget
+      run: brew install libomp nuget autoconf autoconf-archive automake libtool
 
     - name: Setup vcpkg (lukka/run-vcpkg)
       uses: lukka/run-vcpkg@v11
