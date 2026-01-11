@@ -235,6 +235,7 @@ SlimSplitView {
 
                 ToolSlider {
                     id: exposureCompSlider
+                    objectName: "exposureCompSlider"
                     title: qsTr("Exposure Compensation")
                     tooltipText: qsTr("The amount the program should to over- or under-expose the \"film\" relative to the captured exposure. Analogous to exposure of film in-camera. Usually, adjust this until the pre-filmulator histogram uses the full width.")
                     minimumValue: -3
@@ -315,6 +316,7 @@ SlimSplitView {
 
                 ToolSlider {
                     id: temperatureSlider
+                    objectName: "temperatureSlider"
                     title: qsTr("Temperature")
                     tooltipText: qsTr("Correct the image color for a light source of the indicated Kelvin temperature.\n\nThe default value is the camera's chosen WB.")
                     minimumValue: Math.log(1700)//limited by the 5D Classic @ 1674
@@ -849,6 +851,7 @@ SlimSplitView {
 
                 ToolSlider {
                     id: filmDramaSlider
+                    objectName: "filmDramaSlider"
                     title: qsTr("Drama")
                     tooltipText: qsTr("Pulls down highlights to retain detail. This is the real \"filmy\" effect. This not only helps bring down bright highlights, but it can also rescue extremely saturated regions such as flowers.")
                     minimumValue: 0
@@ -1476,6 +1479,7 @@ SlimSplitView {
         }
         ToolButton {
             id: saveJPEGButton
+            objectName: "saveJPEGButton"
             width: parent.width/2
             height: 40 * uiScale
             x: width

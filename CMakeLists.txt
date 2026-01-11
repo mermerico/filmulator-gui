@@ -160,11 +160,6 @@ target_compile_options(filmulator-lib
         $<$<CXX_COMPILER_ID:MSVC>:/openmp:experimental>
 )
 
-set_target_properties(filmulator PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
-)
-
 # Include directories for the library
 target_include_directories(filmulator-lib
     PUBLIC
@@ -213,6 +208,10 @@ else()
     )
 endif()
 target_compile_definitions(filmulator PRIVATE)
+set_target_properties(filmulator PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
 
 # Link the executable to the library
 target_link_libraries(filmulator

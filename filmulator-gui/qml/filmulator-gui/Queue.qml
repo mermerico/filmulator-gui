@@ -67,6 +67,7 @@ Item {
 
     GridView { //There is a bug in ListView that makes scrolling not smooth.
         id: listView
+        objectName: "queueGridView"
         x: 0
         y: 0
         width: parent.width
@@ -122,6 +123,7 @@ Item {
 
             delegate: MouseArea {
                 id: delegateRoot
+                objectName: "queueDelegateMouseArea"
                 width: listView.height
                 height: listView.height
 
@@ -192,6 +194,7 @@ Item {
 
                 QueueDelegate {
                     id: queueDelegate
+                    objectName: "theQueueDelegate"
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.verticalCenter: delegateRoot.verticalCenter
                     dim: listView.height
@@ -216,6 +219,7 @@ Item {
 
 
                     MouseArea {
+                        objectName: "queueRightClickArea"
                         anchors.fill: parent
                         acceptedButtons: Qt.RightButton
                         onClicked: {

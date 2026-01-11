@@ -56,8 +56,13 @@ int main(int argc, char *argv[]) {
 
   // This is for the QSettings defaults from things like the qt file dialog and
   // stuff...
-  app.setApplicationName("Filmulator");
-  app.setOrganizationName("Filmulator");
+  if (testMode) {
+    app.setApplicationName("FilmulatorTest");
+    app.setOrganizationName("FilmulatorTest");
+  } else {
+    app.setApplicationName("Filmulator");
+    app.setOrganizationName("Filmulator");
+  }
 
   QFont sansFont("Sans Serif", 9);
   app.setFont(sansFont);
