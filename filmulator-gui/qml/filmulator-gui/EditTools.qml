@@ -381,6 +381,7 @@ SlimSplitView {
 
                 ToolSwitch {
                     id: nrEnabledSwitch
+                    objectName: "nrEnabledSwitch"
                     text: qsTr("Noise Reduction")
                     tooltipText: qsTr("Enable the noise reduction tools to help remove grain and color splotches from the image.")
                     isOn: paramManager.nrEnabled
@@ -411,6 +412,7 @@ SlimSplitView {
 
                 ToolSlider {
                     id: nlStrengthSlider
+                    objectName: "nlStrengthSlider"
                     visible: nrEnabledSwitch.isOn
                     highlight: nrEnabledSwitch.hovered
                     title: qsTr("NR Strength")
@@ -561,6 +563,7 @@ SlimSplitView {
 
                 ToolSlider {
                     id: chromaStrengthSlider
+                    objectName: "chromaStrengthSlider"
                     visible: nrEnabledSwitch.isOn && paramManager.colorAvail //requires color images
                     highlight: nrEnabledSwitch.hovered
                     title: qsTr("Chroma NR Strength")

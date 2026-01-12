@@ -213,7 +213,29 @@ def run_test():
         # Paths are now mainWindow/editView/editTools/...
         proxy.setStringProperty("mainWindow/editView/editTools/exposureCompSlider", "value", "1.5")
         proxy.setStringProperty("mainWindow/editView/editTools/filmDramaSlider", "value", "50")
-        time.sleep(0.3) # Wait for params to apply
+        
+        print("  Enabling Noise Reduction...")
+        # Enable NR switch
+        # Path: mainWindow/editView/editTools/nrEnabledSwitch
+        # ToolSwitch exposes 'isOn' property, not 'checked'
+        proxy.setStringProperty("mainWindow/editView/editTools/nrEnabledSwitch", "isOn", "true")
+        
+        # Verify it persisted
+        time.sleep(0.5)
+        is_nr_on = proxy.getStringProperty("mainWindow/editView/editTools/nrEnabledSwitch", "isOn")
+        print(f"  NR Switch state: {is_nr_on}")
+        if is_nr_on != "true":
+             print("Error: Failed to enable Noise Reduction")
+             return False
+        
+        print("  Setting Luma NR...")
+        # Set Luma NR (nlStrengthSlider)
+        # Value 0.2 corresponds to strength ~0.04 (squared)
+        proxy.setStringProperty("mainWindow/editView/editTools/nlStrengthSlider", "value", "0.2")
+        
+        print("  Setting Chroma NR...")
+        # Set Chroma NR (chromaStrengthSlider)
+        proxy.setStringProperty("mainWindow/editView/editTools/chromaStrengthSlider", "value", "30")
 
         print("Step 9: Exporting JPEG...")
         # Wait for export button to be enabled (it depends on image processing completion)
@@ -253,7 +275,10 @@ def run_test():
         )
         
         try:
-            diff_pixels = int(result.stderr.strip())
+            # magick compare might output "0 (0)" or just "0" depending on version/locale
+            # We take the first token and parse it as float then int (handles scientific notation)
+            stderr_output = result.stderr.strip()
+            diff_pixels = int(float(stderr_output.split()[0]))
             print(f"Differing pixels: {diff_pixels}")
             if diff_pixels < 500:
                 print("✓ Test PASSED")
