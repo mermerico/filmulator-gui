@@ -299,3 +299,29 @@ endif()
 qt5_import_qml_plugins(filmulator)
 
 add_subdirectory(filmulator-gui/qml)
+
+# Code formatting and linting
+find_program(CLANG_FORMAT "clang-format")
+if(CLANG_FORMAT)
+    add_custom_target(
+        format
+        COMMAND ${CLANG_FORMAT} -i -style=file
+        ${filmulator_CORE_SRCS}
+        filmulator-gui/main.cpp
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-format..."
+    )
+endif()
+
+find_program(CLANG_TIDY "clang-tidy")
+if(CLANG_TIDY)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "" FORCE)
+    add_custom_target(
+        tidy
+        COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR}
+        ${filmulator_CORE_SRCS}
+        filmulator-gui/main.cpp
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy..."
+    )
+endif()

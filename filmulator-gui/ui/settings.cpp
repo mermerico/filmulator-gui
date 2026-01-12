@@ -9,12 +9,12 @@
 
 using namespace std;
 
-Settings::Settings(QObject *parent) : QObject(parent) {
+Settings::Settings(QObject *parent) : QObject(parent)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   photoStorageDir = settings.value("photoDB/photoStorageDir", "").toString();
   photoBackupDir = settings.value("photoDB/photoBackupDir", "").toString();
-  dirConfig =
-      settings.value("photoDB/dirConfig", "/yyyy/MM/yyyy-MM-dd/").toString();
+  dirConfig = settings.value("photoDB/dirConfig", "/yyyy/MM/yyyy-MM-dd/").toString();
   cameraTZ = settings.value("photoDB/cameraTZ", 0).toInt();
   importTZ = settings.value("photoDB/importTZ", 0).toInt();
   lensfunStatus = "";
@@ -22,104 +22,114 @@ Settings::Settings(QObject *parent) : QObject(parent) {
   camconstDlStatus = "";
 }
 
-void Settings::setPhotoStorageDir(QString dirIn) {
+void Settings::setPhotoStorageDir(QString dirIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   photoStorageDir = dirIn;
   settings.setValue("photoDB/photoStorageDir", dirIn);
   emit photoStorageDirChanged();
 }
 
-QString Settings::getPhotoStorageDir() {
+QString Settings::getPhotoStorageDir()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   photoStorageDir = settings.value("photoDB/photoStorageDir", "").toString();
   emit photoStorageDirChanged();
   return photoStorageDir;
 }
 
-void Settings::setPhotoBackupDir(QString dirIn) {
+void Settings::setPhotoBackupDir(QString dirIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   photoBackupDir = dirIn;
   settings.setValue("photoDB/photoBackupDir", dirIn);
   emit photoBackupDirChanged();
 }
 
-QString Settings::getPhotoBackupDir() {
+QString Settings::getPhotoBackupDir()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   photoBackupDir = settings.value("photoDB/photoBackupDir", "").toString();
   emit photoBackupDirChanged();
   return photoBackupDir;
 }
 
-void Settings::setDirConfig(QString configIn) {
+void Settings::setDirConfig(QString configIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   dirConfig = configIn;
   settings.setValue("photoDB/dirConfig", configIn);
   emit dirConfigChanged();
 }
 
-QString Settings::getDirConfig() {
+QString Settings::getDirConfig()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
-  dirConfig =
-      settings.value("photoDB/dirConfig", "/yyyy/MM/yyyy-MM-dd/").toString();
+  dirConfig = settings.value("photoDB/dirConfig", "/yyyy/MM/yyyy-MM-dd/").toString();
   emit dirConfigChanged();
   return dirConfig;
 }
 
-void Settings::setCameraTZ(int offsetIn) {
+void Settings::setCameraTZ(int offsetIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   cameraTZ = offsetIn;
   settings.setValue("photoDB/cameraTZ", offsetIn);
   emit importTZChanged();
 }
 
-int Settings::getCameraTZ() {
+int Settings::getCameraTZ()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   cameraTZ = settings.value("photoDB/cameraTZ", 0).toInt();
   emit cameraTZChanged();
   return cameraTZ;
 }
 
-void Settings::setImportTZ(int offsetIn) {
+void Settings::setImportTZ(int offsetIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   importTZ = offsetIn;
   settings.setValue("photoDB/importTZ", offsetIn);
   emit importTZChanged();
 }
 
-int Settings::getImportTZ() {
+int Settings::getImportTZ()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   importTZ = settings.value("photoDB/importTZ", 0).toInt();
   emit importTZChanged();
   return importTZ;
 }
 
-void Settings::setOrganizeTZ(int offsetIn) {
+void Settings::setOrganizeTZ(int offsetIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   organizeTZ = offsetIn;
   settings.setValue("photoDB/organizeTZ", offsetIn);
   emit organizeTZChanged();
 }
 
-int Settings::getOrganizeTZ() {
+int Settings::getOrganizeTZ()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   organizeTZ = settings.value("photoDB/organizeTZ", 0).toInt();
   emit organizeTZChanged();
   return organizeTZ;
 }
 
-void Settings::setOrganizeCaptureDate(QDate dateIn) {
+void Settings::setOrganizeCaptureDate(QDate dateIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   organizeCaptureDate = dateIn;
   settings.setValue("photoDB/organizeCaptureDate", dateIn);
   emit organizeCaptureDateChanged();
 }
 
-QDate Settings::getOrganizeCaptureDate() {
+QDate Settings::getOrganizeCaptureDate()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
-  organizeCaptureDate =
-      settings
-          .value("photoDB/organizeCaptureDate", QVariant(QDate::currentDate()))
-          .toDate();
+  organizeCaptureDate = settings.value("photoDB/organizeCaptureDate", QVariant(QDate::currentDate())).toDate();
 
   // this was added to fix weird behavior, but is it necessary?
   // someone reported a bug where the calendar shifts the day forward.
@@ -130,42 +140,48 @@ QDate Settings::getOrganizeCaptureDate() {
   return organizeCaptureDate;
 }
 
-void Settings::setOrganizeRating(int ratingIn) {
+void Settings::setOrganizeRating(int ratingIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   organizeRating = ratingIn;
   settings.setValue("photoDB/organizeRating", ratingIn);
   emit organizeRatingChanged();
 }
 
-int Settings::getOrganizeRating() {
+int Settings::getOrganizeRating()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   organizeRating = settings.value("photoDB/organizeRating", -1).toInt();
   emit organizeRatingChanged();
   return organizeRating;
 }
 
-void Settings::setMaxOrganizeRating(int ratingIn) {
+void Settings::setMaxOrganizeRating(int ratingIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   maxOrganizeRating = ratingIn;
   settings.setValue("photoDB/maxOrganizeRating", ratingIn);
   emit maxOrganizeRatingChanged();
 }
 
-int Settings::getMaxOrganizeRating() {
+int Settings::getMaxOrganizeRating()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   maxOrganizeRating = settings.value("photoDB/maxOrganizeRating", 5).toInt();
   emit maxOrganizeRatingChanged();
   return maxOrganizeRating;
 }
 
-void Settings::setUiScale(float uiScaleIn) {
+void Settings::setUiScale(float uiScaleIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   uiScale = uiScaleIn;
   settings.setValue("ui/uiScale", uiScaleIn);
   emit uiScaleChanged();
 }
 
-float Settings::getUiScale() {
+float Settings::getUiScale()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   uiScale = settings.value("ui/uiScale", 1).toFloat();
   // emit uiScaleChanged();//This does weird things when it fails to propagate
@@ -173,55 +189,63 @@ float Settings::getUiScale() {
   return uiScale;
 }
 
-void Settings::setEnqueue(bool enqueueIn) {
+void Settings::setEnqueue(bool enqueueIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   enqueue = enqueueIn;
   settings.setValue("import/enqueueAsImported", enqueueIn);
   emit enqueueChanged();
 }
 
-bool Settings::getEnqueue() {
+bool Settings::getEnqueue()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   enqueue = settings.value("import/enqueueAsImported", 1).toBool();
   emit enqueueChanged();
   return enqueue;
 }
 
-void Settings::setAppendHash(bool appendHashIn) {
+void Settings::setAppendHash(bool appendHashIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   appendHash = appendHashIn;
   settings.setValue("import/appendHash", appendHashIn);
   emit enqueueChanged();
 }
 
-bool Settings::getAppendHash() {
+bool Settings::getAppendHash()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   appendHash = settings.value("import/appendHash", 1).toBool();
   emit appendHashChanged();
   return appendHash;
 }
 
-void Settings::setMipmapView(bool mipmapViewIn) {
+void Settings::setMipmapView(bool mipmapViewIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   mipmapView = mipmapViewIn;
   settings.setValue("edit/mipmapView", mipmapViewIn);
   emit mipmapViewChanged();
 }
 
-bool Settings::getMipmapView() {
+bool Settings::getMipmapView()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   mipmapView = settings.value("edit/mipmapView", 0).toBool();
   return mipmapView;
 }
 
-void Settings::setLowMemMode(bool lowMemModeIn) {
+void Settings::setLowMemMode(bool lowMemModeIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   lowMemMode = lowMemModeIn;
   settings.setValue("edit/lowMemMode", lowMemModeIn);
   emit lowMemModeChanged();
 }
 
-bool Settings::getLowMemMode() {
+bool Settings::getLowMemMode()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   // Default: 0
   lowMemMode = settings.value("edit/lowMemMode", 0).toBool();
@@ -229,14 +253,16 @@ bool Settings::getLowMemMode() {
   return lowMemMode;
 }
 
-void Settings::setQuickPreview(bool quickPreviewIn) {
+void Settings::setQuickPreview(bool quickPreviewIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   quickPreview = quickPreviewIn;
   settings.setValue("edit/quickPreview", quickPreviewIn);
   emit quickPreviewChanged();
 }
 
-bool Settings::getQuickPreview() {
+bool Settings::getQuickPreview()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   // Default: 1; it should default to being on.
   quickPreview = settings.value("edit/quickPreview", 1).toBool();
@@ -244,14 +270,16 @@ bool Settings::getQuickPreview() {
   return quickPreview;
 }
 
-void Settings::setPreviewResolution(int resolutionIn) {
+void Settings::setPreviewResolution(int resolutionIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   previewResolution = resolutionIn;
   settings.setValue("edit/previewResolution", resolutionIn);
   emit previewResolutionChanged();
 }
 
-int Settings::getPreviewResolution() {
+int Settings::getPreviewResolution()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   // Default: 1500 pixels wide
   previewResolution = settings.value("edit/previewResolution", 1500).toInt();
@@ -259,14 +287,16 @@ int Settings::getPreviewResolution() {
   return previewResolution;
 }
 
-void Settings::setUseSystemLanguage(bool useSystemLanguageIn) {
+void Settings::setUseSystemLanguage(bool useSystemLanguageIn)
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   useSystemLanguage = useSystemLanguageIn;
   settings.setValue("ui/useSystemLanguage", useSystemLanguageIn);
   emit useSystemLanguageChanged();
 }
 
-bool Settings::getUseSystemLanguage() {
+bool Settings::getUseSystemLanguage()
+{
   QSettings settings(QSettings::UserScope, "Filmulator", "Filmulator");
   // Default: 1; it should default to being on.
   useSystemLanguage = settings.value("ui/useSystemLanguage", 1).toBool();
@@ -274,12 +304,12 @@ bool Settings::getUseSystemLanguage() {
   return useSystemLanguage;
 }
 
-void Settings::checkLensfunStatus() {
+void Settings::checkLensfunStatus()
+{
   QDir dir = QDir::home();
   QString dirstr = qEnvironmentVariable("FILMULATOR_DB_DIR");
   if (dirstr.isEmpty()) {
-    dirstr =
-        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     dirstr.append("/filmulator");
   }
 
@@ -305,12 +335,12 @@ void Settings::checkLensfunStatus() {
     emit lensfunStatusChanged();
   }
 }
-void Settings::updateLensfun() {
+void Settings::updateLensfun()
+{
   QDir dir = QDir::home();
   QString dirstr = qEnvironmentVariable("FILMULATOR_DB_DIR");
   if (dirstr.isEmpty()) {
-    dirstr =
-        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     dirstr.append("/filmulator");
   }
 
@@ -345,7 +375,8 @@ void Settings::updateLensfun() {
   }
 }
 
-void Settings::downloadCamConst() {
+void Settings::downloadCamConst()
+{
   camconst_status status = camconst_download();
   if (status == CAMCONST_DL_OK) {
     camconstDlStatus = "success";

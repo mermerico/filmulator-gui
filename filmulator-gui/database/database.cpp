@@ -7,10 +7,10 @@
 #include <iostream>
 
 // Get a unique database connection for each thread.
-QSqlDatabase getDB() {
+QSqlDatabase getDB()
+{
   // Unique ID for each thread
-  const QString threadID =
-      QString::number((quintptr)QThread::currentThreadId(), 16);
+  const QString threadID = QString::number((quintptr)QThread::currentThreadId(), 16);
 
   QSqlDatabase db = QSqlDatabase::database(threadID);
   // Check if there's already an open connection
@@ -24,8 +24,7 @@ QSqlDatabase getDB() {
   QDir dir = QDir::home();
   QString dirstr = qEnvironmentVariable("FILMULATOR_DB_DIR");
   if (dirstr.isEmpty()) {
-    dirstr =
-        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     dirstr.append("/filmulator");
   }
   if (!dir.cd(dirstr)) {
@@ -38,9 +37,7 @@ QSqlDatabase getDB() {
     }
   }
   db.setDatabaseName(dir.absoluteFilePath("filmulatorDB"));
-  if (!db.open()) {
-    std::cout << "AAAH database is not opening!" << std::endl;
-  }
+  if (!db.open()) { std::cout << "AAAH database is not opening!" << std::endl; }
   // this should create the database if it doesn't already exist.
   return db;
 }

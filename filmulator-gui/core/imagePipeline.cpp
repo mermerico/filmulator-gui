@@ -7,8 +7,8 @@
 #include <QDir>
 #include <QStandardPaths>
 
-ImagePipeline::ImagePipeline(Cache cacheIn, Histo histoIn,
-                             QuickQuality qualityIn) {
+ImagePipeline::ImagePipeline(Cache cacheIn, Histo histoIn, QuickQuality qualityIn)
+{
   cache = cacheIn;
   histo = histoIn;
   quality = qualityIn;
@@ -32,7 +32,8 @@ ImagePipeline::ImagePipeline(Cache cacheIn, Histo histoIn,
 
 // int ImagePipeline::libraw_callback(void *data, LibRaw_progress p, int
 // iteration, int expected) but we only need data.
-int ImagePipeline::libraw_callback(void *data, LibRaw_progress, int, int) {
+int ImagePipeline::libraw_callback(void *data, LibRaw_progress, int, int)
+{
   AbortStatus abort;
 
   // Recover the param_manager from the data
@@ -40,18 +41,18 @@ int ImagePipeline::libraw_callback(void *data, LibRaw_progress, int, int) {
   // See whether to abort or not.
   abort = pManager->claimDemosaicAbort();
   if (abort == AbortStatus::restart) {
-    return 1; // cancel processing
+    return 1;// cancel processing
   } else {
     return 0;
   }
 }
 
-matrix<unsigned short> &ImagePipeline::processImage(
-    ParameterManager *paramManager, Interface *interface_in,
-    Exiv2::ExifData &exifOutput,
-    const QString fileHash, // make this empty string if you don't want to mess
-                            // around with validity
-    ImagePipeline *stealVictim) // defaults to nullptr
+matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManager,
+  Interface *interface_in,
+  Exiv2::ExifData &exifOutput,
+  const QString fileHash,// make this empty string if you don't want to mess
+                         // around with validity
+  ImagePipeline *stealVictim)// defaults to nullptr
 {
   // Say that we've started processing to prevent cache status from changing..
   hasStartedProcessing = true;
@@ -67,12 +68,9 @@ matrix<unsigned short> &ImagePipeline::processImage(
     QString paramIndex = paramManager->getImageIndex();
     paramIndex.truncate(32);
     if (fileHash != paramIndex) {
-      cout << "processImage shuffle mismatch:  Requested Index: "
-           << fileHash.toStdString() << endl;
-      cout << "processImage shuffle mismatch:  Parameter Index: "
-           << paramIndex.toStdString() << endl;
-      cout << "processImage shuffle mismatch:  full pipeline?: "
-           << (quality == HighQuality) << endl;
+      cout << "processImage shuffle mismatch:  Requested Index: " << fileHash.toStdString() << endl;
+      cout << "processImage shuffle mismatch:  Parameter Index: " << paramIndex.toStdString() << endl;
+      cout << "processImage shuffle mismatch:  full pipeline?: " << (quality == HighQuality) << endl;
       valid = none;
     }
     fileID = paramIndex;
@@ -84,15 +82,13 @@ matrix<unsigned short> &ImagePipeline::processImage(
 
   valid = paramManager->getValid();
   if (NoCache == cache || true == cacheEmpty) {
-    valid = none; // we need to start fresh if nothing is going to be cached.
+    valid = none;// we need to start fresh if nothing is going to be cached.
   }
 
   // If we are a high-res pipeline that's going to steal data, skip to
   // filmulation
   if (stealData) {
-    if (stealVictim == nullptr) {
-      cout << "stealVictim should not be null!" << endl;
-    }
+    if (stealVictim == nullptr) { cout << "stealVictim should not be null!" << endl; }
     valid = max(valid, prefilmulation);
     paramManager->setValid(valid);
   }
@@ -106,10 +102,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
       cout << "processImage paramManager filename doesn't match pipeline "
               "filename"
            << endl;
-      cout << "processImage paramManager filename: "
-           << paramManager->getFullFilename() << endl;
-      cout << "processImage pipeline filename:     " << filename.toStdString()
-           << endl;
+      cout << "processImage paramManager filename: " << paramManager->getFullFilename() << endl;
+      cout << "processImage pipeline filename:     " << filename.toStdString() << endl;
       cout << "processImage setting validity to none due to filename" << endl;
       valid = none;
     }
@@ -121,7 +115,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   switch (valid) {
   case partload:
     [[fallthrough]];
-  case none: // Load image into buffer
+  case none:// Load image into buffer
   {
     LoadParams loadParam;
     AbortStatus abort;
@@ -136,13 +130,9 @@ matrix<unsigned short> &ImagePipeline::processImage(
 
     isCR3 = false;
 
-    isCR3 = QString::fromStdString(loadParam.fullFilename)
-                .endsWith(".cr3", Qt::CaseInsensitive);
-    const bool isDNG = QString::fromStdString(loadParam.fullFilename)
-                           .endsWith(".dng", Qt::CaseInsensitive);
-    if (isCR3) {
-      cout << "processImage this is a CR3!" << endl;
-    }
+    isCR3 = QString::fromStdString(loadParam.fullFilename).endsWith(".cr3", Qt::CaseInsensitive);
+    const bool isDNG = QString::fromStdString(loadParam.fullFilename).endsWith(".dng", Qt::CaseInsensitive);
+    if (isCR3) { cout << "processImage this is a CR3!" << endl; }
 
     if (!loadParam.tiffIn && !loadParam.jpegIn) {
       std::unique_ptr<LibRaw> libraw = unique_ptr<LibRaw>(new LibRaw());
@@ -150,8 +140,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // Open the file.
       int libraw_error;
 #if (defined(_WIN32) || defined(__WIN32__))
-      const QString tempFilename =
-          QString::fromStdString(loadParam.fullFilename);
+      const QString tempFilename = QString::fromStdString(loadParam.fullFilename);
       std::wstring wstr = tempFilename.toStdWString();
       libraw_error = libraw->open_file(wstr.c_str());
 #else
@@ -186,13 +175,12 @@ matrix<unsigned short> &ImagePipeline::processImage(
         // tell libraw to not convert to int when unpacking.
         OPTIONS = OPTIONS & ~LIBRAW_RAWOPTIONS_CONVERTFLOAT_TO_INT;
       }
-#endif // WIN32
-       // This makes IMAGE contains the sensel value and 3 blank values at every
-       // location.
+#endif// WIN32
+      // This makes IMAGE contains the sensel value and 3 blank values at every
+      // location.
       libraw_error = libraw->unpack();
       if (libraw_error) {
-        cout << "processImage: Could not read input file, or was canceled"
-             << endl;
+        cout << "processImage: Could not read input file, or was canceled" << endl;
         cout << "libraw error text: " << libraw_strerror(libraw_error) << endl;
         return emptyMatrix();
       }
@@ -211,8 +199,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // int full_height = RSIZE.raw_height;
 
       // get color matrix
-      cout << "processImage filename (matrix): " << loadParam.fullFilename
-           << endl;
+      cout << "processImage filename (matrix): " << loadParam.fullFilename << endl;
       for (int i = 0; i < 3; i++) {
         cout << "processImage camToRGB matrix: ";
         for (int j = 0; j < 3; j++) {
@@ -230,23 +217,19 @@ matrix<unsigned short> &ImagePipeline::processImage(
           }
           cout << endl;
         }
-      } else { // For Sigma fp and fp L cameras LibRaw doesn't report cam_xyz
-        cout << "processImage dng color matrix illuminant: "
-             << libraw->imgdata.color.dng_color[0].illuminant << endl;
-        cout << "processImage dng color matrix illuminant: "
-             << libraw->imgdata.color.dng_color[1].illuminant << endl;
+      } else {// For Sigma fp and fp L cameras LibRaw doesn't report cam_xyz
+        cout << "processImage dng color matrix illuminant: " << libraw->imgdata.color.dng_color[0].illuminant << endl;
+        cout << "processImage dng color matrix illuminant: " << libraw->imgdata.color.dng_color[1].illuminant << endl;
         int dngProfile = 1;
-        if (daylightScore(libraw->imgdata.color.dng_color[0].illuminant) <
-            daylightScore(libraw->imgdata.color.dng_color[1].illuminant)) {
+        if (daylightScore(libraw->imgdata.color.dng_color[0].illuminant)
+            < daylightScore(libraw->imgdata.color.dng_color[1].illuminant)) {
           dngProfile = 0;
         }
-        cout << "processImage Using dng color matrix number " << dngProfile
-             << endl;
+        cout << "processImage Using dng color matrix number " << dngProfile << endl;
         for (int i = 0; i < 3; i++) {
           cout << "processImage xyzToCam matrix: ";
           for (int j = 0; j < 3; j++) {
-            xyzToCam[i][j] =
-                libraw->imgdata.color.dng_color[dngProfile].colormatrix[i][j];
+            xyzToCam[i][j] = libraw->imgdata.color.dng_color[dngProfile].colormatrix[i][j];
             cout << xyzToCam[i][j] << " ";
           }
           cout << endl;
@@ -263,9 +246,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
           } else {
             camToRGB4[i][j] = 0;
           }
-          if (j == 3) {
-            camToRGB4[i][j] = camToRGB4[i][1];
-          }
+          if (j == 3) { camToRGB4[i][j] = camToRGB4[i][1]; }
           // cout << camToRGB4[i][j] << " ";
         }
         // cout << endl;
@@ -315,8 +296,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
         cout << "block-based blackpoint: " << endl;
         for (int i = 0; i < blackRow; i++) {
           for (int j = 0; j < blackCol; j++) {
-            sumBlockBlackpoint +=
-                libraw->imgdata.color.cblack[6 + i * blackCol + j];
+            sumBlockBlackpoint += libraw->imgdata.color.cblack[6 + i * blackCol + j];
             count++;
             cout << libraw->imgdata.color.cblack[6 + i * blackCol + j] << "  ";
           }
@@ -324,9 +304,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
         }
       }
       double meanBlockBlackpoint = 0;
-      if (count > 0) {
-        meanBlockBlackpoint = sumBlockBlackpoint / count;
-      }
+      if (count > 0) { meanBlockBlackpoint = sumBlockBlackpoint / count; }
       cout << "Mean of block-based blackpoint: " << meanBlockBlackpoint << endl;
 
       // get white saturation values
@@ -347,9 +325,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
       makeModel.append(" ");
       makeModel.append(IDATA.model);
       bool camconstSuccess =
-          CAMCONST_READ_OK == camconst_read(makeModel, OTHER.iso_speed,
-                                            OTHER.aperture, camconstWhite,
-                                            camconstBlack);
+        CAMCONST_READ_OK == camconst_read(makeModel, OTHER.iso_speed, OTHER.aperture, camconstWhite, camconstBlack);
 
       cout << "is the file dng?: " << isDNG << endl;
 
@@ -357,20 +333,13 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // channels here...
       camconstWhite[1] = min(camconstWhite[1], camconstWhite[3]);
 
-      double camconstWhiteMax =
-          max(max(max(camconstWhite[0], camconstWhite[1]), camconstWhite[2]),
-              camconstWhite[3]);
-      double camconstWhiteAvg = (camconstWhite[0] + camconstWhite[1] +
-                                 camconstWhite[2] + camconstWhite[3]) /
-                                4;
-      double camconstBlackAvg = (camconstBlack[0] + camconstBlack[1] +
-                                 camconstBlack[2] + camconstBlack[3]) /
-                                4;
+      double camconstWhiteMax = max(max(max(camconstWhite[0], camconstWhite[1]), camconstWhite[2]), camconstWhite[3]);
+      double camconstWhiteAvg = (camconstWhite[0] + camconstWhite[1] + camconstWhite[2] + camconstWhite[3]) / 4;
+      double camconstBlackAvg = (camconstBlack[0] + camconstBlack[1] + camconstBlack[2] + camconstBlack[3]) / 4;
 
       // If the black levels are significantly different, we'll add them.
-      if (camconstBlackAvg != blackpoint &&
-          !isDNG) // dngs provide their own correct black level and we should
-                  // trust it
+      if (camconstBlackAvg != blackpoint && !isDNG)// dngs provide their own correct black level and we should
+                                                   // trust it
       {
         cout << "Black level discrepancy" << endl;
         cout << "CamConst black: " << camconstBlackAvg << endl;
@@ -408,36 +377,26 @@ matrix<unsigned short> &ImagePipeline::processImage(
       //  even if the raw files are 12-bit-only, like the entry level cams
       // So we need to detect if it's 12-bit and if the camconst specifies as
       // 14-bit.
-      if ((QString(IDATA.make) == "Nikon") &&
-          (libraw->imgdata.color.maximum < 4096) &&
-          (camconstWhiteAvg >= 4096)) {
+      if ((QString(IDATA.make) == "Nikon") && (libraw->imgdata.color.maximum < 4096) && (camconstWhiteAvg >= 4096)) {
         camconstWhite[0] = camconstWhite[0] * 4095 / 16383;
         camconstWhite[1] = camconstWhite[1] * 4095 / 16383;
         camconstWhite[2] = camconstWhite[2] * 4095 / 16383;
-        cout << "Nikon 12-bit camconst white clipping point: "
-             << camconstWhite[0] << endl;
+        cout << "Nikon 12-bit camconst white clipping point: " << camconstWhite[0] << endl;
       }
 
-      if (camconstSuccess && camconstWhiteAvg > 0 &&
-          !isDNG) // dngs provide their own correct whitepoint and we should
-                  // trust it over camconst
+      if (camconstSuccess && camconstWhiteAvg > 0 && !isDNG)// dngs provide their own correct whitepoint and we should
+                                                            // trust it over camconst
       {
-        maxValue =
-            camconstWhiteMax - blackpoint - maxChanBlack - meanBlockBlackpoint;
+        maxValue = camconstWhiteMax - blackpoint - maxChanBlack - meanBlockBlackpoint;
         cout << "camconst r white clipping point: " << camconstWhite[0] << endl;
         cout << "camconst g white clipping point: " << camconstWhite[1] << endl;
         cout << "camconst b white clipping point: " << camconstWhite[2] << endl;
-        colorMaxValue[0] =
-            camconstWhite[0] - blackpoint - maxChanBlack - meanBlockBlackpoint;
-        colorMaxValue[1] =
-            camconstWhite[1] - blackpoint - maxChanBlack - meanBlockBlackpoint;
-        colorMaxValue[2] =
-            camconstWhite[2] - blackpoint - maxChanBlack - meanBlockBlackpoint;
+        colorMaxValue[0] = camconstWhite[0] - blackpoint - maxChanBlack - meanBlockBlackpoint;
+        colorMaxValue[1] = camconstWhite[1] - blackpoint - maxChanBlack - meanBlockBlackpoint;
+        colorMaxValue[2] = camconstWhite[2] - blackpoint - maxChanBlack - meanBlockBlackpoint;
       } else {
-        maxValue = libraw->imgdata.color.maximum - blackpoint - maxChanBlack -
-                   meanBlockBlackpoint;
-        cout << "libraw fallback or dng white clipping point: "
-             << libraw->imgdata.color.maximum << endl;
+        maxValue = libraw->imgdata.color.maximum - blackpoint - maxChanBlack - meanBlockBlackpoint;
+        cout << "libraw fallback or dng white clipping point: " << libraw->imgdata.color.maximum << endl;
         colorMaxValue[0] = maxValue;
         colorMaxValue[1] = maxValue;
         colorMaxValue[2] = maxValue;
@@ -453,8 +412,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
         // cout << "bayer: ";
         for (unsigned int j = 0; j < 2; j++) {
           cfa[i][j] = unsigned(libraw->COLOR(int(i), int(j)));
-          if (cfa[i][j] == 3) // Auto CA correct doesn't like 0123 for RGBG; we
-                              // change it to 0121.
+          if (cfa[i][j] == 3)// Auto CA correct doesn't like 0123 for RGBG; we
+                             // change it to 0121.
           {
             cfa[i][j] = 1;
           }
@@ -475,10 +434,9 @@ matrix<unsigned short> &ImagePipeline::processImage(
         // cout << endl;
       }
 
-      if (!isCR3) // we can't use exiv2 on CR3 yet
+      if (!isCR3)// we can't use exiv2 on CR3 yet
       {
-        cout << "processImage exiv filename: " << loadParam.fullFilename
-             << endl;
+        cout << "processImage exiv filename: " << loadParam.fullFilename << endl;
         auto image = Exiv2::ImageFactory::open(loadParam.fullFilename);
         assert(image.get() != 0);
         image->readMetadata();
@@ -488,18 +446,13 @@ matrix<unsigned short> &ImagePipeline::processImage(
         Exiv2::ExifData basicExifData;
 
         basicExifData["Exif.Image.Orientation"] = uint16_t(1);
-        basicExifData["Exif.Image.ImageWidth"] =
-            vibrance_saturation_image.nc() / 3;
-        basicExifData["Exif.Image.ImageLength"] =
-            vibrance_saturation_image.nr();
+        basicExifData["Exif.Image.ImageWidth"] = vibrance_saturation_image.nc() / 3;
+        basicExifData["Exif.Image.ImageLength"] = vibrance_saturation_image.nr();
         basicExifData["Exif.Image.Make"] = IDATA.make;
         basicExifData["Exif.Image.Model"] = IDATA.model;
-        basicExifData["Exif.Image.DateTime"] =
-            exifDateTimeString(OTHER.timestamp);
-        basicExifData["Exif.Photo.DateTimeOriginal"] =
-            exifDateTimeString(OTHER.timestamp);
-        basicExifData["Exif.Photo.DateTimeDigitized"] =
-            exifDateTimeString(OTHER.timestamp);
+        basicExifData["Exif.Image.DateTime"] = exifDateTimeString(OTHER.timestamp);
+        basicExifData["Exif.Photo.DateTimeOriginal"] = exifDateTimeString(OTHER.timestamp);
+        basicExifData["Exif.Photo.DateTimeDigitized"] = exifDateTimeString(OTHER.timestamp);
         basicExifData["Exif.Photo.ExposureTime"] = rationalTv(OTHER.shutter);
         basicExifData["Exif.Photo.FNumber"] = rationalAvFL(OTHER.aperture);
         basicExifData["Exif.Photo.ISOSpeed"] = int(round(OTHER.iso_speed));
@@ -523,12 +476,11 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // They have 6666 as the cfa and all 0 for xtrans
       // However, Leica M Monochrom files are exactly the same!
       // So we have to check if the white balance tag exists.
-      bool isWeird = (cfa[0][0] == 6 && cfa[0][1] == 6 && cfa[1][0] == 6 &&
-                      cfa[1][1] == 6);
+      bool isWeird = (cfa[0][0] == 6 && cfa[0][1] == 6 && cfa[1][0] == 6 && cfa[1][1] == 6);
       // cout << "is weird: " << isWeird << endl;
       bool noWB = false;
-      if (!isCR3) // we can't use exiv2 on CR3 yet and no CR3 cameras are
-                  // monochrome
+      if (!isCR3)// we can't use exiv2 on CR3 yet and no CR3 cameras are
+                 // monochrome
       {
         noWB = exifData["Exif.Photo.WhiteBalance"].toString().length() == 0;
       }
@@ -539,10 +491,10 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // cout << "is full color raw: " << isSraw << endl;
 
       isNikonSraw = libraw->is_nikon_sraw();
-      if (isFloat && isSraw) { // floating point full-color-per-pixel raws
+      if (isFloat && isSraw) {// floating point full-color-per-pixel raws
         raw_image.set_size(raw_height, raw_width * 3);
-#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax)       \
-    reduction(max : rawRMax) reduction(max : rawGMax) reduction(max : rawBMax)
+#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax) reduction(max : rawRMax) \
+  reduction(max : rawGMax) reduction(max : rawBMax)
         for (int row = 0; row < raw_height; row++) {
           // IMAGE is an (width*height) by 4 array, not width by height by 4.
           int rowoffset = (row + topmargin) * full_width;
@@ -550,35 +502,29 @@ matrix<unsigned short> &ImagePipeline::processImage(
             float tempBlackpoint = blackpoint;
             if (blackRow > 0 && blackCol > 0) {
               tempBlackpoint =
-                  tempBlackpoint +
-                  libraw->imgdata.color
-                      .cblack[6 + (row % blackRow) * blackCol + col % blackCol];
+                tempBlackpoint + libraw->imgdata.color.cblack[6 + (row % blackRow) * blackCol + col % blackCol];
             }
             // sraw comes from raw4 but only uses 3 channels
-            raw_image[row][col * 3] =
-                min(RAWF4[rowoffset + col + leftmargin][0] - tempBlackpoint,
-                    colorMaxValue[0]);
+            raw_image[row][col * 3] = min(RAWF4[rowoffset + col + leftmargin][0] - tempBlackpoint, colorMaxValue[0]);
             rawMin = std::min(rawMin, raw_image[row][col * 3]);
             rawMax = std::max(rawMax, raw_image[row][col * 3]);
             rawRMax = std::max(rawRMax, raw_image[row][col * 3]);
             raw_image[row][col * 3 + 1] =
-                min(RAWF4[rowoffset + col + leftmargin][1] - tempBlackpoint,
-                    colorMaxValue[1]);
+              min(RAWF4[rowoffset + col + leftmargin][1] - tempBlackpoint, colorMaxValue[1]);
             rawMin = std::min(rawMin, raw_image[row][col * 3 + 1]);
             rawMax = std::max(rawMax, raw_image[row][col * 3 + 1]);
             rawGMax = std::max(rawGMax, raw_image[row][col * 3 + 1]);
             raw_image[row][col * 3 + 2] =
-                min(RAWF4[rowoffset + col + leftmargin][2] - tempBlackpoint,
-                    colorMaxValue[2]);
+              min(RAWF4[rowoffset + col + leftmargin][2] - tempBlackpoint, colorMaxValue[2]);
             rawMin = std::min(rawMin, raw_image[row][col * 3 + 2]);
             rawMax = std::max(rawMax, raw_image[row][col * 3 + 2]);
             rawBMax = std::max(rawBMax, raw_image[row][col * 3 + 2]);
           }
         }
-      } else if (isSraw) { // full-color-per-pixel integer raws
+      } else if (isSraw) {// full-color-per-pixel integer raws
         raw_image.set_size(raw_height, raw_width * 3);
-#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax)       \
-    reduction(max : rawRMax) reduction(max : rawGMax) reduction(max : rawBMax)
+#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax) reduction(max : rawRMax) \
+  reduction(max : rawGMax) reduction(max : rawBMax)
 
         for (int row = 0; row < raw_height; row++) {
           // IMAGE is an (width*height) by 4 array, not width by height by 4.
@@ -587,34 +533,26 @@ matrix<unsigned short> &ImagePipeline::processImage(
             float tempBlackpoint = blackpoint;
             if (blackRow > 0 && blackCol > 0) {
               tempBlackpoint =
-                  tempBlackpoint +
-                  libraw->imgdata.color
-                      .cblack[6 + (row % blackRow) * blackCol + col % blackCol];
+                tempBlackpoint + libraw->imgdata.color.cblack[6 + (row % blackRow) * blackCol + col % blackCol];
             }
             // sraw comes from raw4 but only uses 3 channels
-            raw_image[row][col * 3] =
-                min(RAW4[rowoffset + col + leftmargin][0] - tempBlackpoint,
-                    colorMaxValue[0]);
+            raw_image[row][col * 3] = min(RAW4[rowoffset + col + leftmargin][0] - tempBlackpoint, colorMaxValue[0]);
             rawMin = std::min(rawMin, raw_image[row][col * 3]);
             rawMax = std::max(rawMax, raw_image[row][col * 3]);
             rawRMax = std::max(rawRMax, raw_image[row][col * 3]);
-            raw_image[row][col * 3 + 1] =
-                min(RAW4[rowoffset + col + leftmargin][1] - tempBlackpoint,
-                    colorMaxValue[1]);
+            raw_image[row][col * 3 + 1] = min(RAW4[rowoffset + col + leftmargin][1] - tempBlackpoint, colorMaxValue[1]);
             rawMin = std::min(rawMin, raw_image[row][col * 3 + 1]);
             rawMax = std::max(rawMax, raw_image[row][col * 3 + 1]);
             rawGMax = std::max(rawGMax, raw_image[row][col * 3 + 1]);
-            raw_image[row][col * 3 + 2] =
-                min(RAW4[rowoffset + col + leftmargin][2] - tempBlackpoint,
-                    colorMaxValue[2]);
+            raw_image[row][col * 3 + 2] = min(RAW4[rowoffset + col + leftmargin][2] - tempBlackpoint, colorMaxValue[2]);
             rawMin = std::min(rawMin, raw_image[row][col * 3 + 2]);
             rawMax = std::max(rawMax, raw_image[row][col * 3 + 2]);
             rawBMax = std::max(rawBMax, raw_image[row][col * 3 + 2]);
           }
         }
-      } else if (isFloat) { // floating point one-color-per-pixel raws
-#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax)       \
-    reduction(max : rawRMax) reduction(max : rawGMax) reduction(max : rawBMax)
+      } else if (isFloat) {// floating point one-color-per-pixel raws
+#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax) reduction(max : rawRMax) \
+  reduction(max : rawGMax) reduction(max : rawBMax)
 
         for (int row = 0; row < raw_height; row++) {
           // IMAGE is an (width*height) by 4 array, not width by height by 4.
@@ -640,33 +578,22 @@ matrix<unsigned short> &ImagePipeline::processImage(
               tempWhitepoint = colorMaxValue[1];
             }
             if (blackRow > 0 && blackCol > 0) {
-              tempBlackpoint = min(
-                  tempBlackpoint + libraw->imgdata.color
-                                       .cblack[6 + (row % blackRow) * blackCol +
-                                               col % blackCol],
+              tempBlackpoint =
+                min(tempBlackpoint + libraw->imgdata.color.cblack[6 + (row % blackRow) * blackCol + col % blackCol],
                   tempWhitepoint);
             }
-            raw_image[row][col] =
-                RAWF[rowoffset + col + leftmargin] - tempBlackpoint;
+            raw_image[row][col] = RAWF[rowoffset + col + leftmargin] - tempBlackpoint;
             rawMin = std::min(rawMin, raw_image[row][col]);
             rawMax = std::max(rawMax, raw_image[row][col]);
-            if (color == 0) {
-              rawRMax = std::max(rawRMax, raw_image[row][col]);
-            }
-            if (color == 1) {
-              rawGMax = std::max(rawGMax, raw_image[row][col]);
-            }
-            if (color == 2) {
-              rawBMax = std::max(rawBMax, raw_image[row][col]);
-            }
-            if (color == 3) {
-              rawGMax = std::max(rawGMax, raw_image[row][col]);
-            }
+            if (color == 0) { rawRMax = std::max(rawRMax, raw_image[row][col]); }
+            if (color == 1) { rawGMax = std::max(rawGMax, raw_image[row][col]); }
+            if (color == 2) { rawBMax = std::max(rawBMax, raw_image[row][col]); }
+            if (color == 3) { rawGMax = std::max(rawGMax, raw_image[row][col]); }
           }
         }
-      } else { // normal one-color-per-pixel integer raws
-#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax)       \
-    reduction(max : rawRMax) reduction(max : rawGMax) reduction(max : rawBMax)
+      } else {// normal one-color-per-pixel integer raws
+#pragma omp parallel for reduction(min : rawMin) reduction(max : rawMax) reduction(max : rawRMax) \
+  reduction(max : rawGMax) reduction(max : rawBMax)
 
         for (int row = 0; row < raw_height; row++) {
           // IMAGE is an (width*height) by 4 array, not width by height by 4.
@@ -692,36 +619,24 @@ matrix<unsigned short> &ImagePipeline::processImage(
               tempWhitepoint = colorMaxValue[1];
             }
             if (blackRow > 0 && blackCol > 0) {
-              tempBlackpoint = min(
-                  tempBlackpoint + libraw->imgdata.color
-                                       .cblack[6 + (row % blackRow) * blackCol +
-                                               col % blackCol],
+              tempBlackpoint =
+                min(tempBlackpoint + libraw->imgdata.color.cblack[6 + (row % blackRow) * blackCol + col % blackCol],
                   tempWhitepoint);
             }
-            raw_image[row][col] =
-                RAW[rowoffset + col + leftmargin] - tempBlackpoint;
+            raw_image[row][col] = RAW[rowoffset + col + leftmargin] - tempBlackpoint;
             rawMin = std::min(rawMin, raw_image[row][col]);
             rawMax = std::max(rawMax, raw_image[row][col]);
-            if (color == 0) {
-              rawRMax = std::max(rawRMax, raw_image[row][col]);
-            }
-            if (color == 1) {
-              rawGMax = std::max(rawGMax, raw_image[row][col]);
-            }
-            if (color == 2) {
-              rawBMax = std::max(rawBMax, raw_image[row][col]);
-            }
-            if (color == 3) {
-              rawGMax = std::max(rawGMax, raw_image[row][col]);
-            }
+            if (color == 0) { rawRMax = std::max(rawRMax, raw_image[row][col]); }
+            if (color == 1) { rawGMax = std::max(rawGMax, raw_image[row][col]); }
+            if (color == 2) { rawBMax = std::max(rawBMax, raw_image[row][col]); }
+            if (color == 3) { rawGMax = std::max(rawGMax, raw_image[row][col]); }
           }
         }
       }
 
       // generate raw histogram
       if (WithHisto == histo) {
-        histoInterface->updateHistRaw(raw_image, colorMaxValue, cfa, xtrans,
-                                      maxXtrans, isSraw, isMonochrome);
+        histoInterface->updateHistRaw(raw_image, colorMaxValue, cfa, xtrans, maxXtrans, isSraw, isMonochrome);
       }
 
       cout << "max of raw_image: " << rawMax << endl;
@@ -736,13 +651,12 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partdemosaic:
     [[fallthrough]];
-  case load: // Do demosaic, or load non-raw images
+  case load:// Do demosaic, or load non-raw images
   {
     LoadParams loadParam;
     DemosaicParams demosaicParam;
     AbortStatus abort;
-    std::tie(valid, abort, loadParam, demosaicParam) =
-        paramManager->claimDemosaicParams();
+    std::tie(valid, abort, loadParam, demosaicParam) = paramManager->claimDemosaicParams();
     if (abort == AbortStatus::restart) {
       cout << "imagePipeline.cpp: aborted at demosaic" << endl;
       return emptyMatrix();
@@ -756,17 +670,15 @@ matrix<unsigned short> &ImagePipeline::processImage(
 
     if (loadParam.tiffIn) {
       if (imread_tiff(loadParam.fullFilename, demosaiced_image, exifData)) {
-        cerr << "Could not open image " << loadParam.fullFilename
-             << "; Exiting..." << endl;
+        cerr << "Could not open image " << loadParam.fullFilename << "; Exiting..." << endl;
         return emptyMatrix();
       }
     } else if (loadParam.jpegIn) {
       if (imread_jpeg(loadParam.fullFilename, demosaiced_image, exifData)) {
-        cerr << "Could not open image " << loadParam.fullFilename
-             << "; Exiting..." << endl;
+        cerr << "Could not open image " << loadParam.fullFilename << "; Exiting..." << endl;
         return emptyMatrix();
       }
-    } else if (isSraw) // already demosaiced
+    } else if (isSraw)// already demosaiced
     {
       // We just need to scale to 65535, and apply camera WB
       float inputscale = maxValue;
@@ -785,14 +697,14 @@ matrix<unsigned short> &ImagePipeline::processImage(
         for (int row = 0; row < raw_height; row++) {
           for (int col = 0; col < raw_width * 3; col++) {
             int color = col % 3;
-            demosaiced_image(row, col) = raw_image(row, col) * scaleFactor *
-                                         ((color == 0)   ? rPreMul
-                                          : (color == 1) ? gPreMul
-                                                         : bPreMul);
+            demosaiced_image(row, col) = raw_image(row, col) * scaleFactor
+                                         * ((color == 0)   ? rPreMul
+                                            : (color == 1) ? gPreMul
+                                                           : bPreMul);
           }
         }
       }
-    } else // raw
+    } else// raw
     {
       matrix<float> red(raw_height, raw_width);
       matrix<float> green(raw_height, raw_width);
@@ -801,10 +713,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
       double initialGain = 1.0;
       float inputscale = maxValue;
       float outputscale = 65535.0;
-      const int border = 4; // used for amaze
-      std::function<bool(double)> setProg = [](double) -> bool {
-        return false;
-      };
+      const int border = 4;// used for amaze
+      std::function<bool(double)> setProg = [](double) -> bool { return false; };
 
       cout << "raw width:  " << raw_width << endl;
       cout << "raw height: " << raw_height << endl;
@@ -824,18 +734,14 @@ matrix<unsigned short> &ImagePipeline::processImage(
         for (int row = 0; row < raw_height; row++) {
           for (int col = 0; col < raw_width; col++) {
             uint color = xtrans[uint(row) % 6][uint(col) % 6];
-            premultiplied(row, col) =
-                raw_image(row, col) * ((color == 0)   ? rPreMul
-                                       : (color == 1) ? gPreMul
-                                                      : bPreMul);
+            premultiplied(row, col) = raw_image(row, col) * ((color == 0) ? rPreMul : (color == 1) ? gPreMul : bPreMul);
           }
         }
         if (demosaicParam.demosaicMethod == 0) {
-          markesteijn_demosaic(raw_width, raw_height, premultiplied, red, green,
-                               blue, xtrans, camToRGB4, setProg, 3, true);
-        } else { // if it's 1, use xtransfast
-          xtransfast_demosaic(raw_width, raw_height, premultiplied, red, green,
-                              blue, xtrans, setProg);
+          markesteijn_demosaic(
+            raw_width, raw_height, premultiplied, red, green, blue, xtrans, camToRGB4, setProg, 3, true);
+        } else {// if it's 1, use xtransfast
+          xtransfast_demosaic(raw_width, raw_height, premultiplied, red, green, blue, xtrans, setProg);
         }
         // there's no inputscale for markesteijn so we need to scale
         float scaleFactor = outputscale / inputscale;
@@ -861,29 +767,51 @@ matrix<unsigned short> &ImagePipeline::processImage(
         for (int row = 0; row < raw_height; row++) {
           for (int col = 0; col < raw_width; col++) {
             uint color = cfa[uint(row) & 1][uint(col) & 1];
-            premultiplied(row, col) =
-                raw_image(row, col) * ((color == 0)   ? rPreMul
-                                       : (color == 1) ? gPreMul
-                                                      : bPreMul);
+            premultiplied(row, col) = raw_image(row, col) * ((color == 0) ? rPreMul : (color == 1) ? gPreMul : bPreMul);
           }
         }
         if (demosaicParam.caEnabled > 0) {
           // we need to apply white balance and then remove it for Auto CA
           // Correct to work properly
           double fitparams[2][2][16];
-          CA_correct(0, 0, raw_width, raw_height, true, demosaicParam.caEnabled,
-                     0.0, 0.0, true, premultiplied, premultiplied, cfa, setProg,
-                     fitparams, false);
+          CA_correct(0,
+            0,
+            raw_width,
+            raw_height,
+            true,
+            demosaicParam.caEnabled,
+            0.0,
+            0.0,
+            true,
+            premultiplied,
+            premultiplied,
+            cfa,
+            setProg,
+            fitparams,
+            false);
         }
 
         if (demosaicParam.demosaicMethod == 0) {
-          amaze_demosaic(raw_width, raw_height, 0, 0, raw_width, raw_height,
-                         premultiplied, red, green, blue, cfa, setProg,
-                         initialGain, border, inputscale, outputscale);
-        } else { // if it's 1, use LMMSE
+          amaze_demosaic(raw_width,
+            raw_height,
+            0,
+            0,
+            raw_width,
+            raw_height,
+            premultiplied,
+            red,
+            green,
+            blue,
+            cfa,
+            setProg,
+            initialGain,
+            border,
+            inputscale,
+            outputscale);
+        } else {// if it's 1, use LMMSE
           premultiplied.mult_this(1 / inputscale);
-          lmmse_demosaic(raw_width, raw_height, premultiplied, red, green, blue,
-                         cfa, setProg, 3); // doesn't like inputs > 1
+          lmmse_demosaic(
+            raw_width, raw_height, premultiplied, red, green, blue, cfa, setProg, 3);// doesn't like inputs > 1
           // igv_demosaic(raw_width, raw_height, premultiplied, red, green,
           // blue, cfa, setProg);//doesn't like inputs > 1
           red.mult_this(outputscale);
@@ -913,12 +841,11 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partpostdemosaic:
     [[fallthrough]];
-  case demosaic: // Do postdemosaic work
+  case demosaic:// Do postdemosaic work
   {
     PostDemosaicParams postDemosaicParam;
     AbortStatus abort;
-    std::tie(valid, abort, postDemosaicParam) =
-        paramManager->claimPostDemosaicParams();
+    std::tie(valid, abort, postDemosaicParam) = paramManager->claimPostDemosaicParams();
     if (abort == AbortStatus::restart) {
       cout << "imagePipeline.cpp: aborted at demosaic" << endl;
       return emptyMatrix();
@@ -926,11 +853,17 @@ matrix<unsigned short> &ImagePipeline::processImage(
 
     // First thing after demosaic is to apply the user's white balance.
     if (!isMonochrome) {
-      rawWhiteBalance(demosaiced_image, post_demosaic_image,
-                      postDemosaicParam.temperature, postDemosaicParam.tint,
-                      xyzToCam, rPreMul, gPreMul, bPreMul, // undoes these
-                      rUserMul, gUserMul,
-                      bUserMul); // used later for highlight recovery
+      rawWhiteBalance(demosaiced_image,
+        post_demosaic_image,
+        postDemosaicParam.temperature,
+        postDemosaicParam.tint,
+        xyzToCam,
+        rPreMul,
+        gPreMul,
+        bPreMul,// undoes these
+        rUserMul,
+        gUserMul,
+        bUserMul);// used later for highlight recovery
 
       cout << "WB pre multiplier R: " << rPreMul << endl;
       cout << "WB pre multiplier G: " << gPreMul << endl;
@@ -959,8 +892,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
     if (postDemosaicParam.highlights >= 2 && !isMonochrome) {
       // For highlight recovery, we need to split up the image into three
       // separate layers.
-      matrix<float> rChannel(height, width), gChannel(height, width),
-          bChannel(height, width);
+      matrix<float> rChannel(height, width), gChannel(height, width), bChannel(height, width);
 
 #pragma omp parallel for
       for (int row = 0; row < height; row++) {
@@ -974,15 +906,13 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // We applied the camMul camera multipliers before applying white balance.
       // Now we need to calculate the channel max and the raw clip levels.
       // Channel max:
-      const float chmax[3] = {rChannel.max(), gChannel.max(), bChannel.max()};
+      const float chmax[3] = { rChannel.max(), gChannel.max(), bChannel.max() };
       // Max clip point:
-      const float clmax[3] = {65535.0f * rUserMul * colorMaxValue[0] / maxValue,
-                              65535.0f * gUserMul * colorMaxValue[1] / maxValue,
-                              65535.0f * bUserMul * colorMaxValue[2] /
-                                  maxValue};
+      const float clmax[3] = { 65535.0f * rUserMul * colorMaxValue[0] / maxValue,
+        65535.0f * gUserMul * colorMaxValue[1] / maxValue,
+        65535.0f * bUserMul * colorMaxValue[2] / maxValue };
 
-      HLRecovery_inpaint(width, height, rChannel, gChannel, bChannel, chmax,
-                         clmax, setProg);
+      HLRecovery_inpaint(width, height, rChannel, gChannel, bChannel, chmax, clmax, setProg);
 #pragma omp parallel for
       for (int row = 0; row < height; row++) {
         for (int col = 0; col < width; col++) {
@@ -995,15 +925,12 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for
       for (int row = 0; row < height; row++) {
         for (int col = 0; col < width; col++) {
-          post_demosaic_image(row, col * 3) =
-              min(post_demosaic_image(row, col * 3), 65535.0f);
-          post_demosaic_image(row, col * 3 + 1) =
-              min(post_demosaic_image(row, col * 3 + 1), 65535.0f);
-          post_demosaic_image(row, col * 3 + 2) =
-              min(post_demosaic_image(row, col * 3 + 2), 65535.0f);
+          post_demosaic_image(row, col * 3) = min(post_demosaic_image(row, col * 3), 65535.0f);
+          post_demosaic_image(row, col * 3 + 1) = min(post_demosaic_image(row, col * 3 + 1), 65535.0f);
+          post_demosaic_image(row, col * 3 + 2) = min(post_demosaic_image(row, col * 3 + 2), 65535.0f);
         }
       }
-    } else { // params = 1, or isMonochrome
+    } else {// params = 1, or isMonochrome
       // do nothing
     }
     cout << "hlrecovery duration: " << timeDiff(hlrecovery_time) << endl;
@@ -1018,8 +945,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for
     for (int row = 0; row < height; row++) {
       for (int col = 0; col < width * 3; col++) {
-        post_demosaic_image(row, col) =
-            post_demosaic_image(row, col) * expCompMult;
+        post_demosaic_image(row, col) = post_demosaic_image(row, col) * expCompMult;
       }
     }
 
@@ -1029,7 +955,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partnrnlmeans:
     [[fallthrough]];
-  case postdemosaic: // Do nonlocal means (luma+chroma) noise reduction
+  case postdemosaic:// Do nonlocal means (luma+chroma) noise reduction
   {
     NlmeansNRParams nrParam;
     AbortStatus abort;
@@ -1040,10 +966,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
     }
 
     if (nrParam.nrEnabled && nrParam.nlStrength > 0) {
-      cout << "Luma NR preprocessing start: " << timeDiff(timeRequested)
-           << endl;
-      matrix<float> denoised(post_demosaic_image.nr(),
-                             post_demosaic_image.nc());
+      cout << "Luma NR preprocessing start: " << timeDiff(timeRequested) << endl;
+      matrix<float> denoised(post_demosaic_image.nr(), post_demosaic_image.nc());
       matrix<float> preconditioned = post_demosaic_image;
 
       if (cache == NoCache) {
@@ -1061,12 +985,12 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for
       for (int row = 0; row < preconditioned.nr(); row++) {
         for (int col = 0; col < preconditioned.nc(); col += 3) {
-          preconditioned(row, col + 0) = sRGB_forward_gamma_unclipped(
-              preconditioned(row, col + 0) / (rMulTemp * 65535.0f));
-          preconditioned(row, col + 1) = sRGB_forward_gamma_unclipped(
-              preconditioned(row, col + 1) / (gMulTemp * 65535.0f));
-          preconditioned(row, col + 2) = sRGB_forward_gamma_unclipped(
-              preconditioned(row, col + 2) / (bMulTemp * 65535.0f));
+          preconditioned(row, col + 0) =
+            sRGB_forward_gamma_unclipped(preconditioned(row, col + 0) / (rMulTemp * 65535.0f));
+          preconditioned(row, col + 1) =
+            sRGB_forward_gamma_unclipped(preconditioned(row, col + 1) / (gMulTemp * 65535.0f));
+          preconditioned(row, col + 2) =
+            sRGB_forward_gamma_unclipped(preconditioned(row, col + 2) / (bMulTemp * 65535.0f));
         }
       }
       float offset = std::max(-preconditioned.min() + 0.001f, 0.001f);
@@ -1074,11 +998,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for
       for (int row = 0; row < preconditioned.nr(); row++) {
         for (int col = 0; col < preconditioned.nc(); col++) {
-          preconditioned(row, col) =
-              (preconditioned(row, col) + offset) / scale;
-          if (isnan(preconditioned(row, col))) {
-            preconditioned(row, col) = 0.0f;
-          }
+          preconditioned(row, col) = (preconditioned(row, col) + offset) / scale;
+          if (isnan(preconditioned(row, col))) { preconditioned(row, col) = 0.0f; }
         }
       }
 
@@ -1089,9 +1010,14 @@ matrix<unsigned short> &ImagePipeline::processImage(
       cout << "Luma NR processing start: " << timeDiff(timeRequested) << endl;
       auto nrTime = std::chrono::steady_clock::now();
 
-      if (kMeansNLMApprox(preconditioned, numClusters, clusterThreshold,
-                          strength, preconditioned.nr(),
-                          preconditioned.nc() / 3, denoised, paramManager)) {
+      if (kMeansNLMApprox(preconditioned,
+            numClusters,
+            clusterThreshold,
+            strength,
+            preconditioned.nr(),
+            preconditioned.nc() / 3,
+            denoised,
+            paramManager)) {
         cout << "imagePipeline aborted at nlmeans noise reduction" << endl;
         return emptyMatrix();
       }
@@ -1102,17 +1028,11 @@ matrix<unsigned short> &ImagePipeline::processImage(
       for (int row = 0; row < denoised.nr(); row++) {
         for (int col = 0; col < denoised.nc(); col += 3) {
           denoised(row, col + 0) =
-              sRGB_inverse_gamma_unclipped(scale * denoised(row, col + 0) -
-                                           offset) *
-              rMulTemp * 65535.0f;
+            sRGB_inverse_gamma_unclipped(scale * denoised(row, col + 0) - offset) * rMulTemp * 65535.0f;
           denoised(row, col + 1) =
-              sRGB_inverse_gamma_unclipped(scale * denoised(row, col + 1) -
-                                           offset) *
-              gMulTemp * 65535.0f;
+            sRGB_inverse_gamma_unclipped(scale * denoised(row, col + 1) - offset) * gMulTemp * 65535.0f;
           denoised(row, col + 2) =
-              sRGB_inverse_gamma_unclipped(scale * denoised(row, col + 2) -
-                                           offset) *
-              bMulTemp * 65535.0f;
+            sRGB_inverse_gamma_unclipped(scale * denoised(row, col + 2) - offset) * bMulTemp * 65535.0f;
         }
       }
 
@@ -1138,7 +1058,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partnrimpulse:
     [[fallthrough]];
-  case nrnlmeans: // do impulse denoise
+  case nrnlmeans:// do impulse denoise
   {
     ImpulseNRParams nrParam;
     AbortStatus abort;
@@ -1149,13 +1069,11 @@ matrix<unsigned short> &ImagePipeline::processImage(
     }
 
     if (nrParam.nrEnabled && nrParam.impulseThresh > 0) {
-      cout << "Impulse NR processing start: " << timeDiff(timeRequested)
-           << endl;
+      cout << "Impulse NR processing start: " << timeDiff(timeRequested) << endl;
       auto nrTime = std::chrono::steady_clock::now();
 
       const bool eraseNRInput = (cache == NoCache);
-      impulse_nr(nlmeans_nr_image, impulse_nr_image, nrParam.impulseThresh, 1.0,
-                 eraseNRInput);
+      impulse_nr(nlmeans_nr_image, impulse_nr_image, nrParam.impulseThresh, 1.0, eraseNRInput);
 
       cout << "Impulse NR duration: " << timeDiff(nrTime) << endl;
     } else if (nrParam.nrEnabled) {
@@ -1175,7 +1093,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partnrchroma:
     [[fallthrough]];
-  case nrimpulse: // do chroma denoise
+  case nrimpulse:// do chroma denoise
   {
     ChromaNRParams nrParam;
     AbortStatus abort;
@@ -1190,8 +1108,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
       auto nrTime = std::chrono::steady_clock::now();
 
       const bool eraseNRInput = (cache == NoCache);
-      RGB_denoise(0, impulse_nr_image, chroma_nr_image, nrParam.chromaStrength,
-                  0.0f, 0.0f, paramManager, eraseNRInput);
+      RGB_denoise(0, impulse_nr_image, chroma_nr_image, nrParam.chromaStrength, 0.0f, 0.0f, paramManager, eraseNRInput);
 
       cout << "Chroma NR duration: " << timeDiff(nrTime) << endl;
     } else if (nrParam.nrEnabled) {
@@ -1211,7 +1128,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partprefilmulation:
     [[fallthrough]];
-  case nrchroma: // Do pre-filmulation work.
+  case nrchroma:// Do pre-filmulation work.
   {
     PrefilmParams prefilmParam;
     cout << "imagePipeline beginning pre-filmulation" << endl;
@@ -1229,9 +1146,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
     matrix<float> prefilm_input_image;
     if (prefilmParam.nrEnabled) {
       oklab_to_raw(chroma_nr_image, prefilm_input_image, camToRGB);
-      if (cache == NoCache) {
-        chroma_nr_image.set_size(0, 0);
-      }
+      if (cache == NoCache) { chroma_nr_image.set_size(0, 0); }
     } else {
       prefilm_input_image = post_demosaic_image;
     }
@@ -1242,8 +1157,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
     cout << "lensfun start" << endl;
     lfDatabase *ldb = lf_db_new();
     QDir dir = QDir::home();
-    QString dirstr =
-        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     dirstr.append("/filmulator/version_2");
     std::string stdstring = dirstr.toStdString();
     ldb->Load(stdstring.c_str());
@@ -1255,11 +1169,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
     // Set up stuff for rotation.
     // We expect rotation to be from -45 to +45
     // But -50 will be the signal from the UI to disable it.
-    float rotationAngle = prefilmParam.rotationAngle * 3.1415926535 /
-                          180; // convert degrees to radians
-    if (prefilmParam.rotationAngle <= -49) {
-      rotationAngle = 0;
-    }
+    float rotationAngle = prefilmParam.rotationAngle * 3.1415926535 / 180;// convert degrees to radians
+    if (prefilmParam.rotationAngle <= -49) { rotationAngle = 0; }
     cout << "cos rotationangle: " << cos(rotationAngle) << endl;
     cout << "sin rotationangle: " << sin(rotationAngle) << endl;
     bool lensfunGeometryCorrectionApplied = false;
@@ -1288,22 +1199,23 @@ matrix<unsigned short> &ImagePipeline::processImage(
         lfModifier *mod = new lfModifier(lens, cropFactor, width, height);
 
         int flags = 0;
-        if (prefilmParam.lensfunCA && !isMonochrome) {
-          flags |= LF_MODIFY_TCA;
-        }
-        if (prefilmParam.lensfunVignetting) {
-          flags |= LF_MODIFY_VIGNETTING;
-        }
+        if (prefilmParam.lensfunCA && !isMonochrome) { flags |= LF_MODIFY_TCA; }
+        if (prefilmParam.lensfunVignetting) { flags |= LF_MODIFY_VIGNETTING; }
         if (prefilmParam.lensfunDistortion) {
           flags |= LF_MODIFY_DISTORTION | LF_MODIFY_SCALE;
           cout << "Auto scale factor: " << mod->GetAutoScale(false) << endl;
         }
 
-        float scale =
-            (flags & LF_MODIFY_SCALE) ? mod->GetAutoScale(false) : 1.0f;
-        mod->Initialize(lens, LF_PF_F32, prefilmParam.focalLength,
-                        prefilmParam.fnumber, 1000.0f, scale, LF_RECTILINEAR,
-                        flags, false);
+        float scale = (flags & LF_MODIFY_SCALE) ? mod->GetAutoScale(false) : 1.0f;
+        mod->Initialize(lens,
+          LF_PF_F32,
+          prefilmParam.focalLength,
+          prefilmParam.fnumber,
+          1000.0f,
+          scale,
+          LF_RECTILINEAR,
+          flags,
+          false);
 
         // Now we actually perform the required processing.
         // First is vignetting.
@@ -1312,8 +1224,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for
           for (int row = 0; row < height; row++) {
             success = mod->ApplyColorModification(
-                prefilm_input_image[row], 0.0f, row, width, 1,
-                LF_CR_3(RED, GREEN, BLUE), width);
+              prefilm_input_image[row], 0.0f, row, width, 1, LF_CR_3(RED, GREEN, BLUE), width);
           }
         }
 
@@ -1331,32 +1242,22 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for reduction(max : maxOvershootDistance)
           for (int row = 0; row < height; row++) {
             float positionList[listWidth];
-            success = mod->ApplySubpixelGeometryDistortion(0.0f, row, width, 1,
-                                                           positionList);
+            success = mod->ApplySubpixelGeometryDistortion(0.0f, row, width, 1, positionList);
             if (success) {
               for (int col = 0; col < width; col++) {
-                int listIndex = col * 2 * 3; // list index
+                int listIndex = col * 2 * 3;// list index
                 for (int c = 0; c < 3; c++) {
                   float coordX = positionList[listIndex + 2 * c] - semiwidth;
-                  float coordY =
-                      positionList[listIndex + 2 * c + 1] - semiheight;
-                  float rotatedX =
-                      coordX * cos(rotationAngle) - coordY * sin(rotationAngle);
-                  float rotatedY =
-                      coordX * sin(rotationAngle) + coordY * cos(rotationAngle);
+                  float coordY = positionList[listIndex + 2 * c + 1] - semiheight;
+                  float rotatedX = coordX * cos(rotationAngle) - coordY * sin(rotationAngle);
+                  float rotatedY = coordX * sin(rotationAngle) + coordY * cos(rotationAngle);
 
                   float overshoot = 1.0f;
 
-                  if (abs(rotatedX) > semiwidth) {
-                    overshoot = max(abs(rotatedX) / semiwidth, overshoot);
-                  }
-                  if (abs(rotatedY) > semiheight) {
-                    overshoot = max(abs(rotatedY) / semiheight, overshoot);
-                  }
+                  if (abs(rotatedX) > semiwidth) { overshoot = max(abs(rotatedX) / semiwidth, overshoot); }
+                  if (abs(rotatedY) > semiheight) { overshoot = max(abs(rotatedY) / semiheight, overshoot); }
 
-                  if (overshoot > maxOvershootDistance) {
-                    maxOvershootDistance = overshoot;
-                  }
+                  if (overshoot > maxOvershootDistance) { maxOvershootDistance = overshoot; }
                 }
               }
             }
@@ -1366,61 +1267,46 @@ matrix<unsigned short> &ImagePipeline::processImage(
 #pragma omp parallel for
           for (int row = 0; row < height; row++) {
             float positionList[listWidth];
-            success = mod->ApplySubpixelGeometryDistortion(0.0f, row, width, 1,
-                                                           positionList);
+            success = mod->ApplySubpixelGeometryDistortion(0.0f, row, width, 1, positionList);
             if (success) {
               for (int col = 0; col < width; col++) {
-                int listIndex = col * 2 * 3; // list index
+                int listIndex = col * 2 * 3;// list index
                 for (int c = 0; c < 3; c++) {
                   float coordX = positionList[listIndex + 2 * c] - semiwidth;
-                  float coordY =
-                      positionList[listIndex + 2 * c + 1] - semiheight;
-                  float rotatedX = (coordX * cos(rotationAngle) -
-                                    coordY * sin(rotationAngle)) /
-                                       maxOvershootDistance +
-                                   semiwidth;
-                  float rotatedY = (coordX * sin(rotationAngle) +
-                                    coordY * cos(rotationAngle)) /
-                                       maxOvershootDistance +
-                                   semiheight;
-                  int sX = max(0, min(width - 1, int(floor(rotatedX)))) * 3 +
-                           c; // startX
-                  int eX = max(0, min(width - 1, int(ceil(rotatedX)))) * 3 +
-                           c; // endX
-                  int sY =
-                      max(0, min(height - 1, int(floor(rotatedY)))); // startY
-                  int eY = max(0, min(height - 1, int(ceil(rotatedY)))); // endY
+                  float coordY = positionList[listIndex + 2 * c + 1] - semiheight;
+                  float rotatedX =
+                    (coordX * cos(rotationAngle) - coordY * sin(rotationAngle)) / maxOvershootDistance + semiwidth;
+                  float rotatedY =
+                    (coordX * sin(rotationAngle) + coordY * cos(rotationAngle)) / maxOvershootDistance + semiheight;
+                  int sX = max(0, min(width - 1, int(floor(rotatedX)))) * 3 + c;// startX
+                  int eX = max(0, min(width - 1, int(ceil(rotatedX)))) * 3 + c;// endX
+                  int sY = max(0, min(height - 1, int(floor(rotatedY))));// startY
+                  int eY = max(0, min(height - 1, int(ceil(rotatedY))));// endY
                   float notUsed;
-                  float eWX = modf(rotatedX, &notUsed); // end weight X
-                  float eWY = modf(rotatedY, &notUsed); // end weight Y;
-                  float sWX = 1 - eWX;                  // start weight X
-                  float sWY = 1 - eWY;                  // start weight Y;
+                  float eWX = modf(rotatedX, &notUsed);// end weight X
+                  float eWY = modf(rotatedY, &notUsed);// end weight Y;
+                  float sWX = 1 - eWX;// start weight X
+                  float sWY = 1 - eWY;// start weight Y;
                   pre_film_image(row, col * 3 + c) =
-                      prefilm_input_image(sY, sX) * sWY * sWX +
-                      prefilm_input_image(eY, sX) * eWY * sWX +
-                      prefilm_input_image(sY, eX) * sWY * eWX +
-                      prefilm_input_image(eY, eX) * eWY * eWX;
+                    prefilm_input_image(sY, sX) * sWY * sWX + prefilm_input_image(eY, sX) * eWY * sWX
+                    + prefilm_input_image(sY, eX) * sWY * eWX + prefilm_input_image(eY, eX) * eWY * eWX;
                 }
               }
             }
           }
-        } // else {
-          // demosaiced image isn't populated
-          // if geometry wasn't changed, then we'll move stuff over later.
+        }// else {
+         // demosaiced image isn't populated
+         // if geometry wasn't changed, then we'll move stuff over later.
         //}
 
-        if (mod != NULL) {
-          delete mod;
-        }
+        if (mod != NULL) { delete mod; }
       }
       lf_free(lensList);
     }
     lf_free(cameraList);
 
     // cleanup lensfun
-    if (ldb != NULL) {
-      lf_db_destroy(ldb);
-    }
+    if (ldb != NULL) { lf_db_destroy(ldb); }
 
     cout << "after lensfun " << endl;
 
@@ -1436,23 +1322,15 @@ matrix<unsigned short> &ImagePipeline::processImage(
           for (int col = 0; col < width; col += width - 1) {
             float coordX = col - semiwidth;
             float coordY = row - semiheight;
-            float rotatedX =
-                coordX * cos(rotationAngle) - coordY * sin(rotationAngle);
-            float rotatedY =
-                coordX * sin(rotationAngle) + coordY * cos(rotationAngle);
+            float rotatedX = coordX * cos(rotationAngle) - coordY * sin(rotationAngle);
+            float rotatedY = coordX * sin(rotationAngle) + coordY * cos(rotationAngle);
 
             float overshoot = 1.0f;
 
-            if (abs(rotatedX) > semiwidth) {
-              overshoot = max(abs(rotatedX) / semiwidth, overshoot);
-            }
-            if (abs(rotatedY) > semiheight) {
-              overshoot = max(abs(rotatedY) / semiheight, overshoot);
-            }
+            if (abs(rotatedX) > semiwidth) { overshoot = max(abs(rotatedX) / semiwidth, overshoot); }
+            if (abs(rotatedY) > semiheight) { overshoot = max(abs(rotatedY) / semiheight, overshoot); }
 
-            if (overshoot > maxOvershootDistance) {
-              maxOvershootDistance = overshoot;
-            }
+            if (overshoot > maxOvershootDistance) { maxOvershootDistance = overshoot; }
           }
         }
 
@@ -1464,28 +1342,22 @@ matrix<unsigned short> &ImagePipeline::processImage(
             float coordX = col - semiwidth;
             float coordY = row - semiheight;
             float rotatedX =
-                (coordX * cos(rotationAngle) - coordY * sin(rotationAngle)) /
-                    maxOvershootDistance +
-                semiwidth;
+              (coordX * cos(rotationAngle) - coordY * sin(rotationAngle)) / maxOvershootDistance + semiwidth;
             float rotatedY =
-                (coordX * sin(rotationAngle) + coordY * cos(rotationAngle)) /
-                    maxOvershootDistance +
-                semiheight;
-            int sX = max(0, min(width - 1, int(floor(rotatedX)))) * 3; // startX
-            int eX = max(0, min(width - 1, int(ceil(rotatedX)))) * 3;  // endX
-            int sY = max(0, min(height - 1, int(floor(rotatedY))));    // startY
-            int eY = max(0, min(height - 1, int(ceil(rotatedY))));     // endY
+              (coordX * sin(rotationAngle) + coordY * cos(rotationAngle)) / maxOvershootDistance + semiheight;
+            int sX = max(0, min(width - 1, int(floor(rotatedX)))) * 3;// startX
+            int eX = max(0, min(width - 1, int(ceil(rotatedX)))) * 3;// endX
+            int sY = max(0, min(height - 1, int(floor(rotatedY))));// startY
+            int eY = max(0, min(height - 1, int(ceil(rotatedY))));// endY
             float notUsed;
-            float eWX = modf(rotatedX, &notUsed); // end weight X
-            float eWY = modf(rotatedY, &notUsed); // end weight Y;
-            float sWX = 1 - eWX;                  // start weight X
-            float sWY = 1 - eWY;                  // start weight Y;
+            float eWX = modf(rotatedX, &notUsed);// end weight X
+            float eWY = modf(rotatedY, &notUsed);// end weight Y;
+            float sWX = 1 - eWX;// start weight X
+            float sWY = 1 - eWY;// start weight Y;
             for (int c = 0; c < 3; c++) {
               pre_film_image(row, col * 3 + c) =
-                  prefilm_input_image(sY, sX + c) * sWY * sWX +
-                  prefilm_input_image(eY, sX + c) * eWY * sWX +
-                  prefilm_input_image(sY, eX + c) * sWY * eWX +
-                  prefilm_input_image(eY, eX + c) * eWY * eWX;
+                prefilm_input_image(sY, sX + c) * sWY * sWX + prefilm_input_image(eY, sX + c) * eWY * sWX
+                + prefilm_input_image(sY, eX + c) * sWY * eWX + prefilm_input_image(eY, eX + c) * eWY * eWX;
             }
           }
         }
@@ -1500,21 +1372,23 @@ matrix<unsigned short> &ImagePipeline::processImage(
     if (quality == LowQuality) {
       cout << "thumbnail scale start:" << timeDiff(timeRequested) << endl;
       auto downscale_time = std::chrono::steady_clock::now();
-      downscale_and_crop(pre_film_image, pre_film_image_small, 0, 0,
-                         (pre_film_image.nc() / 3) - 1, pre_film_image.nr() - 1,
-                         600, 600);
+      downscale_and_crop(
+        pre_film_image, pre_film_image_small, 0, 0, (pre_film_image.nc() / 3) - 1, pre_film_image.nr() - 1, 600, 600);
       cout << "thumbnail scale end: " << timeDiff(downscale_time) << endl;
     } else if (quality == PreviewQuality) {
       cout << "preview scale start:" << timeDiff(timeRequested) << endl;
       auto downscale_time = std::chrono::steady_clock::now();
       // Make previews have same even/oddness as the source image
-      int paritywidth =
-          resolution + resolution % 2 + (pre_film_image.nc() / 3) % 2;
-      int parityheight =
-          resolution + resolution % 2 + (pre_film_image.nr()) % 2;
-      downscale_and_crop(pre_film_image, pre_film_image_small, 0, 0,
-                         (pre_film_image.nc() / 3) - 1, pre_film_image.nr() - 1,
-                         paritywidth, parityheight);
+      int paritywidth = resolution + resolution % 2 + (pre_film_image.nc() / 3) % 2;
+      int parityheight = resolution + resolution % 2 + (pre_film_image.nr()) % 2;
+      downscale_and_crop(pre_film_image,
+        pre_film_image_small,
+        0,
+        0,
+        (pre_film_image.nc() / 3) - 1,
+        pre_film_image.nr() - 1,
+        paritywidth,
+        parityheight);
       cout << "preview scale end: " << timeDiff(downscale_time) << endl;
     }
 
@@ -1526,9 +1400,8 @@ matrix<unsigned short> &ImagePipeline::processImage(
       cropHoffset = cropParam.cropHoffset;
       cropVoffset = cropParam.cropVoffset;
       rotation = cropParam.rotation;
-      histoInterface->updateHistPreFilm(pre_film_image, 65535, rotation,
-                                        cropHeight, cropAspect, cropHoffset,
-                                        cropVoffset);
+      histoInterface->updateHistPreFilm(
+        pre_film_image, 65535, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
     }
 
     cout << "ImagePipeline::processImage: Prefilmulation complete." << endl;
@@ -1539,7 +1412,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partfilmulation:
     [[fallthrough]];
-  case prefilmulation: // Do filmulation
+  case prefilmulation:// Do filmulation
   {
 
     matrix<float> film_input_image;
@@ -1571,9 +1444,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
         }
       }
       for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 4; j++) {
-          camToRGB4[i][j] = stealVictim->camToRGB4[i][j];
-        }
+        for (int j = 0; j < 4; j++) { camToRGB4[i][j] = stealVictim->camToRGB4[i][j]; }
       }
       if (!isMonochrome) {
         raw_to_sRGB(stealVictim->pre_film_image, film_input_image, camToRGB);
@@ -1625,11 +1496,9 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // grab crop and rotation parameters
       CropParams cropParam = paramManager->claimCropParams();
       bool updatePreFilm = false;
-      if (cropHeight != cropParam.cropHeight ||
-          cropAspect != cropParam.cropAspect ||
-          cropHoffset != cropParam.cropHoffset ||
-          cropVoffset != cropParam.cropVoffset ||
-          rotation != cropParam.rotation) {
+      if (cropHeight != cropParam.cropHeight || cropAspect != cropParam.cropAspect
+          || cropHoffset != cropParam.cropHoffset || cropVoffset != cropParam.cropVoffset
+          || rotation != cropParam.rotation) {
         updatePreFilm = true;
       }
       cropHeight = cropParam.cropHeight;
@@ -1639,18 +1508,20 @@ matrix<unsigned short> &ImagePipeline::processImage(
       rotation = cropParam.rotation;
       if (updatePreFilm) {
         if (!stealData) {
-          histoInterface->updateHistPreFilm(pre_film_image, 65535, rotation,
-                                            cropHeight, cropAspect, cropHoffset,
-                                            cropVoffset);
+          histoInterface->updateHistPreFilm(
+            pre_film_image, 65535, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
         } else {
-          histoInterface->updateHistPreFilm(stealVictim->pre_film_image, 65535,
-                                            rotation, cropHeight, cropAspect,
-                                            cropHoffset, cropVoffset);
+          histoInterface->updateHistPreFilm(
+            stealVictim->pre_film_image, 65535, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
         }
       }
-      histoInterface->updateHistPostFilm(
-          filmulated_image, .0025f, // TODO connect this magic number to the qml
-          rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
+      histoInterface->updateHistPostFilm(filmulated_image,
+        .0025f,// TODO connect this magic number to the qml
+        rotation,
+        cropHeight,
+        cropAspect,
+        cropHoffset,
+        cropVoffset);
     }
 
     cout << "ImagePipeline::processImage: Filmulation complete." << endl;
@@ -1661,7 +1532,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partblackwhite:
     [[fallthrough]];
-  case filmulation: // Do whitepoint_blackpoint
+  case filmulation:// Do whitepoint_blackpoint
   {
     cout << "imagePipeline beginning whitepoint blackpoint" << endl;
     cout << "imagePipeline image width:  " << filmulated_image.nc() / 3 << endl;
@@ -1669,8 +1540,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
 
     BlackWhiteParams blackWhiteParam;
     AbortStatus abort;
-    std::tie(valid, abort, blackWhiteParam) =
-        paramManager->claimBlackWhiteParams();
+    std::tie(valid, abort, blackWhiteParam) = paramManager->claimBlackWhiteParams();
     if (abort == AbortStatus::restart) {
       cout << "imagePipeline aborted at whitepoint blackpoint" << endl;
       return emptyMatrix();
@@ -1680,11 +1550,9 @@ matrix<unsigned short> &ImagePipeline::processImage(
     if (WithHisto == histo) {
       // grab crop and rotation parameters
       bool updatePrePostFilm = false;
-      if (cropHeight != blackWhiteParam.cropHeight ||
-          cropAspect != blackWhiteParam.cropAspect ||
-          cropHoffset != blackWhiteParam.cropHoffset ||
-          cropVoffset != blackWhiteParam.cropVoffset ||
-          rotation != blackWhiteParam.rotation) {
+      if (cropHeight != blackWhiteParam.cropHeight || cropAspect != blackWhiteParam.cropAspect
+          || cropHoffset != blackWhiteParam.cropHoffset || cropVoffset != blackWhiteParam.cropVoffset
+          || rotation != blackWhiteParam.rotation) {
         updatePrePostFilm = true;
       }
       cropHeight = blackWhiteParam.cropHeight;
@@ -1694,26 +1562,27 @@ matrix<unsigned short> &ImagePipeline::processImage(
       rotation = blackWhiteParam.rotation;
       if (updatePrePostFilm) {
         if (!stealData) {
-          histoInterface->updateHistPreFilm(pre_film_image, 65535, rotation,
-                                            cropHeight, cropAspect, cropHoffset,
-                                            cropVoffset);
+          histoInterface->updateHistPreFilm(
+            pre_film_image, 65535, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
         } else {
-          histoInterface->updateHistPreFilm(stealVictim->pre_film_image, 65535,
-                                            rotation, cropHeight, cropAspect,
-                                            cropHoffset, cropVoffset);
+          histoInterface->updateHistPreFilm(
+            stealVictim->pre_film_image, 65535, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
         }
-        histoInterface->updateHistPostFilm(
-            filmulated_image,
-            .0025f, // TODO connect this magic number to the qml
-            rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
+        histoInterface->updateHistPostFilm(filmulated_image,
+          .0025f,// TODO connect this magic number to the qml
+          rotation,
+          cropHeight,
+          cropAspect,
+          cropHoffset,
+          cropVoffset);
       }
     }
     matrix<float> rotated_image;
 
     rotate_image(filmulated_image, rotated_image, blackWhiteParam.rotation);
 
-    if (NoCache == cache) // clean up ram that's not needed anymore in order to
-                          // reduce peak consumption
+    if (NoCache == cache)// clean up ram that's not needed anymore in order to
+                         // reduce peak consumption
     {
       filmulated_image.set_size(0, 0);
       cacheEmpty = true;
@@ -1724,39 +1593,28 @@ matrix<unsigned short> &ImagePipeline::processImage(
     const int imWidth = rotated_image.nc() / 3;
     const int imHeight = rotated_image.nr();
 
-    const float tempHeight =
-        imHeight * max(min(1.0f, blackWhiteParam.cropHeight),
-                       0.0f); // restrict domain to 0:1
+    const float tempHeight = imHeight * max(min(1.0f, blackWhiteParam.cropHeight),
+                               0.0f);// restrict domain to 0:1
     const float tempAspect = max(min(10000.0f, blackWhiteParam.cropAspect),
-                                 0.0001f); // restrict aspect ratio
+      0.0001f);// restrict aspect ratio
     int width = int(round(min(tempHeight * tempAspect, float(imWidth))));
     int height = int(round(min(tempHeight, imWidth / tempAspect)));
     const float maxHoffset = (1.0f - (float(width) / float(imWidth))) / 2.0f;
     const float maxVoffset = (1.0f - (float(height) / float(imHeight))) / 2.0f;
     const float oddH =
-        (!(int(round((imWidth - width) / 2.0)) * 2 == (imWidth - width))) *
-        0.5f; // it's 0.5 if it's odd, 0 otherwise
+      (!(int(round((imWidth - width) / 2.0)) * 2 == (imWidth - width))) * 0.5f;// it's 0.5 if it's odd, 0 otherwise
     const float oddV =
-        (!(int(round((imHeight - height) / 2.0)) * 2 == (imHeight - height))) *
-        0.5f; // it's 0.5 if it's odd, 0 otherwise
+      (!(int(round((imHeight - height) / 2.0)) * 2 == (imHeight - height))) * 0.5f;// it's 0.5 if it's odd, 0 otherwise
     const float hoffset =
-        (round(max(min(blackWhiteParam.cropHoffset, maxHoffset), -maxHoffset) *
-                   imWidth +
-               oddH) -
-         oddH) /
-        imWidth;
+      (round(max(min(blackWhiteParam.cropHoffset, maxHoffset), -maxHoffset) * imWidth + oddH) - oddH) / imWidth;
     const float voffset =
-        (round(max(min(blackWhiteParam.cropVoffset, maxVoffset), -maxVoffset) *
-                   imHeight +
-               oddV) -
-         oddV) /
-        imHeight;
+      (round(max(min(blackWhiteParam.cropVoffset, maxVoffset), -maxVoffset) * imHeight + oddV) - oddV) / imHeight;
     int startX = int(round(0.5f * (imWidth - width) + hoffset * imWidth));
     int startY = int(round(0.5f * (imHeight - height) + voffset * imHeight));
     int endX = startX + width - 1;
     int endY = startY + height - 1;
 
-    if (blackWhiteParam.cropHeight <= 0) // it shall be turned off
+    if (blackWhiteParam.cropHeight <= 0)// it shall be turned off
     {
       startX = 0;
       startY = 0;
@@ -1771,16 +1629,16 @@ matrix<unsigned short> &ImagePipeline::processImage(
     std::chrono::steady_clock::time_point crop_time;
     crop_time = std::chrono::steady_clock::now();
 
-    downscale_and_crop(rotated_image, cropped_image, startX, startY, endX, endY,
-                       width, height);
+    downscale_and_crop(rotated_image, cropped_image, startX, startY, endX, endY, width, height);
 
     cout << "crop end: " << timeDiff(crop_time) << endl;
 
-    rotated_image.set_size(0, 0); // clean up ram that's not needed anymore
+    rotated_image.set_size(0, 0);// clean up ram that's not needed anymore
 
-    whitepoint_blackpoint(cropped_image, // filmulated_image,
-                          contrast_image, blackWhiteParam.whitepoint,
-                          blackWhiteParam.blackpoint);
+    whitepoint_blackpoint(cropped_image,// filmulated_image,
+      contrast_image,
+      blackWhiteParam.whitepoint,
+      blackWhiteParam.blackpoint);
 
     valid = paramManager->markBlackWhiteComplete();
     updateProgress(valid, 0.0f);
@@ -1788,7 +1646,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partcolorcurve:
     [[fallthrough]];
-  case blackwhite: // Do color_curve
+  case blackwhite:// Do color_curve
   {
     cout << "imagePipeline beginning dummy color curve" << endl;
     // It's not gonna abort because we have no color curves yet..
@@ -1811,23 +1669,24 @@ matrix<unsigned short> &ImagePipeline::processImage(
   }
   case partfilmlikecurve:
     [[fallthrough]];
-  case colorcurve: // Do film-like curve
+  case colorcurve:// Do film-like curve
   {
     cout << "imagePipeline beginning film like curve" << endl;
 
     FilmlikeCurvesParams curvesParam;
     AbortStatus abort;
-    std::tie(valid, abort, curvesParam) =
-        paramManager->claimFilmlikeCurvesParams();
+    std::tie(valid, abort, curvesParam) = paramManager->claimFilmlikeCurvesParams();
     if (abort == AbortStatus::restart) {
       cout << "imagePipeline aborted at color curve" << endl;
       return emptyMatrix();
     }
 
     filmLikeLUT.fill([=](unsigned short in) -> unsigned short {
-      float shResult = shadows_highlights(
-          float(in) / 65535.0f, curvesParam.shadowsX, curvesParam.shadowsY,
-          curvesParam.highlightsX, curvesParam.highlightsY);
+      float shResult = shadows_highlights(float(in) / 65535.0f,
+        curvesParam.shadowsX,
+        curvesParam.shadowsY,
+        curvesParam.highlightsX,
+        curvesParam.highlightsY);
       return ushort(65535 * default_tonecurve(shResult));
     });
     matrix<unsigned short> &film_curve_image = vibrance_saturation_image;
@@ -1842,18 +1701,16 @@ matrix<unsigned short> &ImagePipeline::processImage(
     }
 
     if (!curvesParam.monochrome) {
-      vibrance_saturation(film_curve_image, vibrance_saturation_image,
-                          curvesParam.vibrance, curvesParam.saturation);
+      vibrance_saturation(film_curve_image, vibrance_saturation_image, curvesParam.vibrance, curvesParam.saturation);
     } else {
-      monochrome_convert(film_curve_image, vibrance_saturation_image,
-                         curvesParam.bwRmult, curvesParam.bwGmult,
-                         curvesParam.bwBmult);
+      monochrome_convert(
+        film_curve_image, vibrance_saturation_image, curvesParam.bwRmult, curvesParam.bwGmult, curvesParam.bwBmult);
     }
 
     updateProgress(valid, 0.0f);
     [[fallthrough]];
   }
-  default: // output
+  default:// output
   {
     cout << "imagePipeline beginning output" << endl;
     if (NoCache == cache) {
@@ -1862,16 +1719,14 @@ matrix<unsigned short> &ImagePipeline::processImage(
     } else {
       cacheEmpty = false;
     }
-    if (WithHisto == histo) {
-      histoInterface->updateHistFinal(vibrance_saturation_image);
-    }
+    if (WithHisto == histo) { histoInterface->updateHistFinal(vibrance_saturation_image); }
     valid = paramManager->markFilmLikeCurvesComplete();
     updateProgress(valid, 0.0f);
 
     exifOutput = exifData;
     return vibrance_saturation_image;
   }
-  } // End task switch
+  }// End task switch
 
   cout << "imagePipeline aborted at end" << endl;
   return emptyMatrix();
@@ -1892,16 +1747,15 @@ matrix<unsigned short> &ImagePipeline::processImage(
 //     }
 // }
 
-void ImagePipeline::updateProgress(Valid valid, float stepProgress) {
+void ImagePipeline::updateProgress(Valid valid, float stepProgress)
+{
   double totalTime = numeric_limits<double>::epsilon();
   double totalCompletedTime = 0;
   for (ulong i = 0; i < completionTimes.size(); i++) {
     totalTime += completionTimes[i];
     float fractionCompleted = 0;
-    if (i <= valid)
-      fractionCompleted = 1;
-    if (i == valid + 1)
-      fractionCompleted = stepProgress;
+    if (i <= valid) fractionCompleted = 1;
+    if (i == valid + 1) fractionCompleted = stepProgress;
     // if greater -> 0
     totalCompletedTime += completionTimes[i] * double(fractionCompleted);
   }
@@ -1909,15 +1763,15 @@ void ImagePipeline::updateProgress(Valid valid, float stepProgress) {
 }
 
 // Do not call this on something that's already been used!
-void ImagePipeline::setCache(Cache cacheIn) {
-  if (false == hasStartedProcessing) {
-    cache = cacheIn;
-  }
+void ImagePipeline::setCache(Cache cacheIn)
+{
+  if (false == hasStartedProcessing) { cache = cacheIn; }
 }
 
 // This swaps the data between pipelines.
 // The intended use is for preloading.
-void ImagePipeline::swapPipeline(ImagePipeline *swapTarget) {
+void ImagePipeline::swapPipeline(ImagePipeline *swapTarget)
+{
   std::swap(valid, swapTarget->valid);
   std::swap(progress, swapTarget->progress);
 
@@ -1977,25 +1831,21 @@ void ImagePipeline::swapPipeline(ImagePipeline *swapTarget) {
 }
 
 // This is used to update the histograms once data is copied on an image change
-void ImagePipeline::rerunHistograms() {
+void ImagePipeline::rerunHistograms()
+{
   if (WithHisto == histo) {
     if (valid >= Valid::load) {
-      histoInterface->updateHistRaw(raw_image, colorMaxValue, cfa, xtrans,
-                                    maxXtrans, isSraw, isMonochrome);
+      histoInterface->updateHistRaw(raw_image, colorMaxValue, cfa, xtrans, maxXtrans, isSraw, isMonochrome);
     }
     if (valid >= Valid::prefilmulation) {
-      histoInterface->updateHistPreFilm(pre_film_image, 65535, rotation,
-                                        cropHeight, cropAspect, cropHoffset,
-                                        cropVoffset);
+      histoInterface->updateHistPreFilm(
+        pre_film_image, 65535, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
     }
     if (valid >= Valid::filmulation) {
-      histoInterface->updateHistPostFilm(filmulated_image, .0025f, rotation,
-                                         cropHeight, cropAspect, cropHoffset,
-                                         cropVoffset);
+      histoInterface->updateHistPostFilm(
+        filmulated_image, .0025f, rotation, cropHeight, cropAspect, cropHoffset, cropVoffset);
     }
-    if (valid >= Valid::filmlikecurve) {
-      histoInterface->updateHistFinal(vibrance_saturation_image);
-    }
+    if (valid >= Valid::filmlikecurve) { histoInterface->updateHistFinal(vibrance_saturation_image); }
   }
 }
 
@@ -2003,11 +1853,17 @@ void ImagePipeline::rerunHistograms() {
 //  square.
 // The square is positioned relative to the image dimensions of the cropped
 // image.
-void ImagePipeline::sampleWB(const float xPos, const float yPos,
-                             const int rotation, const float cropHeight,
-                             const float cropAspect, const float cropVoffset,
-                             const float cropHoffset, float &red, float &green,
-                             float &blue) {
+void ImagePipeline::sampleWB(const float xPos,
+  const float yPos,
+  const int rotation,
+  const float cropHeight,
+  const float cropAspect,
+  const float cropVoffset,
+  const float cropHoffset,
+  float &red,
+  float &green,
+  float &blue)
+{
   if (xPos < 0 || xPos > 1 || yPos < 0 || yPos > 1) {
     red = -1;
     green = -1;
@@ -2028,34 +1884,24 @@ void ImagePipeline::sampleWB(const float xPos, const float yPos,
   const int imWidth = rotated_image.nc() / 3;
   const int imHeight = rotated_image.nr();
 
-  const float tempHeight =
-      imHeight * max(min(1.0f, cropHeight), 0.0f); // restrict domain to 0:1
-  const float tempAspect =
-      max(min(10000.0f, cropAspect), 0.0001f); // restrict aspect ratio
+  const float tempHeight = imHeight * max(min(1.0f, cropHeight), 0.0f);// restrict domain to 0:1
+  const float tempAspect = max(min(10000.0f, cropAspect), 0.0001f);// restrict aspect ratio
   int width = int(round(min(tempHeight * tempAspect, float(imWidth))));
   int height = int(round(min(tempHeight, imWidth / tempAspect)));
   const float maxHoffset = (1.0f - (float(width) / float(imWidth))) / 2.0f;
   const float maxVoffset = (1.0f - (float(height) / float(imHeight))) / 2.0f;
   const float oddH =
-      (!(int(round((imWidth - width) / 2.0)) * 2 == (imWidth - width))) *
-      0.5f; // it's 0.5 if it's odd, 0 otherwise
+    (!(int(round((imWidth - width) / 2.0)) * 2 == (imWidth - width))) * 0.5f;// it's 0.5 if it's odd, 0 otherwise
   const float oddV =
-      (!(int(round((imHeight - height) / 2.0)) * 2 == (imHeight - height))) *
-      0.5f; // it's 0.5 if it's odd, 0 otherwise
-  const float hoffset =
-      (round(max(min(cropHoffset, maxHoffset), -maxHoffset) * imWidth + oddH) -
-       oddH) /
-      imWidth;
-  const float voffset =
-      (round(max(min(cropVoffset, maxVoffset), -maxVoffset) * imHeight + oddV) -
-       oddV) /
-      imHeight;
+    (!(int(round((imHeight - height) / 2.0)) * 2 == (imHeight - height))) * 0.5f;// it's 0.5 if it's odd, 0 otherwise
+  const float hoffset = (round(max(min(cropHoffset, maxHoffset), -maxHoffset) * imWidth + oddH) - oddH) / imWidth;
+  const float voffset = (round(max(min(cropVoffset, maxVoffset), -maxVoffset) * imHeight + oddV) - oddV) / imHeight;
   int startX = int(round(0.5f * (imWidth - width) + hoffset * imWidth));
   int startY = int(round(0.5f * (imHeight - height) + voffset * imHeight));
   int endX = startX + width - 1;
   int endY = startY + height - 1;
 
-  if (cropHeight <= 0) // it shall be turned off
+  if (cropHeight <= 0)// it shall be turned off
   {
     startX = 0;
     startY = 0;
@@ -2067,8 +1913,7 @@ void ImagePipeline::sampleWB(const float xPos, const float yPos,
 
   matrix<float> cropped_image;
 
-  downscale_and_crop(rotated_image, cropped_image, startX, startY, endX, endY,
-                     width, height);
+  downscale_and_crop(rotated_image, cropped_image, startX, startY, endX, endY, width, height);
 
   rotated_image.set_size(0, 0);
 
@@ -2092,7 +1937,7 @@ void ImagePipeline::sampleWB(const float xPos, const float yPos,
       count++;
     }
   }
-  if (count < 1) // some sort of error occurs
+  if (count < 1)// some sort of error occurs
   {
     red = -1;
     green = -1;
@@ -2109,39 +1954,20 @@ void ImagePipeline::sampleWB(const float xPos, const float yPos,
   cout << "custom WB sampled b: " << blue << endl;
 }
 
-void ImagePipeline::clearInvalid(Valid validIn) {
-  if (validIn < load) {
-    raw_image.set_size(0, 0);
-  }
-  if (validIn < demosaic) {
-    demosaiced_image.set_size(0, 0);
-  }
-  if (validIn < postdemosaic) {
-    post_demosaic_image.set_size(0, 0);
-  }
-  if (validIn < nrnlmeans) {
-    nlmeans_nr_image.set_size(0, 0);
-  }
-  if (validIn < nrimpulse) {
-    impulse_nr_image.set_size(0, 0);
-  }
-  if (validIn < nrchroma) {
-    chroma_nr_image.set_size(0, 0);
-  }
+void ImagePipeline::clearInvalid(Valid validIn)
+{
+  if (validIn < load) { raw_image.set_size(0, 0); }
+  if (validIn < demosaic) { demosaiced_image.set_size(0, 0); }
+  if (validIn < postdemosaic) { post_demosaic_image.set_size(0, 0); }
+  if (validIn < nrnlmeans) { nlmeans_nr_image.set_size(0, 0); }
+  if (validIn < nrimpulse) { impulse_nr_image.set_size(0, 0); }
+  if (validIn < nrchroma) { chroma_nr_image.set_size(0, 0); }
   if (validIn < prefilmulation) {
     pre_film_image.set_size(0, 0);
     pre_film_image_small.set_size(0, 0);
   }
-  if (validIn < filmulation) {
-    filmulated_image.set_size(0, 0);
-  }
-  if (validIn < blackwhite) {
-    contrast_image.set_size(0, 0);
-  }
-  if (validIn < colorcurve) {
-    color_curve_image.set_size(0, 0);
-  }
-  if (validIn < filmlikecurve) {
-    vibrance_saturation_image.set_size(0, 0);
-  }
+  if (validIn < filmulation) { filmulated_image.set_size(0, 0); }
+  if (validIn < blackwhite) { contrast_image.set_size(0, 0); }
+  if (validIn < colorcurve) { color_curve_image.set_size(0, 0); }
+  if (validIn < filmlikecurve) { vibrance_saturation_image.set_size(0, 0); }
 }
