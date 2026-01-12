@@ -108,6 +108,15 @@ jobs:
         curl -sSL -o "$RUNNER_TEMP/nuget.exe" https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
         echo "NUGET_EXE=$RUNNER_TEMP/nuget.exe" >> "$GITHUB_ENV"
 
+    - name: Provide working 'nuget' on PATH (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cp "$NUGET_EXE" "$RUNNER_TEMP/nuget"
+        chmod +x "$RUNNER_TEMP/nuget"
+        echo "PATH=$RUNNER_TEMP:$PATH" >> "$GITHUB_ENV"
+
     - name: Find NuGet (Linux)
       if: runner.os == 'Linux'
       shell: bash
