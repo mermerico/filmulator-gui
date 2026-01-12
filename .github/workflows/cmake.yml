@@ -167,9 +167,9 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        vcpkg env --triplet ${{ matrix.triplet }} -- echo "VCPKG_DEFAULT_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET"
-        vcpkg env --triplet ${{ matrix.triplet }} -- echo "VCPKG_TARGET_TRIPLET=$env:VCPKG_TARGET_TRIPLET"
-        vcpkg env --triplet ${{ matrix.triplet }} -- vcpkg list
+        echo "VCPKG_DEFAULT_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET"
+        echo "VCPKG_TARGET_TRIPLET=$env:VCPKG_TARGET_TRIPLET"
+        vcpkg list --triplet ${{ matrix.triplet }}
 
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
