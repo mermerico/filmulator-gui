@@ -174,7 +174,7 @@ jobs:
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
       shell: msys2 {0}
-      run: cmake --preset ${{ matrix.preset }}
+      run: cmake --preset ${{ matrix.preset }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
     - name: Configure CMake (Non-Windows)
       if: runner.os != 'Windows'
