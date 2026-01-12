@@ -80,6 +80,10 @@ jobs:
       if: runner.os == 'macOS'
       run: brew install libomp mono autoconf autoconf-archive automake libtool
 
+    - name: Install pkg-config (Windows)
+      if: runner.os == 'Windows'
+      run: choco install pkgconfiglite
+
     - name: Setup vcpkg (lukka/run-vcpkg)
       uses: lukka/run-vcpkg@v11
       with:
