@@ -100,52 +100,20 @@ jobs:
         & $nuget setapikey "${{ secrets.GITHUB_TOKEN }}" `
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
-    - name: Setup NuGet Credentials (Linux)
-      if: runner.os == 'Linux'
+    - name: Setup NuGet Credentials (Unix)
+      if: runner.os != 'Windows'
       shell: bash
       run: |
         nuget_exe=$(vcpkg fetch nuget | tail -n 1)
-        mono "$nuget_exe" \
-          sources add \
+        mono "$nuget_exe" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
+        mono "$nuget_exe" sources add \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
           -StorePasswordInClearText \
           -Name GitHubPackages \
           -UserName "${{ github.repository_owner }}" \
-          -Password "${{ secrets.GITHUB_TOKEN }}" || true
-        mono "$nuget_exe" \
-          setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}"
+        mono "$nuget_exe" setapikey "${{ secrets.GITHUB_TOKEN }}" \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-
-    - name: Download NuGet (macOS)
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        set -euo pipefail
-        curl -sSL -o "$RUNNER_TEMP/nuget.exe" https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        echo "NUGET=$RUNNER_TEMP/nuget.exe" >> "$GITHUB_ENV"
-
-    - name: Provide working 'nuget' on PATH (macOS)
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        set -euo pipefail
-        cp "$NUGET" "$RUNNER_TEMP/nuget"
-        chmod +x "$RUNNER_TEMP/nuget"
-        echo "PATH=$RUNNER_TEMP:$PATH" >> "$GITHUB_ENV"
-
-    - name: Setup NuGet Credentials (macOS)
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        set -euo pipefail
-        mono "$NUGET" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
-        mono "$NUGET" sources add -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
-          -Username "${{ github.repository_owner }}" \
-          -Password "${{ secrets.GITHUB_TOKEN }}" \
-          -StorePasswordInClearText
-        if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-          mono "$NUGET" setapikey "${{ secrets.GITHUB_TOKEN }}" -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-        fi
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
