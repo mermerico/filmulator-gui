@@ -45,18 +45,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup MSYS2 (Windows)
-      if: runner.os == 'Windows'
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        update: true
-        install: >-
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-make
-          mingw-w64-x86_64-pkgconf
-
     - name: Free Disk Space (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -160,33 +148,12 @@ jobs:
         fi
 
     - name: Setup CMake
-      if: runner.os != 'Windows'
       uses: lukka/get-cmake@latest
 
-    - name: Show vcpkg triplet + installed packages (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        echo "VCPKG_DEFAULT_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET"
-        echo "VCPKG_TARGET_TRIPLET=$env:VCPKG_TARGET_TRIPLET"
-        vcpkg list --triplet ${{ matrix.triplet }}
-
-    - name: Configure CMake (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
+    - name: Configure CMake
       run: cmake --preset ${{ matrix.preset }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
-    - name: Configure CMake (Non-Windows)
-      if: runner.os != 'Windows'
-      run: cmake --preset ${{ matrix.preset }}
-
-    - name: Build (Windows)
-      if: runner.os == 'Windows'
-      shell: msys2 {0}
-      run: cmake --build --preset ${{ matrix.preset }}
-
-    - name: Build (Non-Windows)
-      if: runner.os != 'Windows'
+    - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
 
     - name: Install (Windows)
