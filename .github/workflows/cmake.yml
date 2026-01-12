@@ -153,7 +153,6 @@ jobs:
 
     - name: Install (Windows)
       if: runner.os == 'Windows'
-      shell: msys2 {0}
       run: cmake --install build/${{ matrix.preset }} --prefix build/installed
 
     - name: Bundle DLLs + Qt (Windows)
