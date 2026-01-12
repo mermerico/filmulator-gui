@@ -39,7 +39,25 @@ find_package(libraw CONFIG REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(lensfun REQUIRED)
+set(_lensfun_found FALSE)
+find_package(lensfun QUIET)
+if(lensfun_FOUND)
+    set(_lensfun_found TRUE)
+endif()
+if(NOT _lensfun_found)
+    pkg_check_modules(LENSFUN QUIET IMPORTED_TARGET lensfun)
+    if(LENSFUN_FOUND)
+        set(_lensfun_found TRUE)
+    endif()
+endif()
+if(NOT _lensfun_found)
+    message(FATAL_ERROR "lensfun not found (CMake module or pkg-config).")
+endif()
+if(lensfun_FOUND)
+    message(STATUS "Lensfun found via FindLENSFUN.cmake.")
+elseif(LENSFUN_FOUND)
+    message(STATUS "Lensfun found via pkg-config.")
+endif()
 find_package(CURL CONFIG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -170,6 +188,14 @@ target_include_directories(filmulator-lib
         ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+if(TARGET PkgConfig::LENSFUN)
+    set(LENSFUN_TARGET PkgConfig::LENSFUN)
+elseif(DEFINED LENSFUN_LIBRARY)
+    set(LENSFUN_TARGET ${LENSFUN_LIBRARY})
+else()
+    message(FATAL_ERROR "lensfun target not found")
+endif()
+
 # Link libraries for the library
 target_link_libraries(filmulator-lib
     PUBLIC
@@ -178,11 +204,11 @@ target_link_libraries(filmulator-lib
         Qt5::Widgets
         Qt5::Quick
         Qt5::Qml
-        Exiv2::exiv2lib
-        libraw::raw_r
-        JPEG::JPEG
-        TIFF::TIFF
-        ${LENSFUN_LIBRARY}
+        Exiv2::exiv2lib       # exiv2 modern target
+        libraw::raw_r         # libraw modern target
+        JPEG::JPEG            # CMake built-in JPEG target
+        TIFF::TIFF            # TIFF modern target
+        ${LENSFUN_TARGET}
         PkgConfig::GLIB
         CURL::libcurl
         LibArchive::LibArchive

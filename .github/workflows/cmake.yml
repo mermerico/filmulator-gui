@@ -25,7 +25,7 @@ jobs:
             generator: "Unix Makefiles"
           - os: windows-latest
             preset: release
-            triplet: x64-mingw-static
+            triplet: x64-mingw-dynamic
             generator: "MinGW Makefiles"
           - os: macos-latest
             preset: release
@@ -35,6 +35,8 @@ jobs:
     env:
       BUILD_TYPE: Release
       VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,${{ github.event_name == 'pull_request' && 'read' || 'readwrite' }}"
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+      VCPKG_NUGET_TIMEOUT: 600
       VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
       CMAKE_GENERATOR: ${{ matrix.generator }}
 
@@ -99,58 +101,49 @@ jobs:
         & $nuget setapikey "${{ secrets.GITHUB_TOKEN }}" `
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
-    - name: Setup NuGet Credentials (Linux)
-      if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
-        mono "$nuget_exe" \
-          sources add \
-          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
-          -StorePasswordInClearText \
-          -Name GitHubPackages \
-          -UserName "${{ github.repository_owner }}" \
-          -Password "${{ secrets.GITHUB_TOKEN }}" || true
-        mono "$nuget_exe" \
-          setapikey "${{ secrets.GITHUB_TOKEN }}" \
-          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-
     - name: Download NuGet (macOS)
       if: runner.os == 'macOS'
       shell: bash
       run: |
         set -euo pipefail
         curl -sSL -o "$RUNNER_TEMP/nuget.exe" https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        echo "NUGET=$RUNNER_TEMP/nuget.exe" >> "$GITHUB_ENV"
+        echo "NUGET_EXE=$RUNNER_TEMP/nuget.exe" >> "$GITHUB_ENV"
 
     - name: Provide working 'nuget' on PATH (macOS)
       if: runner.os == 'macOS'
       shell: bash
       run: |
         set -euo pipefail
-        cp "$NUGET" "$RUNNER_TEMP/nuget"
+        cp "$NUGET_EXE" "$RUNNER_TEMP/nuget"
         chmod +x "$RUNNER_TEMP/nuget"
         echo "PATH=$RUNNER_TEMP:$PATH" >> "$GITHUB_ENV"
 
-    - name: Setup NuGet Credentials (macOS)
-      if: runner.os == 'macOS'
+    - name: Find NuGet (Linux)
+      if: runner.os == 'Linux'
       shell: bash
       run: |
-        set -euo pipefail
-        mono "$NUGET" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
-        mono "$NUGET" sources add -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
-          -Username "${{ github.repository_owner }}" \
-          -Password "${{ secrets.GITHUB_TOKEN }}" \
-          -StorePasswordInClearText
-        if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-          mono "$NUGET" setapikey "${{ secrets.GITHUB_TOKEN }}" -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-        fi
+        nuget_path=$(vcpkg fetch nuget | tail -n 1)
+        echo "NUGET_EXE=$nuget_path" >> "$GITHUB_ENV"
+
+    - name: Setup NuGet Credentials (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        mono "$NUGET_EXE" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
+        mono "$NUGET_EXE" sources add \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+          -StorePasswordInClearText \
+          -Name GitHubPackages \
+          -UserName "${{ github.repository_owner }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}"
+        mono "$NUGET_EXE" setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
 
     - name: Configure CMake
-      run: cmake --preset ${{ matrix.preset }} -DENABLE_SPIX_TESTING=ON
+      run: cmake --preset ${{ matrix.preset }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} -DENABLE_SPIX_TESTING=ON
 
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
@@ -180,3 +173,28 @@ jobs:
         Start-Sleep -Seconds 10
         python tests/e2e/test_basic_workflow.py
         Stop-Process -Name "filmulator" -Force -ErrorAction SilentlyContinue
+
+    - name: Install (Windows)
+      if: runner.os == 'Windows'
+      shell: msys2 {0}
+      run: cmake --install build/${{ matrix.preset }} --prefix build/installed
+
+    - name: Bundle DLLs + Qt (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        WINDEPLOYQT: ${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet }}\tools\qt5\bin\windeployqt.exe
+      run: |
+        New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\build\installed\bin" | Out-Null
+        Copy-Item "$env:GITHUB_WORKSPACE\vcpkg_installed\${{ matrix.triplet }}\bin\*.dll" "$env:GITHUB_WORKSPACE\build\installed\bin" -Force
+        & "$env:WINDEPLOYQT" --verbose 2 --qmldir "$env:GITHUB_WORKSPACE\filmulator-gui\qml\filmulator-gui" "$env:GITHUB_WORKSPACE\build\installed\bin\filmulator.exe"
+        Copy-Item "$env:GITHUB_WORKSPACE\LICENSE.txt" "$env:GITHUB_WORKSPACE\build\installed\bin" -Force
+        Copy-Item "$env:GITHUB_WORKSPACE\filmulator-gui\filmulator-gui80.ico" "$env:GITHUB_WORKSPACE\build\installed\bin" -Force
+        Copy-Item "$env:GITHUB_WORKSPACE\filmulator_build.iss" "$env:GITHUB_WORKSPACE\build\installed" -Force
+
+    - name: Upload Windows Artifact
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: filmulator-windows
+        path: build/installed
