@@ -35,6 +35,7 @@ jobs:
     env:
       BUILD_TYPE: Release
       VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,${{ github.event_name == 'pull_request' && 'read' || 'readwrite' }}"
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
       VCPKG_NUGET_TIMEOUT: 600
       VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
       CMAKE_GENERATOR: ${{ matrix.generator }}
@@ -161,6 +162,14 @@ jobs:
     - name: Setup CMake
       if: runner.os != 'Windows'
       uses: lukka/get-cmake@latest
+
+    - name: Show vcpkg triplet + installed packages (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        vcpkg env --triplet ${{ matrix.triplet }} -- echo "VCPKG_DEFAULT_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET"
+        vcpkg env --triplet ${{ matrix.triplet }} -- echo "VCPKG_TARGET_TRIPLET=$env:VCPKG_TARGET_TRIPLET"
+        vcpkg env --triplet ${{ matrix.triplet }} -- vcpkg list
 
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
