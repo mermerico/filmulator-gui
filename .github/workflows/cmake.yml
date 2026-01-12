@@ -100,19 +100,33 @@ jobs:
         & $nuget setapikey "${{ secrets.GITHUB_TOKEN }}" `
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
+    - name: Download NuGet (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -sSL -o "$RUNNER_TEMP/nuget.exe" https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        echo "NUGET_EXE=$RUNNER_TEMP/nuget.exe" >> "$GITHUB_ENV"
+
+    - name: Find NuGet (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        nuget_path=$(vcpkg fetch nuget | tail -n 1)
+        echo "NUGET_EXE=$nuget_path" >> "$GITHUB_ENV"
+
     - name: Setup NuGet Credentials (Unix)
       if: runner.os != 'Windows'
       shell: bash
       run: |
-        nuget_exe=$(vcpkg fetch nuget | tail -n 1)
-        mono "$nuget_exe" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
-        mono "$nuget_exe" sources add \
+        mono "$NUGET_EXE" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
+        mono "$NUGET_EXE" sources add \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
           -StorePasswordInClearText \
           -Name GitHubPackages \
           -UserName "${{ github.repository_owner }}" \
           -Password "${{ secrets.GITHUB_TOKEN }}"
-        mono "$nuget_exe" setapikey "${{ secrets.GITHUB_TOKEN }}" \
+        mono "$NUGET_EXE" setapikey "${{ secrets.GITHUB_TOKEN }}" \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
     - name: Setup CMake
