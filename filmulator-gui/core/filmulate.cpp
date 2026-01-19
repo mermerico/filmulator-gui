@@ -17,8 +17,9 @@
  * along with Filmulator. If not, see <http://www.gnu.org/licenses/>
  */
 #include "imagePipeline.h"
+#include "logging.h"
 #include <algorithm>
-#include <stdio.h>
+#include <cstdio>
 
 // Function-------------------------------------------------------------------------
 bool ImagePipeline::filmulate(matrix<float> &input_image,
@@ -102,7 +103,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
   }
   int half_agitate_period = floor(agitate_period / 2);
 
-  tout << "Initialization time: " << timeDiff(initialize_start) << " seconds" << endl;
+  FILM_DEBUG("Initialization time: {} seconds", timeDiff(initialize_start));
   development_start = std::chrono::steady_clock::now();
 
   // Now we begin the main development/diffusion loop, which approximates the
@@ -191,11 +192,11 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
 
     agitate_dif += timeDiff(agitate_start);
   }
-  tout << "Development time: " << timeDiff(development_start) << " seconds" << endl;
-  tout << "Develop time: " << develop_dif << " seconds" << endl;
-  tout << "Diffuse time: " << diffuse_dif << " seconds" << endl;
-  tout << "Layer mix time: " << layer_mix_dif << " seconds" << endl;
-  tout << "Agitate time: " << agitate_dif << " seconds" << endl;
+  FILM_DEBUG("Development time: {} seconds", timeDiff(development_start));
+  FILM_DEBUG("Develop time: {} seconds", develop_dif);
+  FILM_DEBUG("Diffuse time: {} seconds", diffuse_dif);
+  FILM_DEBUG("Layer mix time: {} seconds", layer_mix_dif);
+  FILM_DEBUG("Agitate time: {} seconds", agitate_dif);
 
   // Now we compute the density (opacity) of the film.
   // We assume that overlapping crystals or dye clouds are
@@ -216,7 +217,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
       output_density(i, j) = crystal_radius(i, j) * crystal_radius(i, j) * active_crystals_per_pixel(i, j);
     }
   }
-  tout << "Output density time: " << timeDiff(mult_start) << endl;
+  FILM_DEBUG("Output density time: {}", timeDiff(mult_start));
 #ifdef DOUT
   debug_out.close();
 #endif

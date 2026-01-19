@@ -1,9 +1,5 @@
 #include "filmSim.hpp"
 #include <algorithm>
-#include <iostream>
-
-using std::cout;
-using std::endl;
 
 // r,g,b values are from 0 to 65535
 // h = [0,6], s = [0,1], v = [0,1]

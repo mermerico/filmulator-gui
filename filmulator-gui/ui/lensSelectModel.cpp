@@ -1,9 +1,8 @@
 #include "lensSelectModel.h"
+#include "../core/logging.h"
 #include <QDir>
 #include <QStandardPaths>
 #include <iostream>
-using std::cout;
-using std::endl;
 
 LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
 {
@@ -27,7 +26,7 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
   std::string stdstring = dirstr.toStdString();
 
   ldb = lf_db_new();
-  if (!ldb) { cout << "Failed to create database!" << endl; }
+  if (!ldb) { FILM_ERROR("Failed to create database!"); }
 
   ldb->Load(stdstring.c_str());
 }

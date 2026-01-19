@@ -1,10 +1,5 @@
 #include "filmSim.hpp"
 #include <cmath>
-#include <iostream>
-#include <math.h>
-
-using std::cout;
-using std::endl;
 
 template<typename T>
 void downscaleDivisible1D(const matrix<T> &input, matrix<T> &output, const int scaleFactor, const bool interleaved);

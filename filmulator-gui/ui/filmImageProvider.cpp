@@ -1,11 +1,9 @@
 #include "filmImageProvider.h"
+#include "../core/logging.h"
 #include "../database/exifFunctions.h"
 #include "../database/organizeModel.h"
 #include <QDir>
-#include <iostream>
 
-using std::cout;
-using std::endl;
 
 #define TIMEOUT 0.1
 
@@ -61,7 +59,7 @@ FilmImageProvider::~FilmImageProvider() {}
 QImage FilmImageProvider::requestImage(const QString &id, QSize *size, const QSize & /*requestedSize*/)
 {
   request_start_time = std::chrono::steady_clock::now();
-  cout << "FilmImageProvider::requestImage id: " << id.toStdString() << endl;
+  FILM_INFO("FilmImageProvider::requestImage id: {}", id.toStdString());
 
   // Copy out the filename.
   std::string filename;
@@ -102,9 +100,9 @@ QImage FilmImageProvider::requestImage(const QString &id, QSize *size, const QSi
 
       std::chrono::steady_clock::time_point quickTime;
       quickTime = std::chrono::steady_clock::now();
-      cout << "requestImage quick pipeline valid " << paramManager->getValid() << endl;
+      FILM_INFO("requestImage quick pipeline valid {}", (int)paramManager->getValid());
       image = quickPipe.processImage(paramManager, this, data, fileHash);
-      cout << "requestImage quickPipe time: " << timeDiff(quickTime) << endl;
+      FILM_DEBUG("requestImage quickPipe time: {}", timeDiff(quickTime));
     } else {
       // dummy stuff for the precomputation pipe
       Exiv2::ExifData exif;
@@ -116,18 +114,18 @@ QImage FilmImageProvider::requestImage(const QString &id, QSize *size, const QSi
       if (useCache) {
         std::chrono::steady_clock::time_point preTime;
         preTime = std::chrono::steady_clock::now();
-        cout << "requestImage nextParam valid " << nextParam->getValid() << endl;
+        FILM_INFO("requestImage nextParam valid {}", (int)nextParam->getValid());
         nextQuickPipe.processImage(nextParam, this, exif, "");
-        cout << "requestImage preload time: " << timeDiff(preTime) << endl;
+        FILM_DEBUG("requestImage preload time: {}", timeDiff(preTime));
       }
 
       // run full pipeline of current image
       filename = cloneParam->getFullFilename();
       std::chrono::steady_clock::time_point fullTime;
       fullTime = std::chrono::steady_clock::now();
-      cout << "requestImage full pipeline valid " << cloneParam->getValid() << endl;
+      FILM_INFO("requestImage full pipeline valid {}", (int)cloneParam->getValid());
       image = pipeline.processImage(cloneParam, this, data, fileHash, &quickPipe);
-      cout << "requestImage fullPipe time: " << timeDiff(fullTime) << endl;
+      FILM_DEBUG("requestImage fullPipe time: {}", timeDiff(fullTime));
     }
   }
 
@@ -159,7 +157,7 @@ QImage FilmImageProvider::requestImage(const QString &id, QSize *size, const QSi
     }
   }
 
-  tout << "Request time: " << timeDiff(request_start_time) << " seconds" << endl;
+  FILM_DEBUG("Request time: {} seconds", timeDiff(request_start_time));
   setProgress(1);
   *size = output.size();
   return output;
@@ -185,9 +183,9 @@ void FilmImageProvider::writeJpeg()
     dir.cd(thumbDir);
   }
   std::string thumbPath = dir.absoluteFilePath(currentID).toStdString();
-  cout << "writejpeg current id: " << currentID.toStdString() << endl;
+  FILM_DEBUG("writejpeg current id: {}", currentID.toStdString());
   thumbPath.append(".jpg");
-  cout << "writejpeg thumb path: " << thumbPath << endl;
+  FILM_DEBUG("writejpeg thumb path: {}", thumbPath);
   imwrite_jpeg(last_image, outputFilename, exifData, 95, thumbPath);
   processMutex.unlock();
 }
@@ -276,32 +274,32 @@ void FilmImageProvider::shufflePipelines()
   shuffleTime = std::chrono::steady_clock::now();
 
   if (!useCache) {
-    cout << "shuffle no cache" << endl;
+    FILM_DEBUG("shuffle no cache");
     currentID = newID;
     return;
   }
   if (!useQuickPipe) {
-    cout << "shuffle no quick pipe" << endl;
+    FILM_DEBUG("shuffle no quick pipe");
     currentID = newID;
     return;
   }
   if (newID == "") {
-    cout << "shuffle no new" << endl;
+    FILM_DEBUG("shuffle no new");
     return;
   }
   if (newID == currentID) {
-    cout << "shuffle no change" << endl;
+    FILM_DEBUG("shuffle no change");
     return;
   }
-  cout << "shuffle begin newID:     " << newID.toStdString() << endl;
-  cout << "shuffle begin newNextID: " << newNextID.toStdString() << endl;
-  cout << "shuffle begin prevID:    " << prevID.toStdString() << endl;
-  cout << "shuffle begin currentID: " << currentID.toStdString() << endl;
-  cout << "shuffle begin nextID:    " << nextID.toStdString() << endl;
+  FILM_DEBUG("shuffle begin newID:     {}", newID.toStdString());
+  FILM_DEBUG("shuffle begin newNextID: {}", newNextID.toStdString());
+  FILM_DEBUG("shuffle begin prevID:    {}", prevID.toStdString());
+  FILM_DEBUG("shuffle begin currentID: {}", currentID.toStdString());
+  FILM_DEBUG("shuffle begin nextID:    {}", nextID.toStdString());
 
   if (currentID == "")// If we have no currently selected image, no copying is necessary
   {
-    cout << "shuffle: no current image" << endl;
+    FILM_DEBUG("shuffle: no current image");
     currentID = newID;
     if (newNextID != "") {
       nextID = newNextID;
@@ -309,17 +307,17 @@ void FilmImageProvider::shufflePipelines()
     }
   } else if (newID == prevID)// swap new and old
   {
-    cout << "shuffle: new matches old" << endl;
+    FILM_DEBUG("shuffle: new matches old");
     // copy image data
     quickPipe.swapPipeline(&prevQuickPipe);
 
     // copy processing parameters and validity of computation
-    cout << "shuffle: prevPipeline valid: " << prevParam->getValid()
-         << " ==============================================================" << endl;
-    cout << "shuffle: currPipeline valid: " << paramManager->getValid()
-         << " ==============================================================" << endl;
-    cout << "shuffle: currPipeline valid: " << paramManager->getValidityWhenCanceled()
-         << " ==============================================================" << endl;
+    FILM_DEBUG("shuffle: prevPipeline valid: {} ==============================================================",
+      (int)prevParam->getValid());
+    FILM_DEBUG("shuffle: currPipeline valid: {} ==============================================================",
+      (int)paramManager->getValid());
+    FILM_DEBUG("shuffle: currPipeline valid: {} ==============================================================",
+      (int)paramManager->getValidityWhenCanceled());
     tempValid = paramManager->getValidityWhenCanceled();// because we did selectImage
                                                         // the validity was canceled;
                                                         // we want the very latest
@@ -345,7 +343,7 @@ void FilmImageProvider::shufflePipelines()
     currentID = newID;
     nextID = newNextID;
   } else {
-    cout << "shuffle: new does not match old" << endl;
+    FILM_DEBUG("shuffle: new does not match old");
     // just copy current to old to start...
     prevQuickPipe.swapPipeline(&quickPipe);
     prevParam->selectImage(currentID);
@@ -354,13 +352,13 @@ void FilmImageProvider::shufflePipelines()
     // check whether to use our preloaded image
     if (newID == nextID)// copy the preloaded image to the current
     {
-      cout << "shuffle: new matches next" << endl;
-      cout << "shuffle: nextPipeline valid: " << nextParam->getValid()
-           << " ==============================================================" << endl;
-      cout << "shuffle: currPipeline valid: " << paramManager->getValid()
-           << " ==============================================================" << endl;
-      cout << "shuffle: currPipeline valid: " << paramManager->getValidityWhenCanceled()
-           << " ==============================================================" << endl;
+      FILM_DEBUG("shuffle: new matches next");
+      FILM_DEBUG("shuffle: nextPipeline valid: {} ==============================================================",
+        (int)nextParam->getValid());
+      FILM_DEBUG("shuffle: currPipeline valid: {} ==============================================================",
+        (int)paramManager->getValid());
+      FILM_DEBUG("shuffle: currPipeline valid: {} ==============================================================",
+        (int)paramManager->getValidityWhenCanceled());
       quickPipe.swapPipeline(&nextQuickPipe);
       // we already selected the right image
       paramManager->setValid(nextParam->getValid());
@@ -370,7 +368,7 @@ void FilmImageProvider::shufflePipelines()
 
     // select the params for the next image for preload
     if (newNextID != "") {
-      cout << "shuffle: there is a newNext" << endl;
+      FILM_DEBUG("shuffle: there is a newNext");
       nextParam->selectImage(newNextID);
     }
     // cout << "shuffle: nextPipeline valid: " << nextParam->getValid() << "
@@ -386,12 +384,12 @@ void FilmImageProvider::shufflePipelines()
     currentID = newID;
     nextID = newNextID;
   }
-  cout << "shuffle end newID:     " << newID.toStdString() << endl;
-  cout << "shuffle end newNextID: " << newNextID.toStdString() << endl;
-  cout << "shuffle end prevID:    " << prevID.toStdString() << endl;
-  cout << "shuffle end currentID: " << currentID.toStdString() << endl;
-  cout << "shuffle end nextID:    " << nextID.toStdString() << endl;
-  cout << "shuffle finished duration: " << timeDiff(shuffleTime) << endl;
+  FILM_DEBUG("shuffle end newID:     {}", newID.toStdString());
+  FILM_DEBUG("shuffle end newNextID: {}", newNextID.toStdString());
+  FILM_DEBUG("shuffle end prevID:    {}", prevID.toStdString());
+  FILM_DEBUG("shuffle end currentID: {}", currentID.toStdString());
+  FILM_DEBUG("shuffle end nextID:    {}", nextID.toStdString());
+  FILM_DEBUG("shuffle finished duration: {}", timeDiff(shuffleTime));
 }
 
 // called when settings are pasted, to ensure that the cached data gets
@@ -438,8 +436,8 @@ void FilmImageProvider::customWB(const float xCoord, const float yCoord)
   float temp;
   float tint;
   optimizeWBMults(filename, temp, tint, rMult, gMult, bMult);
-  cout << "customWB temp: " << temp << endl;
-  cout << "customWB tint: " << tint << endl;
+  FILM_DEBUG("customWB temp: {}", temp);
+  FILM_DEBUG("customWB tint: {}", tint);
 
   paramLocker.unlock();// done gathering info from the
 

@@ -17,6 +17,7 @@
  * along with Filmulator. If not, see <http://www.gnu.org/licenses/>
  */
 #include "filmSim.hpp"
+#include "logging.h"
 
 bool imread_jpeg(string input_image_filename, matrix<float> &returnmatrix, Exiv2::ExifData &exifData)
 {
@@ -25,7 +26,7 @@ bool imread_jpeg(string input_image_filename, matrix<float> &returnmatrix, Exiv2
   JSAMPROW row_pointer[1];
   FILE *jpeg = fopen(input_image_filename.c_str(), "r");
   if (!jpeg) {
-    cerr << "imread_jpeg: Could not read input file!" << endl;
+    FILM_ERROR("imread_jpeg: Could not read input file!");
     return true;
   }
   /* here we set up the standard libjpeg error handler */
@@ -63,7 +64,7 @@ bool imread_jpeg(string input_image_filename, matrix<float> &returnmatrix, Exiv2
     }
   }
 
-  cout << "imread_jpeg exiv filename: " << input_image_filename << endl;
+  FILM_TRACE("imread_jpeg exiv filename: {}", input_image_filename);
   auto image = Exiv2::ImageFactory::open(input_image_filename);
   assert(image.get() != 0);
   image->readMetadata();

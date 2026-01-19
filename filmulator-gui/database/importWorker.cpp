@@ -1,12 +1,8 @@
 #include "importWorker.h"
 #include "../database/database.hpp"
 #include "QThread"
-#include "queueModel.h"
-#include <iostream>
+#include "logging.h"
 #include <libraw/libraw.h>
-
-using std::cout;
-using std::endl;
 
 ImportWorker::ImportWorker(QObject *parent) : QObject(parent) {}
 
@@ -25,11 +21,11 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
   // Generate a hash of the raw file.
   QCryptographicHash hash(QCryptographicHash::Md5);
   QFile file(infoIn.absoluteFilePath());
-  if (!file.open(QIODevice::ReadOnly)) { qDebug("File couldn't be opened."); }
+  if (!file.open(QIODevice::ReadOnly)) { FILM_ERROR("File couldn't be opened."); }
 
   // Check that the raw file is readable by libraw before proceeding
   const std::string abspath = infoIn.absoluteFilePath().toStdString();
-  cout << "importFile absolute file path: " << abspath << endl;
+  FILM_INFO("importFile absolute file path: {}", abspath);
 
   std::unique_ptr<LibRaw> libraw = std::unique_ptr<LibRaw>(new LibRaw());
 
@@ -43,22 +39,22 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
   libraw_error = libraw->open_file(cstrfilename);
 #endif
   if (libraw_error) {
-    cout << "importFile: libraw could not read input file!" << endl;
-    cout << "libraw error text: " << libraw_strerror(libraw_error) << endl;
+    FILM_ERROR("importFile: libraw could not read input file!");
+    FILM_ERROR("libraw error text: {}", libraw_strerror(libraw_error));
     emit doneProcessing(false);
     return "";
   }
 #define OPTIONS libraw->imgdata.rawparams.options
   if (libraw->is_floating_point()) {
-    cout << "importFile: floating point raw" << endl;
+    FILM_INFO("importFile: floating point raw");
     // tell libraw to not convert to int when unpacking.
     // may not be necessary here but whatever, just in case
     OPTIONS = OPTIONS & ~LIBRAW_RAWOPTIONS_CONVERTFLOAT_TO_INT;
   }
   libraw_error = libraw->unpack();
   if (libraw_error) {
-    cout << "importFile: libraw could not unpack input file!" << endl;
-    cout << "libraw error text: " << libraw_strerror(libraw_error) << endl;
+    FILM_ERROR("importFile: libraw could not unpack input file!");
+    FILM_ERROR("libraw error text: {}", libraw_strerror(libraw_error));
     emit doneProcessing(false);
     return "";
   }
@@ -127,19 +123,19 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
       QFile backupFile(backupPathName);
       QCryptographicHash backupHash(QCryptographicHash::Md5);
       if (!backupFile.open(QIODevice::ReadOnly)) {
-        qDebug("backup file existed but could not be opened.");
+        FILM_ERROR("backup file existed but could not be opened.");
       } else {
         while (!backupFile.atEnd()) { backupHash.addData(backupFile.read(8192)); }
       }
       QString backupHashString = QString(hash.result().toHex());
       if (backupHashString != hashString) {
-        cout << "Backup hash check failed" << endl;
-        cout << "Original hash: " << hashString.toStdString() << endl;
-        cout << "Backup hash:   " << backupHashString.toStdString() << endl;
+        FILM_WARN("Backup hash check failed");
+        FILM_DEBUG("Original hash: {}", hashString.toStdString());
+        FILM_DEBUG("Backup hash:   {}", backupHashString.toStdString());
         success = false;
         backupFile.remove(backupPathName);
       } else {
-        cout << "Backup hash verified" << endl;
+        FILM_INFO("Backup hash verified");
         success = true;
       }
     }
@@ -149,20 +145,20 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
       QFile backupFile(backupPathName);
       QCryptographicHash backupHash(QCryptographicHash::Md5);
       if (!backupFile.open(QIODevice::ReadOnly)) {
-        qDebug("backup file could not be opened.");
+        FILM_ERROR("backup file could not be opened.");
       } else {
         while (!backupFile.atEnd()) { backupHash.addData(backupFile.read(8192)); }
       }
       QString backupHashString = QString(hash.result().toHex());
       if (backupHashString != hashString) {
-        cout << "Backup attempt number " << attempts << " hash failed" << endl;
-        cout << "Original hash: " << hashString.toStdString() << endl;
-        cout << "Backup hash:   " << backupHashString.toStdString() << endl;
+        FILM_WARN("Backup attempt number {} hash failed", attempts);
+        FILM_DEBUG("Original hash: {}", hashString.toStdString());
+        FILM_DEBUG("Backup hash:   {}", backupHashString.toStdString());
         success = false;
         backupFile.remove(backupPathName);
       }
       if (attempts > 6) {
-        cout << "Giving up on backup." << endl;
+        FILM_ERROR("Giving up on backup.");
         success = true;
       }
     }
@@ -202,15 +198,15 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
         QFile outputFile(outputPathName);
         QCryptographicHash outputHash(QCryptographicHash::Md5);
         if (!outputFile.open(QIODevice::ReadOnly)) {
-          qDebug("output file could not be opened.");
+          FILM_ERROR("output file could not be opened.");
         } else {
           while (!outputFile.atEnd()) { outputHash.addData(outputFile.read(8192)); }
         }
         QString outputHashString = QString(hash.result().toHex());
         if (outputHashString != hashString) {
-          cout << "output attempt number " << attempts << " hash failed" << endl;
-          cout << "Original hash: " << hashString.toStdString() << endl;
-          cout << "Output hash:   " << outputHashString.toStdString() << endl;
+          FILM_WARN("output attempt number {} hash failed", attempts);
+          FILM_DEBUG("Original hash: {}", hashString.toStdString());
+          FILM_DEBUG("Output hash:   {}", outputHashString.toStdString());
           success = false;
           outputFile.remove(outputPathName);
         } else {
@@ -218,7 +214,7 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
           fileInsert(hashString, outputPathName);
         }
         if (attempts > 6) {
-          cout << "Giving up on output." << endl;
+          FILM_ERROR("Giving up on output.");
           success = true;
         }
       }
@@ -232,7 +228,7 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
       createNewProfile(hashString, filename, exifUtcTime(abspath, cameraTZ), importStartTime, abspath, noThumbnail);
 
     // Request that we enqueue the image.
-    cout << "importFile SearchID: " << STsearchID.toStdString() << endl;
+    FILM_INFO("importFile SearchID: {}", STsearchID.toStdString());
     if (QString("") != STsearchID) { emit enqueueThis(STsearchID); }
     // It might be ignored downstream, but that's not our problem here.
 
@@ -258,15 +254,15 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
         QFile outputFile(outputPathName);
         QCryptographicHash outputHash(QCryptographicHash::Md5);
         if (!outputFile.open(QIODevice::ReadOnly)) {
-          qDebug("output file could not be opened.");
+          FILM_ERROR("output file could not be opened.");
         } else {
           while (!outputFile.atEnd()) { outputHash.addData(outputFile.read(8192)); }
         }
         QString outputHashString = QString(hash.result().toHex());
         if (outputHashString != hashString) {
-          cout << "output attempt number " << attempts << " hash failed" << endl;
-          cout << "Original hash: " << hashString.toStdString() << endl;
-          cout << "Output hash:   " << outputHashString.toStdString() << endl;
+          FILM_WARN("output attempt number {} hash failed", attempts);
+          FILM_DEBUG("Original hash: {}", hashString.toStdString());
+          FILM_DEBUG("Output hash:   {}", outputHashString.toStdString());
           success = false;
           outputFile.remove(outputPathName);
         } else {
@@ -274,7 +270,7 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
           fileInsert(hashString, outputPathName);
         }
         if (attempts > 6) {
-          cout << "Giving up on output." << endl;
+          FILM_ERROR("Giving up on output.");
           success = true;
         }
       }
@@ -283,10 +279,10 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
     // If we want to update the location of the file.
     if (replaceLocation) {
       fileInsert(hashString, infoIn.absoluteFilePath());
-      cout << "importWorker replace location: " << infoIn.absoluteFilePath().toStdString() << endl;
+      FILM_INFO("importWorker replace location: {}", infoIn.absoluteFilePath().toStdString());
 
       STsearchID = hashString.append(QString("%1").arg(1, 4, 10, QLatin1Char('0')));
-      cout << "importWorker replace STsearchID: " << STsearchID.toStdString() << endl;
+      FILM_INFO("importWorker replace STsearchID: {}", STsearchID.toStdString());
 
       if (QString("") != STsearchID) { emit enqueueThis(STsearchID); }
     }
@@ -294,14 +290,14 @@ QString ImportWorker::importFile(const QFileInfo infoIn,
     // We only do this for CLI-based processing.
     if (noThumbnail) {
       fileInsert(hashString, infoIn.absoluteFilePath());
-      cout << "importWorker replace location: " << infoIn.absoluteFilePath().toStdString() << endl;
+      FILM_INFO("importWorker replace location: {}", infoIn.absoluteFilePath().toStdString());
 
       // Now create a profile and a search table entry, and a thumbnail.
       STsearchID =
         createNewProfile(hashString, filename, exifUtcTime(abspath, cameraTZ), importStartTime, abspath, noThumbnail);
 
       // Request that we enqueue the image.
-      cout << "importFile SearchID: " << STsearchID.toStdString() << endl;
+      FILM_INFO("importFile SearchID: {}", STsearchID.toStdString());
       if (QString("") != STsearchID) { emit enqueueThis(STsearchID); }
       // It might be ignored downstream, but that's not our problem here.
 

@@ -17,6 +17,7 @@
  * along with Filmulator. If not, see <http://www.gnu.org/licenses/>
  */
 #include "filmSim.hpp"
+#include "logging.h"
 
 void output_file(matrix<unsigned short> &output,
   vector<string> input_filename_list,
@@ -43,5 +44,5 @@ void output_file(matrix<unsigned short> &output,
     imwrite_tiff(output, output_image_filename, exifData);
   }
 
-  tout << "Write time: " << timeDiff(write_start) << " seconds" << endl;
+  FILM_DEBUG("Write time: {} seconds", timeDiff(write_start));
 }

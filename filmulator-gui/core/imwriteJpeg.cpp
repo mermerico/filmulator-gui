@@ -17,6 +17,7 @@
  * along with Filmulator. If not, see <http://www.gnu.org/licenses/>
  */
 #include "filmSim.hpp"
+#include "logging.h"
 
 bool imwrite_jpeg(matrix<unsigned short> &output,
   string outputfilename,
@@ -74,7 +75,7 @@ bool imwrite_jpeg(matrix<unsigned short> &output,
    * requires it in order to write binary files.
    */
   if ((outfile = fopen(outputfilename.c_str(), "wb")) == NULL) {
-    fprintf(stderr, "can't open %s for writing\n", outputfilename.c_str());
+    FILM_ERROR("can't open {} for writing", outputfilename);
     exit(1);
   }
   jpeg_stdio_dest(&cinfo, outfile);
@@ -152,7 +153,7 @@ bool imwrite_jpeg(matrix<unsigned short> &output,
     // Find the thumbnail for this image
     // thumb.setJpegThumbnail(thumbPath);
 
-    cout << "imwrite_jpeg exiv filename: " << outputfilename << endl;
+    FILM_TRACE("imwrite_jpeg exiv filename: {}", outputfilename);
     auto image = Exiv2::ImageFactory::open(outputfilename);
     assert(image.get() != 0);
 

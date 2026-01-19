@@ -1,13 +1,12 @@
 #include "parameterManager.h"
 #include "../database/database.hpp"
 #include "../database/exifFunctions.h"
+#include "logging.h"
 #include <QDir>
 #include <QFile>
 #include <QStandardPaths>
 
 using std::min;
-using std::cout;
-using std::endl;
 
 ParameterManager::ParameterManager() : QObject(0)
 {
@@ -16,7 +15,7 @@ ParameterManager::ParameterManager() : QObject(0)
 
   imageIndex = "";
 
-  cout << "ParamManager load defaults to params" << endl;
+  FILM_DEBUG("ParamManager load defaults to params");
 
   // Load the defaults, copy to the parameters, there's no filename yet.
   loadDefaults(CopyDefaults::loadToParams, "");
@@ -50,15 +49,15 @@ ParameterManager::ParameterManager() : QObject(0)
   QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
   dirstr.append("/filmulator/version_2");
   std::string stdstring = dirstr.toStdString();
-  cout << "ParamManager directory string: " << stdstring << endl;
+  FILM_DEBUG("ParamManager directory string: {}", stdstring);
 
-  cout << "ParamManager initializing lensfun db" << endl;
+  FILM_DEBUG("ParamManager initializing lensfun db");
   ldb = lf_db_new();
-  if (!ldb) { cout << "Failed to create database!" << endl; }
+  if (!ldb) { FILM_ERROR("Failed to create database!"); }
 
   ldb->Load(stdstring.c_str());
 
-  cout << "ParamManager done initializing lensfun" << endl;
+  FILM_DEBUG("ParamManager done initializing lensfun");
 
   validity = Valid::none;
 
@@ -78,7 +77,7 @@ std::tuple<Valid, AbortStatus, LoadParams> ParameterManager::claimLoadParams()
   if (validity < Valid::none)// If something earlier than this has changed
   {
     abort = AbortStatus::restart;// not actually possible
-    cout << "claimLoadParams validity abort" << endl;
+    FILM_DEBUG("claimLoadParams validity abort");
   } else if (changeMadeSinceCheck) {
     abort = AbortStatus::restart;
   } else {
@@ -463,7 +462,7 @@ Valid ParameterManager::markChromaNRComplete()
 
 void ParameterManager::setNrEnabled(bool enabledIn)
 {
-  fprintf(stderr, "ParameterManager::setNrEnabled: %d justInitialized=%d\n", enabledIn, justInitialized);
+  FILM_DEBUG("ParameterManager::setNrEnabled: {} justInitialized={}", enabledIn, justInitialized);
   if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_nrEnabled = enabledIn;
@@ -500,7 +499,7 @@ void ParameterManager::setNlThresh(float clusterThreshold)
 
 void ParameterManager::setNlStrength(float strength)
 {
-  fprintf(stderr, "ParameterManager::setNlStrength: %f justInitialized=%d\n", strength, justInitialized);
+  FILM_DEBUG("ParameterManager::setNlStrength: {} justInitialized={}", strength, justInitialized);
   if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_nlStrength = strength;
@@ -525,7 +524,7 @@ void ParameterManager::setImpulseThresh(float thresh)
 
 void ParameterManager::setChromaStrength(float strength)
 {
-  fprintf(stderr, "ParameterManager::setChromaStrength: %f justInitialized=%d\n", strength, justInitialized);
+  FILM_DEBUG("ParameterManager::setChromaStrength: {} justInitialized={}", strength, justInitialized);
   if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_chromaStrength = strength;
@@ -1237,7 +1236,7 @@ void ParameterManager::setHighlightsX(float highlightsX)
 void ParameterManager::setHighlightsY(float highlightsY)
 {
   if (!justInitialized) {
-    cout << "highlights Y changed" << endl;
+    FILM_DEBUG("highlights Y changed");
     QMutexLocker paramLocker(&paramMutex);
     m_highlightsY = highlightsY;
     validity = min(validity, Valid::blackwhite);
@@ -1552,7 +1551,7 @@ void ParameterManager::selectImage(const QString imageID)
 
   // Filename. First is the full path for the image pipeline.
   nameCol = rec.indexOf("FTfilePath");
-  if (-1 == nameCol) { std::cout << "paramManager FTfilePath" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTfilePath"); }
   QString name = query.value(nameCol).toString();
   fullFilenameQstr = name;
   m_fullFilename = name.toStdString();
@@ -1561,7 +1560,7 @@ void ParameterManager::selectImage(const QString imageID)
   // We need to check that the file is actually accessible before continuing.
   QFile file(name);
   if (!file.open(QIODevice::ReadOnly)) {
-    qDebug("File could not be opened.");
+    FILM_ERROR("File could not be opened.");
     emit fileError();
     return;
   } else {
@@ -1570,12 +1569,12 @@ void ParameterManager::selectImage(const QString imageID)
   }
 
   nameCol = rec.indexOf("FTsensitivity");
-  if (-1 == nameCol) { std::cout << "paramManager FTsensitivity" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTsensitivity"); }
   sensitivity = query.value(nameCol).toInt();
   emit sensitivityChanged();
 
   nameCol = rec.indexOf("FTexposureTime");
-  if (-1 == nameCol) { std::cout << "paramManager FTexposureTime" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTexposureTime"); }
   QString expTimeTemp = query.value(nameCol).toString();
   bool okNum;
   unsigned int numerator = expTimeTemp.left(expTimeTemp.lastIndexOf("/")).toInt(&okNum, 10);
@@ -1599,7 +1598,7 @@ void ParameterManager::selectImage(const QString imageID)
   emit exposureTimeChanged();
 
   nameCol = rec.indexOf("FTaperture");
-  if (-1 == nameCol) { std::cout << "paramManager FTaperture" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTaperture"); }
   fnumber = query.value(nameCol).toFloat();
   if (fnumber >= 8) {
     aperture = QString::number(fnumber, 'f', 0);
@@ -1610,17 +1609,17 @@ void ParameterManager::selectImage(const QString imageID)
   emit apertureChanged();
 
   nameCol = rec.indexOf("FTfocalLength");
-  if (-1 == nameCol) { std::cout << "paramManager FTfocalLength" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTfocalLength"); }
   focalLength = query.value(nameCol).toFloat();
   emit focalLengthChanged();
 
   nameCol = rec.indexOf("FTcameraMake");
-  if (-1 == nameCol) { std::cout << "paramManager FTcameraMake" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTcameraMake"); }
   make = query.value(nameCol).toString();
   emit makeChanged();
 
   nameCol = rec.indexOf("FTcameraModel");
-  if (-1 == nameCol) { std::cout << "paramManager FTcameraModel" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTcameraModel"); }
   model = query.value(nameCol).toString();
   emit modelChanged();
 
@@ -1661,7 +1660,7 @@ void ParameterManager::selectImage(const QString imageID)
   query.first();
   const bool hasPreferences = (query.value(0).toInt() > 0);
   if (hasPreferences) {
-    cout << "parameterManager Has lens preferences" << endl;
+    FILM_DEBUG("parameterManager Has lens preferences");
     query.prepare(
       "SELECT LensfunLens, LensfunCa, LensfunVign, LensfunDist, AutoCa FROM LensPrefs  WHERE ExifCamera = ? AND "
       "ExifLens = ?;");
@@ -1673,32 +1672,32 @@ void ParameterManager::selectImage(const QString imageID)
     rec = query.record();
 
     nameCol = rec.indexOf("LensfunLens");
-    if (-1 == nameCol) { std::cout << "paramManager LensfunLens" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager LensfunLens"); }
     d_lensfunName = query.value(nameCol).toString();
     s_lensfunName = d_lensfunName;
 
     nameCol = rec.indexOf("LensfunCa");
-    if (-1 == nameCol) { std::cout << "paramManager LensfunCa" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager LensfunCa"); }
     d_lensfunCa = query.value(nameCol).toInt();
     s_lensfunCa = d_lensfunCa;
 
     nameCol = rec.indexOf("LensfunVign");
-    if (-1 == nameCol) { std::cout << "paramManager LensfunVign" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager LensfunVign"); }
     d_lensfunVign = query.value(nameCol).toInt();
     s_lensfunVign = d_lensfunVign;
 
     nameCol = rec.indexOf("LensfunDist");
-    if (-1 == nameCol) { std::cout << "paramManager LensfunDist" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager LensfunDist"); }
     d_lensfunDist = query.value(nameCol).toInt();
     s_lensfunDist = d_lensfunDist;
 
     nameCol = rec.indexOf("AutoCa");
-    if (-1 == nameCol) { std::cout << "paramManager AutoCa" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager AutoCa"); }
     d_caEnabled = query.value(nameCol).toInt();
     s_caEnabled = d_caEnabled;
   } else {
     // No preferences
-    cout << "parameterManager Has no lens preferences" << endl;
+    FILM_DEBUG("parameterManager Has no lens preferences");
     // If there's a match for the exif lens, use that
     d_lensfunName = identifyLens(m_fullFilename);
     s_lensfunName = d_lensfunName;
@@ -1713,8 +1712,8 @@ void ParameterManager::selectImage(const QString imageID)
     d_lensfunDist = 0;
     s_lensfunDist = 0;
   }
-  cout << "parameterManager m_lensfunName: " << m_lensfunName.toStdString() << endl;
-  cout << "parameterManager s_lensfunName: " << s_lensfunName.toStdString() << endl;
+  FILM_DEBUG("parameterManager m_lensfunName: {}", m_lensfunName.toStdString());
+  FILM_DEBUG("parameterManager s_lensfunName: {}", s_lensfunName.toStdString());
 
   // Now, if the m_ params are set, we overwrite the preferred settings in the s_ params accordingly
   if (m_caEnabled > -1) {
@@ -1725,7 +1724,7 @@ void ParameterManager::selectImage(const QString imageID)
     // If the settings from the database have a lens saved,
     // then we need to copy the valid m_ parameters to the s_parameters for processing
     s_lensfunName = m_lensfunName;
-    cout << "Lens was in database: " << s_lensfunName.toStdString() << endl;
+    FILM_DEBUG("Lens was in database: {}", s_lensfunName.toStdString());
     if (m_lensfunCa > -1) { s_lensfunCa = m_lensfunCa; }
     if (m_lensfunVign > -1) { s_lensfunVign = m_lensfunVign; }
     if (m_lensfunDist > -1) { s_lensfunDist = m_lensfunDist; }
@@ -1734,7 +1733,7 @@ void ParameterManager::selectImage(const QString imageID)
 
     if (s_lensfunName == "") {
       // If lensfun can't automatically find a matching lens, disable lensfun corrections.
-      cout << "parameterManager No lens found" << endl;
+      FILM_DEBUG("parameterManager No lens found");
       s_lensfunCa = 0;
       s_lensfunVign = 0;
       s_lensfunDist = 0;
@@ -1761,8 +1760,8 @@ void ParameterManager::selectImage(const QString imageID)
   libraw_error = libraw->open_file(cstr);
 #endif
   if (libraw_error) {
-    cout << "selectImage: Could not read input file!" << endl;
-    cout << "libraw error text: " << libraw_strerror(libraw_error) << endl;
+    FILM_ERROR("selectImage: Could not read input file!");
+    FILM_ERROR("libraw error text: {}", libraw_strerror(libraw_error));
     emit fileError();
     return;
   }
@@ -1950,59 +1949,59 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
   // First is caEnabled. See the lensfun stuff for explanation as to why we don't write d_
   if (copyDefaults == CopyDefaults::loadToParams) {
     nameCol = rec.indexOf("ProfTcaEnabled");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTcaEnabled" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTcaEnabled"); }
     m_caEnabled = query.value(nameCol).toInt();
   }
 
   // Demosaic algorithm
   nameCol = rec.indexOf("ProfTdemosaicMethod");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTdemosaicMethod" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTdemosaicMethod"); }
   const int temp_demosaicMethod = query.value(nameCol).toInt();
   d_demosaicMethod = temp_demosaicMethod;
   if (copyDefaults == CopyDefaults::loadToParams) { m_demosaicMethod = temp_demosaicMethod; }
 
   // Highlights (highlight recovery)
   nameCol = rec.indexOf("ProfThighlightRecovery");
-  if (-1 == nameCol) { std::cout << "paramManager ProfThighlightRecovery" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfThighlightRecovery"); }
   const int temp_highlights = query.value(nameCol).toInt();
   d_highlights = temp_highlights;
   if (copyDefaults == CopyDefaults::loadToParams) { m_highlights = temp_highlights; }
 
   // Exposure compensation
   nameCol = rec.indexOf("ProfTexposureComp");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTexposureComp" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTexposureComp"); }
   const float temp_exposureComp = query.value(nameCol).toFloat();
   d_exposureComp = temp_exposureComp;
   if (copyDefaults == CopyDefaults::loadToParams) { m_exposureComp = temp_exposureComp; }
 
   // noise reduction stuff
   nameCol = rec.indexOf("ProfTnrEnabled");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTnrEnabled" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTnrEnabled"); }
   const int temp_nrEnabled = query.value(nameCol).toInt();
   d_nrEnabled = temp_nrEnabled;
   if (copyDefaults == CopyDefaults::loadToParams) { m_nrEnabled = temp_nrEnabled; }
   nameCol = rec.indexOf("ProfTnlClusters");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTnlClusters" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTnlClusters"); }
   const int temp_nlClusters = query.value(nameCol).toInt();
   d_nlClusters = temp_nlClusters;
   if (copyDefaults == CopyDefaults::loadToParams) { m_nlClusters = temp_nlClusters; }
   nameCol = rec.indexOf("ProfTnlThresh");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTnlThresh" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTnlThresh"); }
   const float temp_nlThresh = query.value(nameCol).toFloat();
   d_nlThresh = temp_nlThresh;
   if (copyDefaults == CopyDefaults::loadToParams) { m_nlThresh = temp_nlThresh; }
   nameCol = rec.indexOf("ProfTnlStrength");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTnlStrength" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTnlStrength"); }
   const float temp_nlStrength = query.value(nameCol).toFloat();
   d_nlStrength = temp_nlStrength;
   if (copyDefaults == CopyDefaults::loadToParams) { m_nlStrength = temp_nlStrength; }
   nameCol = rec.indexOf("ProfTimpulseThresh");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTimpulseThresh" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTimpulseThresh"); }
   const float temp_impulseThresh = query.value(nameCol).toFloat();
   d_impulseThresh = temp_impulseThresh;
   if (copyDefaults == CopyDefaults::loadToParams) { m_impulseThresh = temp_impulseThresh; }
   nameCol = rec.indexOf("ProfTchromaStrength");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTchromaStrength" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTchromaStrength"); }
   const float temp_chromaStrength = query.value(nameCol).toFloat();
   d_chromaStrength = temp_chromaStrength;
   if (copyDefaults == CopyDefaults::loadToParams) { m_chromaStrength = temp_chromaStrength; }
@@ -2017,37 +2016,37 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
   if (copyDefaults == CopyDefaults::loadToParams) {
     // Lensfun lens name
     nameCol = rec.indexOf("ProfTlensfunName");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTlensfunName" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTlensfunName"); }
     m_lensfunName = query.value(nameCol).toString();
     // Lensfun CA correction
     nameCol = rec.indexOf("ProfTlensfunCa");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTlensfunCa" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTlensfunCa"); }
     m_lensfunCa = query.value(nameCol).toInt();
     // Lensfun vignetting correction
     nameCol = rec.indexOf("ProfTlensfunVign");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTlensfunVign" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTlensfunVign"); }
     m_lensfunVign = query.value(nameCol).toInt();
     // Lensfun distortion correction
     nameCol = rec.indexOf("ProfTlensfunDist");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTlensfunDist" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTlensfunDist"); }
     m_lensfunDist = query.value(nameCol).toInt();
   }
 
   // Fine rotation angle
   nameCol = rec.indexOf("ProfTrotationAngle");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTrotationAngle" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTrotationAngle"); }
   const float temp_rotationAngle = query.value(nameCol).toFloat();
   d_rotationAngle = temp_rotationAngle;
   if (copyDefaults == CopyDefaults::loadToParams) { m_rotationAngle = temp_rotationAngle; }
 
   // Rotation reference point coordinates
   nameCol = rec.indexOf("ProfTrotationPointX");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTrotationPointX" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTrotationPointX"); }
   const float temp_rotationPointX = query.value(nameCol).toFloat();
   d_rotationPointX = temp_rotationPointX;
   if (copyDefaults == CopyDefaults::loadToParams) { m_rotationPointX = temp_rotationPointX; }
   nameCol = rec.indexOf("ProfTrotationPointY");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTrotationPointY" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTrotationPointY"); }
   const float temp_rotationPointY = query.value(nameCol).toFloat();
   d_rotationPointY = temp_rotationPointY;
   if (copyDefaults == CopyDefaults::loadToParams) { m_rotationPointY = temp_rotationPointY; }
@@ -2056,13 +2055,13 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
     // If there is no filename supplied, then get the defaults from the db standard profile.
     // Temperature
     nameCol = rec.indexOf("ProfTtemperature");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTtemperature" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTtemperature"); }
     const float temp_temperature = query.value(nameCol).toFloat();
     d_temperature = temp_temperature;
 
     // Tint
     nameCol = rec.indexOf("ProfTtint");
-    if (-1 == nameCol) { std::cout << "paramManager ProfTtint" << endl; }
+    if (-1 == nameCol) { FILM_ERROR("paramManager ProfTtint"); }
     const float temp_tint = query.value(nameCol).toFloat();
     d_tint = temp_tint;
   } else {
@@ -2080,7 +2079,7 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
 
   // Initial developer concentration
   nameCol = rec.indexOf("ProfTinitialDeveloperConcentration");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTinitialDeveloperConcentration" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTinitialDeveloperConcentration"); }
   const float temp_initialDeveloperConcentration = query.value(nameCol).toFloat();
   d_initialDeveloperConcentration = temp_initialDeveloperConcentration;
   if (copyDefaults == CopyDefaults::loadToParams) {
@@ -2089,133 +2088,133 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
 
   // Reservoir thickness
   nameCol = rec.indexOf("ProfTreservoirThickness");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTreservoirThickness" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTreservoirThickness"); }
   const float temp_reservoirThickness = query.value(nameCol).toFloat();
   d_reservoirThickness = temp_reservoirThickness;
   if (copyDefaults == CopyDefaults::loadToParams) { m_reservoirThickness = temp_reservoirThickness; }
 
   // Active layer thickness
   nameCol = rec.indexOf("ProfTactiveLayerThickness");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTactiveLayerThickness" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTactiveLayerThickness"); }
   const float temp_activeLayerThickness = query.value(nameCol).toFloat();
   d_activeLayerThickness = temp_activeLayerThickness;
   if (copyDefaults == CopyDefaults::loadToParams) { m_activeLayerThickness = temp_activeLayerThickness; }
 
   // Crystals per pixel
   nameCol = rec.indexOf("ProfTcrystalsPerPixel");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTcrystalsPerPixel" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTcrystalsPerPixel"); }
   const float temp_crystalsPerPixel = query.value(nameCol).toFloat();
   d_crystalsPerPixel = temp_crystalsPerPixel;
   if (copyDefaults == CopyDefaults::loadToParams) { m_crystalsPerPixel = temp_crystalsPerPixel; }
 
   // Initial crystal radius
   nameCol = rec.indexOf("ProfTinitialCrystalRadius");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTinitialCrystalRadius" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTinitialCrystalRadius"); }
   const float temp_initialCrystalRadius = query.value(nameCol).toFloat();
   d_initialCrystalRadius = temp_initialCrystalRadius;
   if (copyDefaults == CopyDefaults::loadToParams) { m_initialCrystalRadius = temp_initialCrystalRadius; }
 
   // Initial silver salt area density
   nameCol = rec.indexOf("ProfTinitialSilverSaltDensity");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTinitialSilverSaltDensity" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTinitialSilverSaltDensity"); }
   const float temp_initialSilverSaltDensity = query.value(nameCol).toFloat();
   d_initialSilverSaltDensity = temp_initialSilverSaltDensity;
   if (copyDefaults == CopyDefaults::loadToParams) { m_initialSilverSaltDensity = temp_initialSilverSaltDensity; }
 
   // Developer consumption rate constant
   nameCol = rec.indexOf("ProfTdeveloperConsumptionConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTdeveloperConsumptionConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTdeveloperConsumptionConst"); }
   const float temp_developerConsumptionConst = query.value(nameCol).toFloat();
   d_developerConsumptionConst = temp_developerConsumptionConst;
   if (copyDefaults == CopyDefaults::loadToParams) { m_developerConsumptionConst = temp_developerConsumptionConst; }
 
   // Crystal growth rate constant
   nameCol = rec.indexOf("ProfTcrystalGrowthConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTcrystalGrowthConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTcrystalGrowthConst"); }
   const float temp_crystalGrowthConst = query.value(nameCol).toFloat();
   d_crystalGrowthConst = temp_crystalGrowthConst;
   if (copyDefaults == CopyDefaults::loadToParams) { m_crystalGrowthConst = temp_crystalGrowthConst; }
 
   // Silver halide consumption rate constant
   nameCol = rec.indexOf("ProfTsilverSaltConsumptionConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTsilverSaltConsumptionConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTsilverSaltConsumptionConst"); }
   const float temp_silverSaltConsumptionConst = query.value(nameCol).toFloat();
   d_silverSaltConsumptionConst = temp_silverSaltConsumptionConst;
   if (copyDefaults == CopyDefaults::loadToParams) { m_silverSaltConsumptionConst = temp_silverSaltConsumptionConst; }
 
   // Total development time
   nameCol = rec.indexOf("ProfTtotalDevelopmentTime");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTtotalDevelopmentTime" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTtotalDevelopmentTime"); }
   const float temp_totalDevelopmentTime = query.value(nameCol).toFloat();
   d_totalDevelopmentTime = temp_totalDevelopmentTime;
   if (copyDefaults == CopyDefaults::loadToParams) { m_totalDevelopmentTime = temp_totalDevelopmentTime; }
 
   // Number of agitations
   nameCol = rec.indexOf("ProfTagitateCount");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTagitateCount" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTagitateCount"); }
   const int temp_agitateCount = query.value(nameCol).toInt();
   d_agitateCount = temp_agitateCount;
   if (copyDefaults == CopyDefaults::loadToParams) { m_agitateCount = temp_agitateCount; }
 
   // Number of simulation steps for development
   nameCol = rec.indexOf("ProfTdevelopmentSteps");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTdevelopmentSteps" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTdevelopmentSteps"); }
   const int temp_developmentSteps = query.value(nameCol).toInt();
   d_developmentSteps = temp_developmentSteps;
   if (copyDefaults == CopyDefaults::loadToParams) { m_developmentSteps = temp_developmentSteps; }
 
   // Area of film for the simulation
   nameCol = rec.indexOf("ProfTfilmArea");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTfilmArea" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTfilmArea"); }
   const float temp_filmArea = query.value(nameCol).toFloat();
   d_filmArea = temp_filmArea;
   if (copyDefaults == CopyDefaults::loadToParams) { m_filmArea = temp_filmArea; }
 
   // A constant for the size of the diffusion. It...affects the same thing as film area.
   nameCol = rec.indexOf("ProfTsigmaConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTsigmaConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTsigmaConst"); }
   const float temp_sigmaConst = query.value(nameCol).toFloat();
   d_sigmaConst = temp_sigmaConst;
   if (copyDefaults == CopyDefaults::loadToParams) { m_sigmaConst = temp_sigmaConst; }
 
   // Layer mix constant: the amount of active developer that gets exchanged with the reservoir.
   nameCol = rec.indexOf("ProfTlayerMixConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTlayerMixConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTlayerMixConst"); }
   const float temp_layerMixConst = query.value(nameCol).toFloat();
   d_layerMixConst = temp_layerMixConst;
   if (copyDefaults == CopyDefaults::loadToParams) { m_layerMixConst = temp_layerMixConst; }
 
   // Layer time divisor: Controls the relative intra-layer and inter-layer diffusion.
   nameCol = rec.indexOf("ProfTlayerTimeDivisor");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTlayerTimeDivisor" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTlayerTimeDivisor"); }
   const float temp_layerTimeDivisor = query.value(nameCol).toFloat();
   d_layerTimeDivisor = temp_layerTimeDivisor;
   if (copyDefaults == CopyDefaults::loadToParams) { m_layerTimeDivisor = temp_layerTimeDivisor; }
 
   // Rolloff boundary. This is where highlights start to roll off.
   nameCol = rec.indexOf("ProfTrolloffBoundary");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTrolloffBoundary" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTrolloffBoundary"); }
   const float temp_rolloffBoundary = query.value(nameCol).toFloat();
   d_rolloffBoundary = temp_rolloffBoundary;
   if (copyDefaults == CopyDefaults::loadToParams) { m_rolloffBoundary = temp_rolloffBoundary; }
 
   // Toe boundary. This is the offset for the values where the toe starts to roll off.
   nameCol = rec.indexOf("ProfTtoeBoundary");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTtoeBoundary" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTtoeBoundary"); }
   const float temp_toeBoundary = query.value(nameCol).toFloat();
   d_toeBoundary = temp_toeBoundary;
   if (copyDefaults == CopyDefaults::loadToParams) { m_toeBoundary = temp_toeBoundary; }
 
   // Post-filmulator black clipping point
   nameCol = rec.indexOf("ProfTblackpoint");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTblackpoint" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTblackpoint"); }
   const float temp_blackpoint = query.value(nameCol).toFloat();
   d_blackpoint = temp_blackpoint;
   if (copyDefaults == CopyDefaults::loadToParams) { m_blackpoint = temp_blackpoint; }
 
   // Post-filmulator white clipping point
   nameCol = rec.indexOf("ProfTwhitepoint");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTwhitepoint" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTwhitepoint"); }
   const float temp_whitepoint = query.value(nameCol).toFloat();
   d_whitepoint = temp_whitepoint;
   if (copyDefaults == CopyDefaults::loadToParams) { m_whitepoint = temp_whitepoint; }
@@ -2231,70 +2230,70 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
 
   // Shadow control point x value
   nameCol = rec.indexOf("ProfTshadowsX");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTshadowsX" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTshadowsX"); }
   const float temp_shadowsX = query.value(nameCol).toFloat();
   d_shadowsX = temp_shadowsX;
   if (copyDefaults == CopyDefaults::loadToParams) { m_shadowsX = temp_shadowsX; }
 
   // Shadow control point y value
   nameCol = rec.indexOf("ProfTshadowsY");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTshadowsY" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTshadowsY"); }
   const float temp_shadowsY = query.value(nameCol).toFloat();
   d_shadowsY = temp_shadowsY;
   if (copyDefaults == CopyDefaults::loadToParams) { m_shadowsY = temp_shadowsY; }
 
   // Highlight control point x value
   nameCol = rec.indexOf("ProfThighlightsX");
-  if (-1 == nameCol) { std::cout << "paramManager ProfThighlightsX" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfThighlightsX"); }
   const float temp_highlightsX = query.value(nameCol).toFloat();
   d_highlightsX = temp_highlightsX;
   if (copyDefaults == CopyDefaults::loadToParams) { m_highlightsX = temp_highlightsX; }
 
   // Highlight control point y value
   nameCol = rec.indexOf("ProfThighlightsY");
-  if (-1 == nameCol) { std::cout << "paramManager ProfThighlightsY" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfThighlightsY"); }
   const float temp_highlightsY = query.value(nameCol).toFloat();
   d_highlightsY = temp_highlightsY;
   if (copyDefaults == CopyDefaults::loadToParams) { m_highlightsY = temp_highlightsY; }
 
   // Vibrance (saturation of less-saturated things)
   nameCol = rec.indexOf("ProfTvibrance");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTvibrance" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTvibrance"); }
   const float temp_vibrance = query.value(nameCol).toFloat();
   d_vibrance = temp_vibrance;
   if (copyDefaults == CopyDefaults::loadToParams) { m_vibrance = temp_vibrance; }
 
   // Saturation
   nameCol = rec.indexOf("ProfTsaturation");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTsaturation" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTsaturation"); }
   const float temp_saturation = query.value(nameCol).toFloat();
   d_saturation = temp_saturation;
   if (copyDefaults == CopyDefaults::loadToParams) { m_saturation = temp_saturation; }
 
   // Whether to convert to monochrome
   nameCol = rec.indexOf("ProfTmonochrome");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTmonochrome" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTmonochrome"); }
   const bool temp_monochrome = query.value(nameCol).toBool();
   d_monochrome = temp_monochrome;
   if (copyDefaults == CopyDefaults::loadToParams) { m_monochrome = temp_monochrome; }
 
   // Red weight multiplier for b&w conversion
   nameCol = rec.indexOf("ProfTbwRmult");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTbwRmult" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTbwRmult"); }
   const float temp_bwRmult = query.value(nameCol).toFloat();
   d_bwRmult = temp_bwRmult;
   if (copyDefaults == CopyDefaults::loadToParams) { m_bwRmult = temp_bwRmult; }
 
   // Green weight multiplier for b&w conversion
   nameCol = rec.indexOf("ProfTbwGmult");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTbwGmult" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTbwGmult"); }
   const float temp_bwGmult = query.value(nameCol).toFloat();
   d_bwGmult = temp_bwGmult;
   if (copyDefaults == CopyDefaults::loadToParams) { m_bwGmult = temp_bwGmult; }
 
   // Blue weight multiplier for b&w conversion
   nameCol = rec.indexOf("ProfTbwBmult");
-  if (-1 == nameCol) { std::cout << "paramManager ProfTbwBmult" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProfTbwBmult"); }
   const float temp_bwBmult = query.value(nameCol).toFloat();
   d_bwBmult = temp_bwBmult;
   if (copyDefaults == CopyDefaults::loadToParams) { m_bwBmult = temp_bwBmult; }
@@ -2343,7 +2342,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // First is auto CA correct.
   nameCol = rec.indexOf("ProcTcaEnabled");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcaEnabled" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcaEnabled"); }
   const int temp_caEnabled = query.value(nameCol).toInt();
   if (temp_caEnabled != m_caEnabled) {
     // cout << "ParameterManager::loadParams caEnabled" << endl;
@@ -2353,17 +2352,17 @@ void ParameterManager::loadParams(QString imageID)
 
   // Demosaic stuff
   nameCol = rec.indexOf("ProcTdemosaicMethod");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTdemosaicMethod" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTdemosaicMethod"); }
   const int temp_demosaicMethod = query.value(nameCol).toInt();
   if (temp_demosaicMethod != m_demosaicMethod) {
     m_demosaicMethod = temp_demosaicMethod;
-    std::cout << "demosaicMethod read as: " << m_demosaicMethod << endl;
+    FILM_DEBUG("demosaicMethod read as: {}", m_demosaicMethod);
     validity = min(validity, Valid::load);
   }
 
   // highlights (highlight recovery)
   nameCol = rec.indexOf("ProcThighlightRecovery");
-  if (-1 == nameCol) { std::cout << "paramManager ProcThighlightRecovery" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcThighlightRecovery"); }
   const int temp_highlights = query.value(nameCol).toInt();
   if (temp_highlights != m_highlights) {
     // cout << "ParameterManager::loadParams highlights" << endl;
@@ -2373,7 +2372,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Exposure compensation
   nameCol = rec.indexOf("ProcTexposureComp");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTexposureComp" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTexposureComp"); }
   const float temp_exposureComp = query.value(nameCol).toFloat();
   if (temp_exposureComp != m_exposureComp) {
     // cout << "ParameterManager::loadParams exposureComp" << endl;
@@ -2383,7 +2382,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Temperature
   nameCol = rec.indexOf("ProcTtemperature");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTtemperature" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTtemperature"); }
   const float temp_temperature = query.value(nameCol).toFloat();
   if (temp_temperature != m_temperature) {
     // cout << "ParameterManager::loadParams temperature" << endl;
@@ -2393,7 +2392,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Tint
   nameCol = rec.indexOf("ProcTtint");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTtint" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTtint"); }
   const float temp_tint = query.value(nameCol).toFloat();
   if (temp_tint != m_tint) {
     // cout << "ParameterManager::loadParams tint" << endl;
@@ -2403,42 +2402,42 @@ void ParameterManager::loadParams(QString imageID)
 
   // Noise reduction stuff
   nameCol = rec.indexOf("ProcTnrEnabled");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTnrEnabled" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTnrEnabled"); }
   const int temp_nrEnabled = query.value(nameCol).toInt();
   if (temp_nrEnabled != m_nrEnabled) {
     m_nrEnabled = temp_nrEnabled;
     validity = min(validity, Valid::postdemosaic);
   }
   nameCol = rec.indexOf("ProcTnlClusters");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTnlClusters" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTnlClusters"); }
   const int temp_nlClusters = query.value(nameCol).toInt();
   if (temp_nlClusters != m_nlClusters) {
     m_nlClusters = temp_nlClusters;
     validity = min(validity, Valid::postdemosaic);
   }
   nameCol = rec.indexOf("ProcTnlThresh");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTnlThresh" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTnlThresh"); }
   const float temp_nlThresh = query.value(nameCol).toFloat();
   if (temp_nlThresh != m_nlThresh) {
     m_nlThresh = temp_nlThresh;
     validity = min(validity, Valid::postdemosaic);
   }
   nameCol = rec.indexOf("ProcTnlStrength");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTnlStrength" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTnlStrength"); }
   const float temp_nlStrength = query.value(nameCol).toFloat();
   if (temp_nlStrength != m_nlStrength) {
     m_nlStrength = temp_nlStrength;
     validity = min(validity, Valid::postdemosaic);
   }
   nameCol = rec.indexOf("ProcTimpulseThresh");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTimpulseThresh" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTimpulseThresh"); }
   const float temp_impulseThresh = query.value(nameCol).toFloat();
   if (temp_impulseThresh != m_impulseThresh) {
     m_impulseThresh = temp_impulseThresh;
     validity = min(validity, Valid::nrnlmeans);
   }
   nameCol = rec.indexOf("ProcTchromaStrength");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTchromaStrength" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTchromaStrength"); }
   const float temp_chromaStrength = query.value(nameCol).toFloat();
   if (temp_chromaStrength != m_chromaStrength) {
     m_chromaStrength = temp_chromaStrength;
@@ -2447,7 +2446,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Lensfun lens name
   nameCol = rec.indexOf("ProcTlensfunName");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTlensfunName" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTlensfunName"); }
   const QString temp_lensfunName = query.value(nameCol).toString();
   if (temp_lensfunName != m_lensfunName) {
     // cout << "ParameterManager::loadParams lensfunName" << endl;
@@ -2457,7 +2456,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Lensfun CA correction
   nameCol = rec.indexOf("ProcTlensfunCa");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTlensfunCa" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTlensfunCa"); }
   const int temp_lensfunCa = query.value(nameCol).toInt();
   if (temp_lensfunCa != m_lensfunCa) {
     // cout << "ParameterManager::loadParams lensfunCa" << endl;
@@ -2467,7 +2466,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Lensfun vignetting correction
   nameCol = rec.indexOf("ProcTlensfunVign");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTlensfunVign" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTlensfunVign"); }
   const int temp_lensfunVign = query.value(nameCol).toInt();
   if (temp_lensfunVign != m_lensfunVign) {
     // cout << "ParameterManager::loadParams lensfunVign" << endl;
@@ -2477,7 +2476,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Lensfun distortion correction
   nameCol = rec.indexOf("ProcTlensfunDist");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTlensfunDist" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTlensfunDist"); }
   const int temp_lensfunDist = query.value(nameCol).toInt();
   if (temp_lensfunDist != m_lensfunDist) {
     // cout << "ParameterManager::loadParams lensfunDist" << endl;
@@ -2487,7 +2486,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Fine rotation angle
   nameCol = rec.indexOf("ProcTrotationAngle");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTrotationAngle" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTrotationAngle"); }
   const float temp_rotationAngle = query.value(nameCol).toFloat();
   if (temp_rotationAngle != m_rotationAngle) {
     // cout << "ParameterManager::loadParams rotationAngle" << endl;
@@ -2497,7 +2496,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Rotation reference point coordinates
   nameCol = rec.indexOf("ProcTrotationPointX");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTrotationPointX" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTrotationPointX"); }
   const float temp_rotationPointX = query.value(nameCol).toFloat();
   if (temp_rotationPointX != m_rotationPointX) {
     // cout << "ParameterManager::loadParams rotationPointX" << endl;
@@ -2505,7 +2504,7 @@ void ParameterManager::loadParams(QString imageID)
     // the reference coordinates don't affect validity at all
   }
   nameCol = rec.indexOf("ProcTrotationPointY");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTrotationPointY" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTrotationPointY"); }
   const float temp_rotationPointY = query.value(nameCol).toFloat();
   if (temp_rotationPointY != m_rotationPointY) {
     // cout << "ParameterManager::loadParams rotationPointY" << endl;
@@ -2515,7 +2514,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Initial developer concentration
   nameCol = rec.indexOf("ProcTinitialDeveloperConcentration");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTinitialDeveloperConcentration" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTinitialDeveloperConcentration"); }
   const float temp_initialDeveloperConcentration = query.value(nameCol).toFloat();
   if (temp_initialDeveloperConcentration != m_initialDeveloperConcentration) {
     // cout << "ParameterManager::loadParams initialDeveloperConcentration" << endl;
@@ -2525,7 +2524,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Reservoir thickness
   nameCol = rec.indexOf("ProcTreservoirThickness");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTreservoirThickness" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTreservoirThickness"); }
   const float temp_reservoirThickness = query.value(nameCol).toFloat();
   if (temp_reservoirThickness != m_reservoirThickness) {
     // cout << "ParameterManager::loadParams reservoirThickness" << endl;
@@ -2535,7 +2534,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Active layer thickness
   nameCol = rec.indexOf("ProcTactiveLayerThickness");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTactiveLayerThickness" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTactiveLayerThickness"); }
   const float temp_activeLayerThickness = query.value(nameCol).toFloat();
   if (temp_activeLayerThickness != m_activeLayerThickness) {
     // cout << "ParameterManager::loadParams activeLayerThickness" << endl;
@@ -2545,7 +2544,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Crystals per pixel
   nameCol = rec.indexOf("ProcTcrystalsPerPixel");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcrystalsPerPixel" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcrystalsPerPixel"); }
   const float temp_crystalsPerPixel = query.value(nameCol).toFloat();
   if (temp_crystalsPerPixel != m_crystalsPerPixel) {
     // cout << "ParameterManager::loadParams crystalsPerPixel" << endl;
@@ -2555,7 +2554,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Initial crystal radius
   nameCol = rec.indexOf("ProcTinitialCrystalRadius");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTinitialCrystalRadius" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTinitialCrystalRadius"); }
   const float temp_initialCrystalRadius = query.value(nameCol).toFloat();
   if (temp_initialCrystalRadius != m_initialCrystalRadius) {
     // cout << "ParameterManager::loadParams initialCrystalRadius" << endl;
@@ -2565,7 +2564,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Initial silver salt area density
   nameCol = rec.indexOf("ProcTinitialSilverSaltDensity");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTinitialSilverSaltDensity" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTinitialSilverSaltDensity"); }
   const float temp_initialSilverSaltDensity = query.value(nameCol).toFloat();
   if (temp_initialSilverSaltDensity != m_initialSilverSaltDensity) {
     // cout << "ParameterManager::loadParams initialSilverSaltDensity" << endl;
@@ -2575,7 +2574,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Developer consumption rate constant
   nameCol = rec.indexOf("ProcTdeveloperConsumptionConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTdeveloperConsumptionConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTdeveloperConsumptionConst"); }
   const float temp_developerConsumptionConst = query.value(nameCol).toFloat();
   if (temp_developerConsumptionConst != m_developerConsumptionConst) {
     // cout << "ParameterManager::loadParams developerConsumptionConst" << endl;
@@ -2585,7 +2584,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Crystal growth rate constant
   nameCol = rec.indexOf("ProcTcrystalGrowthConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcrystalGrowthConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcrystalGrowthConst"); }
   const float temp_crystalGrowthConst = query.value(nameCol).toFloat();
   if (temp_crystalGrowthConst != m_crystalGrowthConst) {
     // cout << "ParameterManager::loadParams crystalGrowthConst" << endl;
@@ -2595,7 +2594,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Silver halide consumption rate constant
   nameCol = rec.indexOf("ProcTsilverSaltConsumptionConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTsilverSaltConsumptionConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTsilverSaltConsumptionConst"); }
   const float temp_silverSaltConsumptionConst = query.value(nameCol).toFloat();
   if (temp_silverSaltConsumptionConst != m_silverSaltConsumptionConst) {
     // cout << "ParameterManager::loadParams silverSaltConsumptionConst" << endl;
@@ -2605,7 +2604,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Total development time
   nameCol = rec.indexOf("ProcTtotalDevelopmentTime");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTtotalDevelopmentTime" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTtotalDevelopmentTime"); }
   const float temp_totalDevelopmentTime = query.value(nameCol).toFloat();
   if (temp_totalDevelopmentTime != m_totalDevelopmentTime) {
     // cout << "ParameterManager::loadParams totalDevelopmentTime" << endl;
@@ -2615,7 +2614,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Number of agitations
   nameCol = rec.indexOf("ProcTagitateCount");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTagitateCount" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTagitateCount"); }
   const int temp_agitateCount = query.value(nameCol).toInt();
   if (temp_agitateCount != m_agitateCount) {
     // cout << "ParameterManager::loadParams agitateCount" << endl;
@@ -2625,7 +2624,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Number of simulation steps for development
   nameCol = rec.indexOf("ProcTdevelopmentSteps");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTdevelopmentSteps" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTdevelopmentSteps"); }
   const int temp_developmentSteps = query.value(nameCol).toInt();
   if (temp_developmentSteps != m_developmentSteps) {
     // cout << "ParameterManager::loadParams developmentSteps" << endl;
@@ -2635,7 +2634,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Area of film for the simulation
   nameCol = rec.indexOf("ProcTfilmArea");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTfilmArea" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTfilmArea"); }
   const float temp_filmArea = query.value(nameCol).toFloat();
   if (temp_filmArea != m_filmArea) {
     // cout << "ParameterManager::loadParams filmArea" << endl;
@@ -2645,7 +2644,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // A constant for the size of the diffusion. It...affects the same thing as film area.
   nameCol = rec.indexOf("ProcTsigmaConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTsigmaConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTsigmaConst"); }
   const float temp_sigmaConst = query.value(nameCol).toFloat();
   if (temp_sigmaConst != m_sigmaConst) {
     // cout << "ParameterManager::loadParams sigmaConst" << endl;
@@ -2655,7 +2654,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Layer mix constant: the amount of active developer that gets exchanged with the reservoir.
   nameCol = rec.indexOf("ProcTlayerMixConst");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTlayerMixConst" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTlayerMixConst"); }
   const float temp_layerMixConst = query.value(nameCol).toFloat();
   if (temp_layerMixConst != m_layerMixConst) {
     // cout << "ParameterManager::loadParams layerMixConst" << endl;
@@ -2665,7 +2664,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Layer time divisor: Controls the relative intra-layer and inter-layer diffusion.
   nameCol = rec.indexOf("ProcTlayerTimeDivisor");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTlayerTimeDivisor" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTlayerTimeDivisor"); }
   const float temp_layerTimeDivisor = query.value(nameCol).toFloat();
   if (temp_layerTimeDivisor != m_layerTimeDivisor) {
     // cout << "ParameterManager::loadParams layerTimeDivisor" << endl;
@@ -2675,7 +2674,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Rolloff boundary. This is where highlights start to roll off.
   nameCol = rec.indexOf("ProcTrolloffBoundary");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTrolloffBoundary" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTrolloffBoundary"); }
   const float temp_rolloffBoundary = query.value(nameCol).toFloat();
   if (temp_rolloffBoundary != m_rolloffBoundary) {
     // cout << "ParameterManager::loadParams rolloffBoundary" << endl;
@@ -2685,7 +2684,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Toe boundary. This is the offset for the values where the toe starts to roll off.
   nameCol = rec.indexOf("ProcTtoeBoundary");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTtoeBoundary" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTtoeBoundary"); }
   const float temp_toeBoundary = query.value(nameCol).toFloat();
   if (temp_toeBoundary != m_toeBoundary) {
     // cout << "ParameterManager::loadParams toeBoundary" << endl;
@@ -2695,7 +2694,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Post-filmulator black clipping point
   nameCol = rec.indexOf("ProcTblackpoint");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTblackpoint" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTblackpoint"); }
   const float temp_blackpoint = query.value(nameCol).toFloat();
   if (temp_blackpoint != m_blackpoint) {
     // cout << "ParameterManager::loadParams blackpoint" << endl;
@@ -2705,7 +2704,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Post-filmulator white clipping point
   nameCol = rec.indexOf("ProcTwhitepoint");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTwhitepoint" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTwhitepoint"); }
   const float temp_whitepoint = query.value(nameCol).toFloat();
   if (temp_whitepoint != m_whitepoint) {
     // cout << "ParameterManager::loadParams whitepoint" << endl;
@@ -2715,7 +2714,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Height of the crop WRT image height
   nameCol = rec.indexOf("ProcTcropHeight");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcropHeight" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcropHeight"); }
   const float temp_cropHeight = query.value(nameCol).toFloat();
   if (temp_cropHeight != m_cropHeight) {
     // cout << "ParameterManager::loadParams cropHeight" << endl;
@@ -2725,7 +2724,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Aspect ratio of the crop
   nameCol = rec.indexOf("ProcTcropAspect");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcropAspect" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcropAspect"); }
   const float temp_cropAspect = query.value(nameCol).toFloat();
   if (temp_cropAspect != m_cropAspect) {
     // cout << "ParameterManager::loadParams cropAspect" << endl;
@@ -2735,7 +2734,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Vertical position offset relative to center, WRT image height
   nameCol = rec.indexOf("ProcTcropVoffset");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcropVoffset" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcropVoffset"); }
   const float temp_cropVoffset = query.value(nameCol).toFloat();
   if (temp_cropVoffset != m_cropVoffset) {
     // cout << "ParameterManager::loadParams cropVoffset" << endl;
@@ -2745,7 +2744,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Horizontal position offset relative to center, WRT image width
   nameCol = rec.indexOf("ProcTcropHoffset");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTcropHoffset" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTcropHoffset"); }
   const float temp_cropHoffset = query.value(nameCol).toFloat();
   if (temp_cropHoffset != m_cropHoffset) {
     // cout << "ParameterManager::loadParams cropHoffset" << endl;
@@ -2755,7 +2754,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Shadow control point x value
   nameCol = rec.indexOf("ProcTshadowsX");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTshadowsX" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTshadowsX"); }
   const float temp_shadowsX = query.value(nameCol).toFloat();
   if (temp_shadowsX != m_shadowsX) {
     // cout << "ParameterManager::loadParams shadowsX" << endl;
@@ -2765,7 +2764,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Shadow control point y value
   nameCol = rec.indexOf("ProcTshadowsY");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTshadowsY" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTshadowsY"); }
   const float temp_shadowsY = query.value(nameCol).toFloat();
   if (temp_shadowsY != m_shadowsY) {
     // cout << "ParameterManager::loadParams shadowsY" << endl;
@@ -2775,7 +2774,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Highlight control point x value
   nameCol = rec.indexOf("ProcThighlightsX");
-  if (-1 == nameCol) { std::cout << "paramManager ProcThighlightsX" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcThighlightsX"); }
   const float temp_highlightsX = query.value(nameCol).toFloat();
   if (temp_highlightsX != m_highlightsX) {
     // cout << "ParameterManager::loadParams highlightsX" << endl;
@@ -2785,7 +2784,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Highlight control point y value
   nameCol = rec.indexOf("ProcThighlightsY");
-  if (-1 == nameCol) { std::cout << "paramManager ProcThighlightsY" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcThighlightsY"); }
   const float temp_highlightsY = query.value(nameCol).toFloat();
   if (temp_highlightsY != m_highlightsY) {
     // cout << "ParameterManager::loadParams highlightsY" << endl;
@@ -2795,7 +2794,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Vibrance (saturation of less-saturated things)
   nameCol = rec.indexOf("ProcTvibrance");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTvibrance" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTvibrance"); }
   const float temp_vibrance = query.value(nameCol).toFloat();
   if (temp_vibrance != m_vibrance) {
     // cout << "ParameterManager::loadParams vibrance" << endl;
@@ -2805,7 +2804,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Saturation
   nameCol = rec.indexOf("ProcTsaturation");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTsaturation" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTsaturation"); }
   const float temp_saturation = query.value(nameCol).toFloat();
   if (temp_saturation != m_saturation) {
     // cout << "ParameterManager::loadParams saturation" << endl;
@@ -2815,7 +2814,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Whether to convert to monochrome
   nameCol = rec.indexOf("ProcTmonochrome");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTmonochrome" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTmonochrome"); }
   const bool temp_monochrome = query.value(nameCol).toBool();
   if (temp_monochrome != m_monochrome) {
     // cout << "ParameterManager::loadParams monochrome" << endl;
@@ -2825,7 +2824,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Red weight multiplier for b&w conversion
   nameCol = rec.indexOf("ProcTbwRmult");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTbwRmult" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTbwRmult"); }
   const float temp_bwRmult = query.value(nameCol).toFloat();
   if (temp_bwRmult != m_bwRmult) {
     // cout << "ParameterManager::loadParams bwRmult" << endl;
@@ -2835,7 +2834,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Green weight multiplier for b&w conversion
   nameCol = rec.indexOf("ProcTbwGmult");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTbwGmult" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTbwGmult"); }
   const float temp_bwGmult = query.value(nameCol).toFloat();
   if (temp_bwGmult != m_bwGmult) {
     // cout << "ParameterManager::loadParams bwGmult" << endl;
@@ -2845,7 +2844,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Blue weight multiplier for b&w conversion
   nameCol = rec.indexOf("ProcTbwBmult");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTbwBmult" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTbwBmult"); }
   const float temp_bwBmult = query.value(nameCol).toFloat();
   if (temp_bwBmult != m_bwBmult) {
     // cout << "ParameterManager::loadParams bwBmult" << endl;
@@ -2855,7 +2854,7 @@ void ParameterManager::loadParams(QString imageID)
 
   // Rotation
   nameCol = rec.indexOf("ProcTrotation");
-  if (-1 == nameCol) { std::cout << "paramManager ProcTrotation" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager ProcTrotation"); }
   const int temp_rotation = query.value(nameCol).toInt();
   if (temp_rotation != m_rotation) {
     // cout << "ParameterManager::loadParams rotation" << endl;
@@ -2911,19 +2910,19 @@ void ParameterManager::cloneParams(ParameterManager *sourceParams)
 
   // Filename. First is the full path for the image pipeline.
   nameCol = rec.indexOf("FTfilePath");
-  if (-1 == nameCol) { std::cout << "paramManager FTfilePath" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTfilePath"); }
   QString name = query.value(nameCol).toString();
   m_fullFilename = name.toStdString();
   filename = name.right(name.size() - name.lastIndexOf(QString("/")) - 1);
   emit filenameChanged();
 
   nameCol = rec.indexOf("FTsensitivity");
-  if (-1 == nameCol) { std::cout << "paramManager FTsensitivity" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTsensitivity"); }
   sensitivity = query.value(nameCol).toInt();
   emit sensitivityChanged();
 
   nameCol = rec.indexOf("FTexposureTime");
-  if (-1 == nameCol) { std::cout << "paramManager FTexposureTime" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTexposureTime"); }
   QString expTimeTemp = query.value(nameCol).toString();
   bool okNum;
   unsigned int numerator = expTimeTemp.left(expTimeTemp.lastIndexOf("/")).toInt(&okNum, 10);
@@ -2945,7 +2944,7 @@ void ParameterManager::cloneParams(ParameterManager *sourceParams)
   emit exposureTimeChanged();
 
   nameCol = rec.indexOf("FTaperture");
-  if (-1 == nameCol) { std::cout << "paramManager FTaperture" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTaperture"); }
   fnumber = query.value(nameCol).toFloat();
   if (fnumber >= 8) {
     aperture = QString::number(fnumber, 'f', 0);
@@ -2956,17 +2955,17 @@ void ParameterManager::cloneParams(ParameterManager *sourceParams)
   emit apertureChanged();
 
   nameCol = rec.indexOf("FTfocalLength");
-  if (-1 == nameCol) { std::cout << "paramManager FTfocalLength" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTfocalLength"); }
   focalLength = query.value(nameCol).toFloat();
   emit focalLengthChanged();
 
   nameCol = rec.indexOf("FTcameraMake");
-  if (-1 == nameCol) { std::cout << "paramManager FTcameraMake" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTcameraMake"); }
   make = query.value(nameCol).toString();
   emit makeChanged();
 
   nameCol = rec.indexOf("FTcameraModel");
-  if (-1 == nameCol) { std::cout << "paramManager FTcameraModel" << endl; }
+  if (-1 == nameCol) { FILM_ERROR("paramManager FTcameraModel"); }
   model = query.value(nameCol).toString();
   emit modelChanged();
 
@@ -3447,7 +3446,7 @@ void ParameterManager::paramChangeWrapper(QString source)
 //  copy on/off preferences, not correction parameters nor lens name
 void ParameterManager::copyAll(QString fromImageID)
 {
-  std::cout << "copy all" << std::endl;
+  FILM_DEBUG("copy all");
   copyFromImageIndex = fromImageID;
   pasteable = true;
   pasteSome = false;
@@ -3478,7 +3477,7 @@ void ParameterManager::paste(QString toImageID)
 
 void ParameterManager::updateLensfunAvailability()
 {
-  cout << "Updating availability" << endl;
+  FILM_TRACE("Updating availability");
 
   std::string camModel = model.toStdString();
   const lfCamera *camera = NULL;

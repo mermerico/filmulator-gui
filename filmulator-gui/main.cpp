@@ -4,6 +4,7 @@
 #define FILMULATOR_DATADIR ""
 #endif
 
+#include "core/logging.h"
 #include "database/filmulatorDB.h"
 #include "database/importModel.h"
 #include "database/organizeModel.h"
@@ -35,6 +36,8 @@ int main(int argc, char *argv[])
   Q_INIT_RESOURCE(qml);
   Q_INIT_RESOURCE(pixmaps);
 
+  Filmulator::init_logging();
+
   bool testMode = false;
   for (int i = 1; i < argc; i++) {
     if (QString(argv[i]) == "--test-mode") {
@@ -43,10 +46,10 @@ int main(int argc, char *argv[])
     }
   }
 
-  cout << "Have " << argc << " arguments" << endl;
-  for (int i = 0; i < argc; i++) { cout << argv[i] << endl; }
+  FILM_INFO("Have {} arguments", argc);
+  for (int i = 0; i < argc; i++) { FILM_DEBUG("  {}", argv[i]); }
 
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating qapplication" << endl;
+  FILM_INFO("Creating QApplication");
   // It cannot properly fall back to Qt Widgets versions of the dialogs if
   //  we use a QGuiApplication, which only supports QML stuff.
   // QGuiApplication app(argc, argv);
@@ -65,13 +68,12 @@ int main(int argc, char *argv[])
   QFont sansFont("Sans Serif", 9);
   app.setFont(sansFont);
 
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating qqmlapplicationengine"
-       << endl;
+  FILM_INFO("Creating QQmlApplicationEngine");
   QQmlApplicationEngine engine;
 
   // Prepare database connection.
   // This should create a new db file if there was none.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "connecting to database" << endl;
+  FILM_INFO("Connecting to database");
   QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
   if (setupDB(&db) == DBSuccess::failure) {
     qWarning("Database prep failed");
@@ -95,7 +97,7 @@ int main(int argc, char *argv[])
   SignalSwitchboard *switchboard = new SignalSwitchboard;
 
   // Create a settings object for persistent settings.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating settings object" << endl;
+  FILM_INFO("Creating settings object");
   Settings *settingsObj = new Settings;
   engine.rootContext()->setContextProperty("settings", settingsObj);
 
@@ -106,16 +108,15 @@ int main(int argc, char *argv[])
   }
 
   // Prepare an object for managing the processing parameters.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating parametermanager" << endl;
+  FILM_INFO("Creating ParameterManager");
   ParameterManager *paramManager = new ParameterManager;
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "assigning parametermanager property"
-       << endl;
+  FILM_INFO("Assigning ParameterManager property");
   engine.rootContext()->setContextProperty("paramManager", paramManager);
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "connecting parametermanager" << endl;
+  FILM_INFO("Connecting ParameterManager");
   QObject::connect(paramManager, SIGNAL(updateTableOut(QString, int)), switchboard, SLOT(updateTableIn(QString, int)));
 
   // Prepare an image provider object.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating filmimageprovider" << endl;
+  FILM_INFO("Creating FilmImageProvider");
   FilmImageProvider *filmProvider = new FilmImageProvider(paramManager);
   // Connect it as an image provider so that qml can get the photos
   engine.addImageProvider(QLatin1String("filmy"), filmProvider);
@@ -125,12 +126,12 @@ int main(int argc, char *argv[])
   qRegisterMetaType<QFileInfo>();
 
   // Prepare a model for importing.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating importmodel" << endl;
+  FILM_INFO("Creating ImportModel");
   ImportModel *importModel = new ImportModel;
   engine.rootContext()->setContextProperty("importModel", importModel);
 
   // Prepare a model for the organize view.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating organizemodel" << endl;
+  FILM_INFO("Creating OrganizeModel");
   OrganizeModel *organizeModel = new OrganizeModel;
   engine.rootContext()->setContextProperty("organizeModel", organizeModel);
   engine.rootContext()->setContextProperty("dateHistoModel", organizeModel->dateHistogram);
@@ -138,7 +139,7 @@ int main(int argc, char *argv[])
   QObject::connect(organizeModel, SIGNAL(updateTableOut(QString, int)), switchboard, SLOT(updateTableIn(QString, int)));
 
   // Prepare a model for the queue view.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating queuemodel" << endl;
+  FILM_INFO("Creating QueueModel");
   QueueModel *queueModel = new QueueModel;
   queueModel->setQueueQuery();
   QObject::connect(switchboard, SIGNAL(updateTableOut(QString, int)), queueModel, SLOT(updateTable(QString, int)));
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
   engine.rootContext()->setContextProperty("queueModel", queueModel);
 
   // Prepare a model for the lensfun lens list.
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating lensselectmodel" << endl;
+  FILM_INFO("Creating LensSelectModel");
   LensSelectModel *lensModel = new LensSelectModel;
   engine.rootContext()->setContextProperty("lensModel", lensModel);
 
@@ -156,11 +157,11 @@ int main(int argc, char *argv[])
   if (argc == 2 && !testMode) {
     QString arg = QString(argv[1]);
     if (!arg.startsWith("-")) {
-      cout << "Importing file!" << endl;
+      FILM_INFO("Importing file!");
 #if (defined(_WIN32) || defined(__WIN32__))
-      cout << "main argv: " << argv[1] << endl;
+      FILM_DEBUG("main argv: {}", argv[1]);
       QString temp = QString::fromLocal8Bit(argv[1]);
-      cout << "main argv qstring std: " << temp.toStdString() << endl;
+      FILM_DEBUG("main argv qstring std: {}", temp.toStdString());
       searchID = importModel->importFileNow(QString::fromLocal8Bit(argv[1]), settingsObj);
 #else
       searchID = importModel->importFileNow(QString(argv[1]), settingsObj);
@@ -169,12 +170,12 @@ int main(int argc, char *argv[])
         // must be set before loading qml file
         engine.rootContext()->setContextProperty("startOnFilmulate", true);
       } else {
-        cout << "Could not import file." << endl;
+        FILM_WARN("Could not import file.");
       }
     }
   }
 
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "loading qml file" << endl;
+  FILM_INFO("Loading QML file");
   engine.load("qrc:///qml/qml/filmulator-gui/main.qml");
 
   if (searchID != "") {
@@ -182,7 +183,7 @@ int main(int argc, char *argv[])
     paramManager->selectImage(searchID);
   }
 
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "creating window" << endl;
+  FILM_INFO("Creating window");
 
   QObject *topLevel = engine.rootObjects().value(0);
   QQuickWindow *window = qobject_cast<QQuickWindow *>(topLevel);
@@ -192,22 +193,22 @@ int main(int argc, char *argv[])
   }
   window->setIcon(QIcon(":/icons/filmulator64icon_square.png"));
 
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "showing window" << endl;
+  FILM_INFO("Showing window");
   window->show();
 
 #ifdef ENABLE_SPIX_TESTING
   spix::AnyRpcServer *server = nullptr;
   spix::QtQmlBot *bot = nullptr;
   if (testMode) {
-    cout << "Starting Spix E2E test server on port 9000..." << endl;
+    FILM_INFO("Starting Spix E2E test server on port 9000...");
     server = new spix::AnyRpcServer();
     bot = new spix::QtQmlBot();
     bot->runTestServer(*server);
-    cout << "Spix setup complete." << endl;
+    FILM_INFO("Spix setup complete.");
   }
 #endif
 
-  cout << QDateTime::currentDateTime().toString("hh:mm:ss.zzz ").toStdString() << "return" << endl;
+  FILM_INFO("Return");
   int ret = app.exec();
 
 #ifdef ENABLE_SPIX_TESTING

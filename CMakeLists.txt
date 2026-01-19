@@ -62,6 +62,7 @@ endif()
 find_package(CURL CONFIG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 # Spix E2E testing support (optional)
 option(ENABLE_SPIX_TESTING "Enable Spix-based E2E testing" OFF)
@@ -128,6 +129,7 @@ set(filmulator_CORE_SRCS
     filmulator-gui/core/imwriteJpeg.cpp
     filmulator-gui/core/imwriteTiff.cpp
     filmulator-gui/core/layerMix.cpp
+    filmulator-gui/core/logging.cpp
     filmulator-gui/core/mergeExps.cpp
     filmulator-gui/core/outputFile.cpp
     filmulator-gui/core/rotateImage.cpp
@@ -237,6 +239,7 @@ target_link_libraries(filmulator-lib
         ZLIB::ZLIB
         OpenMP::OpenMP_CXX
         rtprocess::rtprocess
+        spdlog::spdlog
 )
 
 # Define the executable

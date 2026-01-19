@@ -2,6 +2,7 @@
 #include "../database/camconst.h"
 #include "../database/exifFunctions.h"
 #include "filmSim.hpp"
+#include "logging.h"
 #include "nlmeans/nlmeans.hpp"
 #include "rawtherapee/rt_routines.h"
 #include <QDir>
@@ -86,9 +87,9 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     QString paramIndex = paramManager->getImageIndex();
     paramIndex.truncate(32);
     if (fileHash != paramIndex) {
-      cout << "processImage shuffle mismatch:  Requested Index: " << fileHash.toStdString() << endl;
-      cout << "processImage shuffle mismatch:  Parameter Index: " << paramIndex.toStdString() << endl;
-      cout << "processImage shuffle mismatch:  full pipeline?: " << (quality == HighQuality) << endl;
+      FILM_WARN("processImage shuffle mismatch:  Requested Index: {}", fileHash.toStdString());
+      FILM_WARN("processImage shuffle mismatch:  Parameter Index: {}", paramIndex.toStdString());
+      FILM_WARN("processImage shuffle mismatch:  full pipeline?: {}", (quality == HighQuality));
       valid = none;
     }
     fileID = paramIndex;
@@ -106,7 +107,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
   // If we are a high-res pipeline that's going to steal data, skip to
   // filmulation
   if (stealData) {
-    if (stealVictim == nullptr) { cout << "stealVictim should not be null!" << endl; }
+    if (stealVictim == nullptr) { FILM_ERROR("stealVictim should not be null!"); }
     valid = max(valid, prefilmulation);
     paramManager->setValid(valid);
   }
@@ -117,17 +118,15 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     // if something has been processed before, and we think it's valid
     // it had better be the same filename.
     if (paramManager->getFullFilename() != filename.toStdString()) {
-      cout << "processImage paramManager filename doesn't match pipeline "
-              "filename"
-           << endl;
-      cout << "processImage paramManager filename: " << paramManager->getFullFilename() << endl;
-      cout << "processImage pipeline filename:     " << filename.toStdString() << endl;
-      cout << "processImage setting validity to none due to filename" << endl;
+      FILM_WARN("processImage paramManager filename doesn't match pipeline filename");
+      FILM_WARN("processImage paramManager filename: {}", paramManager->getFullFilename());
+      FILM_WARN("processImage pipeline filename:     {}", filename.toStdString());
+      FILM_WARN("processImage setting validity to none due to filename");
       valid = none;
     }
   }
 
-  cout << "ImagePipeline::processImage valid: " << valid << endl;
+  FILM_INFO("ImagePipeline::processImage valid: {}", (int)valid);
 
   updateProgress(valid, 0.0f);
   PipelineContext context;
@@ -223,7 +222,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     AbortStatus abort;
     std::tie(valid, abort, loadParam, demosaicParam) = paramManager->claimDemosaicParams();
     if (abort == AbortStatus::restart) {
-      cout << "imagePipeline.cpp: aborted at demosaic" << endl;
+      FILM_WARN("imagePipeline.cpp: aborted at demosaic");
       return emptyMatrix();
     }
 
@@ -430,7 +429,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
   case nrchroma:// Do pre-filmulation work.
   {
     PrefilmParams prefilmParam;
-    cout << "imagePipeline beginning pre-filmulation" << endl;
+    FILM_DEBUG("imagePipeline beginning pre-filmulation");
     AbortStatus abort;
     std::tie(valid, abort, prefilmParam) = paramManager->claimPrefilmParams();
     if (abort == AbortStatus::restart) return emptyMatrix();
@@ -467,7 +466,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
       if (pdata) {
         float pmin = *std::min_element(pdata, pdata + pre_film_image.nr() * pre_film_image.nc());
         float pmax = *std::max_element(pdata, pdata + pre_film_image.nr() * pre_film_image.nc());
-        cout << "QuickPipe: pre_film_image min: " << pmin << " max: " << pmax << endl;
+        FILM_TRACE("QuickPipe: pre_film_image min: {} max: {}", pmin, pmax);
       }
     }
 #endif
@@ -507,7 +506,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
 
     matrix<float> film_input_image;
     if (stealData) {
-      cout << "imagePipeline stealing data" << endl;
+      FILM_DEBUG("imagePipeline stealing data");
       exifData = stealVictim->exifData;
       rCamMul = stealVictim->rCamMul;
       gCamMul = stealVictim->gCamMul;
@@ -539,21 +538,21 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
       matrix<float> *sourceImage = &stealVictim->pre_film_image;
       if (sourceImage->nr() == 0 && stealVictim->pre_film_image_small.nr() > 0) {
         sourceImage = &stealVictim->pre_film_image_small;
-        cout << "Stealing from small image" << endl;
+        FILM_DEBUG("Stealing from small image");
       }
 
       if (!isMonochrome) {
-        cout << "Stealing: sourceImage sizes: " << sourceImage->nr() << "x" << sourceImage->nc() << endl;
+        FILM_DEBUG("Stealing: sourceImage sizes: {}x{}", sourceImage->nr(), sourceImage->nc());
         float *sdata = *sourceImage;
         if (sdata) {
           float smin = *std::min_element(sdata, sdata + sourceImage->nr() * sourceImage->nc());
           float smax = *std::max_element(sdata, sdata + sourceImage->nr() * sourceImage->nc());
-          cout << "Stealing: sourceImage min: " << smin << " max: " << smax << endl;
+          FILM_DEBUG("Stealing: sourceImage min: {} max: {}", smin, smax);
         } else {
-          cout << "Stealing: sourceImage data is NULL" << endl;
+          FILM_ERROR("Stealing: sourceImage data is NULL");
         }
 
-        cout << "Stealing: camToRGB[0][0]: " << camToRGB[0][0] << endl;
+        FILM_DEBUG("Stealing: camToRGB[0][0]: {}", camToRGB[0][0]);
 
         raw_to_sRGB(*sourceImage, film_input_image, camToRGB);
 
@@ -561,13 +560,13 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
         if (fdata) {
           float fmin = *std::min_element(fdata, fdata + film_input_image.nr() * film_input_image.nc());
           float fmax = *std::max_element(fdata, fdata + film_input_image.nr() * film_input_image.nc());
-          cout << "Stealing: film_input_image min: " << fmin << " max: " << fmax << endl;
+          FILM_DEBUG("Stealing: film_input_image min: {} max: {}", fmin, fmax);
         }
       } else {
         film_input_image = *sourceImage;
       }
     } else {
-      cout << "imagePipeline not stealing data" << endl;
+      FILM_DEBUG("imagePipeline not stealing data");
       if (quality == LowQuality || quality == PreviewQuality) {
         // grab shrunken image
         if (!isMonochrome) {
@@ -592,9 +591,9 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
       }
     }
 
-    cout << "imagePipeline beginning filmulation" << endl;
-    cout << "imagePipeline image width:  " << film_input_image.nc() / 3 << endl;
-    cout << "imagePipeline image height: " << film_input_image.nr() << endl;
+    FILM_DEBUG("imagePipeline beginning filmulation");
+    FILM_DEBUG("imagePipeline image width:  {}", film_input_image.nc() / 3);
+    FILM_DEBUG("imagePipeline image height: {}", film_input_image.nr());
 
     // We don't need to check abort status out here, because
     // the filmulate function will do so inside its loop.
@@ -603,7 +602,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     // Here we do the film simulation on the image...
     // If filmulate detects an abort, it returns true.
     if (filmulate(film_input_image, filmulated_image, paramManager, this)) {
-      cout << "imagePipeline aborted at filmulation" << endl;
+      FILM_WARN("imagePipeline aborted at filmulation");
       return emptyMatrix();
     }
 
@@ -639,7 +638,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
         cropVoffset);
     }
 
-    cout << "ImagePipeline::processImage: Filmulation complete." << endl;
+    FILM_INFO("ImagePipeline::processImage: Filmulation complete.");
 
     valid = paramManager->markFilmComplete();
     updateProgress(valid, 0.0f);
@@ -649,15 +648,15 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     [[fallthrough]];
   case filmulation:// Do whitepoint_blackpoint
   {
-    cout << "imagePipeline beginning whitepoint blackpoint" << endl;
-    cout << "imagePipeline image width:  " << filmulated_image.nc() / 3 << endl;
-    cout << "imagePipeline image height: " << filmulated_image.nr() << endl;
+    FILM_DEBUG("imagePipeline beginning whitepoint blackpoint");
+    FILM_DEBUG("imagePipeline image width:  {}", filmulated_image.nc() / 3);
+    FILM_DEBUG("imagePipeline image height: {}", filmulated_image.nr());
 
     BlackWhiteParams blackWhiteParam;
     AbortStatus abort;
     std::tie(valid, abort, blackWhiteParam) = paramManager->claimBlackWhiteParams();
     if (abort == AbortStatus::restart) {
-      cout << "imagePipeline aborted at whitepoint blackpoint" << endl;
+      FILM_WARN("imagePipeline aborted at whitepoint blackpoint");
       return emptyMatrix();
     }
 
@@ -740,13 +739,13 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     }
 
     matrix<float> cropped_image;
-    cout << "crop start:" << timeDiff(timeRequested) << endl;
+    FILM_DEBUG("crop start: {}", timeDiff(timeRequested));
     std::chrono::steady_clock::time_point crop_time;
     crop_time = std::chrono::steady_clock::now();
 
     downscale_and_crop(rotated_image, cropped_image, startX, startY, endX, endY, width, height);
 
-    cout << "crop end: " << timeDiff(crop_time) << endl;
+    FILM_DEBUG("crop end: {}", timeDiff(crop_time));
 
     rotated_image.set_size(0, 0);// clean up ram that's not needed anymore
 
@@ -763,7 +762,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     [[fallthrough]];
   case blackwhite:// Do color_curve
   {
-    cout << "imagePipeline beginning dummy color curve" << endl;
+    FILM_DEBUG("imagePipeline beginning dummy color curve");
     // It's not gonna abort because we have no color curves yet..
     // Prepare LUT's for individual color processin.g
     lutR.setUnity();
@@ -786,13 +785,13 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
     [[fallthrough]];
   case colorcurve:// Do film-like curve
   {
-    cout << "imagePipeline beginning film like curve" << endl;
+    FILM_DEBUG("imagePipeline beginning film like curve");
 
     FilmlikeCurvesParams curvesParam;
     AbortStatus abort;
     std::tie(valid, abort, curvesParam) = paramManager->claimFilmlikeCurvesParams();
     if (abort == AbortStatus::restart) {
-      cout << "imagePipeline aborted at color curve" << endl;
+      FILM_WARN("imagePipeline aborted at color curve");
       return emptyMatrix();
     }
 
@@ -827,7 +826,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
   }
   default:// output
   {
-    cout << "imagePipeline beginning output" << endl;
+    FILM_DEBUG("imagePipeline beginning output");
     if (NoCache == cache) {
       // vibrance_saturation_image.set_size(0, 0);
       cacheEmpty = true;
@@ -843,7 +842,7 @@ matrix<unsigned short> &ImagePipeline::processImage(ParameterManager *paramManag
   }
   }// End task switch
 
-  cout << "imagePipeline aborted at end" << endl;
+  FILM_WARN("imagePipeline aborted at end");
   return emptyMatrix();
 }
 
@@ -1064,9 +1063,9 @@ void ImagePipeline::sampleWB(const float xPos,
   red = rSum / (rUserMul * count);
   green = gSum / (gUserMul * count);
   blue = bSum / (bUserMul * count);
-  cout << "custom WB sampled r: " << red << endl;
-  cout << "custom WB sampled g: " << green << endl;
-  cout << "custom WB sampled b: " << blue << endl;
+  FILM_DEBUG("custom WB sampled r: {}", red);
+  FILM_DEBUG("custom WB sampled g: {}", green);
+  FILM_DEBUG("custom WB sampled b: {}", blue);
 }
 
 void ImagePipeline::clearInvalid(Valid validIn)

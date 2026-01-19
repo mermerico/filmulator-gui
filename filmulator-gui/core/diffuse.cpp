@@ -17,6 +17,7 @@
  * along with Filmulator. If not, see <http://www.gnu.org/licenses/>
  */
 #include "filmSim.hpp"
+#include "logging.h"
 #include "math.h"
 #include <array>
 #include <omp.h>
@@ -302,7 +303,7 @@ void diffuse_short_convolution(matrix<float> &developer_concentration,
 #pragma omp parallel for
   for (int i = 0; i < width; i++) {
     if (attenuationX[i] <= 0) {
-      std::cout << "gonna blow X" << std::endl;
+      FILM_WARN("gonna blow X");
     } else// we can invert this
     {
       attenuationX[i] = 1.0 / attenuationX[i];
@@ -334,7 +335,7 @@ void diffuse_short_convolution(matrix<float> &developer_concentration,
 #pragma omp parallel for
   for (int i = 0; i < height; i++) {
     if (attenuationY[i] <= 0) {
-      std::cout << "gonna blow Y" << std::endl;
+      FILM_WARN("gonna blow Y");
     } else {
       attenuationY[i] = 1.0 / attenuationY[i];
     }
@@ -474,7 +475,7 @@ void diffuse_resize_iir(matrix<float> &developer_concentration,
   // set up test sigma
   const double sigma = sqrt(timestep * pow(sigma_const * pixels_per_millimeter, 2));
 
-  std::cout << "sigma: " << sigma << "=======================================================" << std::endl;
+  FILM_INFO("sigma: {} =======================================================", sigma);
 
   // If it's small enough, we're not going to resize at all.
   if (sigma < 70) {
