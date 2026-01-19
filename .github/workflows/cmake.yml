@@ -159,13 +159,26 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       env:
-        WINDEPLOYQT: ${{ github.workspace }}\vcpkg_installed\${{ matrix.triplet }}\tools\qt5\bin\windeployqt.exe
+        # vcpkg manifest mode puts dependencies and tools inside the build directory
+        WINDEPLOY_PREFIX: ${{ github.workspace }}\build\${{ matrix.preset }}\vcpkg_installed\${{ matrix.triplet }}
       run: |
-        New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\build\installed\bin" | Out-Null
-        Copy-Item "$env:GITHUB_WORKSPACE\vcpkg_installed\${{ matrix.triplet }}\bin\*.dll" "$env:GITHUB_WORKSPACE\build\installed\bin" -Force
-        & "$env:WINDEPLOYQT" --verbose 2 --qmldir "$env:GITHUB_WORKSPACE\filmulator-gui\qml\filmulator-gui" "$env:GITHUB_WORKSPACE\build\installed\bin\filmulator.exe"
-        Copy-Item "$env:GITHUB_WORKSPACE\LICENSE.txt" "$env:GITHUB_WORKSPACE\build\installed\bin" -Force
-        Copy-Item "$env:GITHUB_WORKSPACE\filmulator-gui\filmulator-gui80.ico" "$env:GITHUB_WORKSPACE\build\installed\bin" -Force
+        $binDir = "$env:GITHUB_WORKSPACE\build\installed\bin"
+        $vcpkgBinDir = "$env:WINDEPLOY_PREFIX\bin"
+        $windeployqt = "$env:WINDEPLOY_PREFIX\tools\qt5\bin\windeployqt.exe"
+        
+        Write-Host "Bundling DLLs from $vcpkgBinDir to $binDir"
+        if (Test-Path $vcpkgBinDir) {
+            Copy-Item "$vcpkgBinDir\*.dll" $binDir -Force
+        } else {
+            Write-Error "Could not find vcpkg bin directory at $vcpkgBinDir"
+            exit 1
+        }
+
+        Write-Host "Running windeployqt..."
+        & $windeployqt --verbose 2 --qmldir "$env:GITHUB_WORKSPACE\filmulator-gui\qml\filmulator-gui" "$binDir\filmulator.exe"
+        
+        Copy-Item "$env:GITHUB_WORKSPACE\LICENSE.txt" $binDir -Force
+        Copy-Item "$env:GITHUB_WORKSPACE\filmulator-gui\filmulator-gui80.ico" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator_build.iss" "$env:GITHUB_WORKSPACE\build\installed" -Force
 
     - name: Upload Windows Artifact
