@@ -29,20 +29,9 @@
 #include "../../ui/parameterManager.h"
 #include "../matrix.hpp"
 
-// #include "array2D.h"
 #include "boxblur.h"
 #include "cplx_wavelet_dec.h"
-// #include "color.h"
-// #include "curves.h"
-#ifdef __SSE2__
-#include "helpersse2.h"
-#endif
-// #include "iccmatrices.h"
-// #include "iccstore.h"
-// #include "imagefloat.h"
-// #include "improcfun.h"
 #include "labimage.h"
-// #include "LUT.h"
 // #include "mytime.h"
 #include "opthelper.h"
 // #include "procparams.h"

@@ -6,6 +6,8 @@ import os
 import subprocess
 import tempfile
 import shutil
+import argparse
+import shlex
 
 def poll_for_condition(condition_func, timeout=10, check_interval=0.1):
     start = time.time()
@@ -55,36 +57,67 @@ def mouse_double_click(proxy, object_name):
     time.sleep(0.05)
     proxy.mouseClick(path)
 
-def run_test():
+def run_test(no_start=False):
     raw_file_path = os.path.abspath("tests/data/raw/_DSC0355.NEF")
     raw_dir_path = os.path.dirname(raw_file_path)
     golden_file_path = os.path.abspath("tests/e2e/golden/golden_raw_pipeline.jpg")
     output_file_path = os.path.abspath("tests/data/raw/_DSC0355-output.jpg")
-    binary_path = os.path.abspath("build/relwithdebinfo/Filmulator.app/Contents/MacOS/filmulator-gui")
+    
+    project_root = os.path.abspath(".")
+    # Default binary path: try standard build first, then debug
+    default_binary_path = os.path.join(project_root, "build", "Filmulator.app", "Contents", "MacOS", "filmulator")
+    if not os.path.exists(default_binary_path):
+        default_binary_path = os.path.join(project_root, "build", "debug", "Filmulator.app", "Contents", "MacOS", "filmulator")
+
+    binary_path = os.environ.get("FILMULATOR_BIN", default_binary_path)
 
     if not os.path.exists(raw_file_path):
         print(f"Error: RAW file not found at {raw_file_path}")
         return False
 
-    if not os.path.exists(binary_path):
+    if not no_start and not os.path.exists(binary_path):
         print(f"Error: Binary not found at {binary_path}")
         return False
 
-    # Setup temporary directory for fresh database
-    test_db_dir = tempfile.mkdtemp(prefix="filmulator_test_db_")
-    print(f"Using fresh database directory: {test_db_dir}")
+    # Setup database directory
+    test_db_dir = os.environ.get("FILMULATOR_DB_DIR")
+    if not test_db_dir:
+        if no_start:
+            # If connecting to existing, we don't know the DB dir, but we don't need to.
+            # However, for consistency we might want to print something.
+            print("Connecting to existing instance; assuming it has its own database setup.")
+        else:
+            test_db_dir = tempfile.mkdtemp(prefix="filmulator_test_db_")
+            print(f"Using fresh database directory: {test_db_dir}")
+    else:
+        print(f"Using database directory from environment: {test_db_dir}")
 
     # Set environment variables for the process
     env = os.environ.copy()
-    env["FILMULATOR_DB_DIR"] = test_db_dir
+    if test_db_dir:
+        env["FILMULATOR_DB_DIR"] = test_db_dir
 
-    # Start the process
-    print(f"Starting Filmulator: {binary_path}")
-    process = subprocess.Popen([binary_path, "--test-mode"], 
-                             stdout=None, 
-                             stderr=None,
-                             env=env,
-                             text=True)
+    process = None
+    if not no_start:
+        # Start the process
+        print(f"Starting Filmulator: {binary_path}")
+        # Support running through a debugger (e.g. lldb)
+        debugger = os.environ.get("FILMULATOR_DEBUGGER", "")
+        cmd = [binary_path, "--test-mode"]
+        if debugger:
+            # Use shlex to handle debugger arguments like 'lldb --'
+            cmd = shlex.split(debugger) + cmd
+
+        process = subprocess.Popen(cmd,
+                                 stdout=None,
+                                 stderr=None,
+                                 env=env,
+                                 text=True)
+    else:
+        print("Connecting to already-running Filmulator process (waiting for port 9000)...")
+        if not wait_for_port(9000, timeout=30):
+            print("Error: --no-start provided but no server found on port 9000 after 30 seconds")
+            return False
 
     try:
         print("Waiting for Spix server on port 9000...")
@@ -245,8 +278,8 @@ def run_test():
         def check_export_enabled():
             return proxy.getStringProperty(export_button_path, "notDisabled") == "true"
             
-        if not poll_for_condition(check_export_enabled, timeout=6, check_interval=0.5):
-            print("Error: Export button did not become enabled within 6s")
+        if not poll_for_condition(check_export_enabled, timeout=120, check_interval=0.5):
+            print("Error: Export button did not become enabled within 120s")
             # Diagnostic: print image state
             print(f"  Image ready: {proxy.getStringProperty('mainWindow/editView/editTools', 'imageReady')}")
             return False
@@ -291,16 +324,17 @@ def run_test():
             return False
 
     finally:
-        print("Cleaning up: Terminating Filmulator process")
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except:
-            process.kill()
+        if process:
+            print("Cleaning up: Terminating Filmulator process")
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except:
+                process.kill()
         
-        # Remove temporary database directory
+        # Remove temporary database directory if we created it
         try:
-            if os.path.exists(test_db_dir):
+            if test_db_dir and "filmulator_test_db_" in test_db_dir and os.path.exists(test_db_dir):
                 shutil.rmtree(test_db_dir)
                 print(f"Cleaned up test database directory: {test_db_dir}")
         except:
@@ -313,5 +347,9 @@ def run_test():
             pass
 
 if __name__ == "__main__":
-    success = run_test()
+    parser = argparse.ArgumentParser(description="Run E2E raw pipeline test")
+    parser.add_argument("--no-start", action="store_true", help="Do not start Filmulator, connect to existing instance on port 9000")
+    args = parser.parse_args()
+    
+    success = run_test(no_start=args.no_start)
     sys.exit(0 if success else 1)

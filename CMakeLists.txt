@@ -39,6 +39,7 @@ find_package(libraw CONFIG REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(OpenMP REQUIRED)
+
 set(_lensfun_found FALSE)
 find_package(lensfun QUIET)
 if(lensfun_FOUND)
@@ -64,6 +65,15 @@ find_package(ZLIB REQUIRED)
 
 # Spix E2E testing support (optional)
 option(ENABLE_SPIX_TESTING "Enable Spix-based E2E testing" OFF)
+
+if(NOT DEFINED ENABLE_NAN_TRAPPING)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(ENABLE_NAN_TRAPPING ON)
+    else()
+        set(ENABLE_NAN_TRAPPING OFF)
+    endif()
+endif()
+option(ENABLE_NAN_TRAPPING "Enable NaN trapping and debug breaks" ${ENABLE_NAN_TRAPPING})
 
 if(ENABLE_SPIX_TESTING)
     # AnyRPC from vcpkg (no CMake config, so set paths manually)
@@ -104,6 +114,13 @@ set(filmulator_CORE_SRCS
     filmulator-gui/core/exposure.cpp
     filmulator-gui/core/filmulate.cpp
     filmulator-gui/core/imagePipeline.cpp
+    filmulator-gui/core/pipeline/LoadStage.cpp
+    filmulator-gui/core/pipeline/DemosaicStage.cpp
+    filmulator-gui/core/pipeline/PostDemosaicStage.cpp
+    filmulator-gui/core/pipeline/NlmeansNRStage.cpp
+    filmulator-gui/core/pipeline/ImpulseNRStage.cpp
+    filmulator-gui/core/pipeline/ChromaNRStage.cpp
+    filmulator-gui/core/pipeline/PrefilmulationStage.cpp
     filmulator-gui/core/imload.cpp
     filmulator-gui/core/imread.cpp
     filmulator-gui/core/imreadJpeg.cpp
@@ -168,6 +185,11 @@ qtquick_compiler_add_resources(filmulator_RSCS
 add_library(filmulator-lib STATIC
     ${filmulator_CORE_SRCS}
     ${filmulator_RSCS}
+)
+
+target_compile_definitions(filmulator-lib
+    PUBLIC
+        $<$<BOOL:${ENABLE_NAN_TRAPPING}>:ENABLE_NAN_TRAPPING>
 )
 
 # Compile options for the library

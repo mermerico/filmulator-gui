@@ -463,6 +463,7 @@ Valid ParameterManager::markChromaNRComplete()
 
 void ParameterManager::setNrEnabled(bool enabledIn)
 {
+  fprintf(stderr, "ParameterManager::setNrEnabled: %d justInitialized=%d\n", enabledIn, justInitialized);
   if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_nrEnabled = enabledIn;
@@ -499,6 +500,7 @@ void ParameterManager::setNlThresh(float clusterThreshold)
 
 void ParameterManager::setNlStrength(float strength)
 {
+  fprintf(stderr, "ParameterManager::setNlStrength: %f justInitialized=%d\n", strength, justInitialized);
   if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_nlStrength = strength;
@@ -523,6 +525,7 @@ void ParameterManager::setImpulseThresh(float thresh)
 
 void ParameterManager::setChromaStrength(float strength)
 {
+  fprintf(stderr, "ParameterManager::setChromaStrength: %f justInitialized=%d\n", strength, justInitialized);
   if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_chromaStrength = strength;
