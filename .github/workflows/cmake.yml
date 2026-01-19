@@ -87,7 +87,7 @@ jobs:
     - name: Setup vcpkg (lukka/run-vcpkg)
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgGitCommitId: 25b458671af03578e6a34edd8f0d1ac85e084df4 # Matches builtin-baseline in vcpkg.json
+        vcpkgGitCommitId: 25b458671af03578e6a34edd8f0d1ac85e084df4 # Matches baseline in vcpkg-configuration.json
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Setup NuGet Credentials (Windows)
