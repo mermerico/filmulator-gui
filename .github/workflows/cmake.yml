@@ -164,7 +164,6 @@ jobs:
       run: |
         $binDir = "$env:GITHUB_WORKSPACE\build\installed\bin"
         $vcpkgBinDir = "$env:WINDEPLOY_PREFIX\bin"
-        $windeployqt = "$env:WINDEPLOY_PREFIX\tools\qt5\bin\windeployqt.exe"
         
         Write-Host "Bundling DLLs from $vcpkgBinDir to $binDir"
         if (Test-Path $vcpkgBinDir) {
@@ -172,6 +171,40 @@ jobs:
         } else {
             Write-Error "Could not find vcpkg bin directory at $vcpkgBinDir"
             exit 1
+        }
+
+        Write-Host "Looking for windeployqt..."
+        # Check multiple possible locations for windeployqt
+        $possiblePaths = @(
+            "$env:WINDEPLOY_PREFIX\tools\qt5\bin\windeployqt.exe",
+            "$env:WINDEPLOY_PREFIX\tools\qt5-tools\bin\windeployqt.exe",
+            "$vcpkgBinDir\windeployqt.exe"
+        )
+        
+        $windeployqt = $null
+        foreach ($path in $possiblePaths) {
+            Write-Host "Checking: $path"
+            if (Test-Path $path) {
+                $windeployqt = $path
+                Write-Host "Found windeployqt at: $windeployqt"
+                break
+            }
+        }
+        
+        if (-not $windeployqt) {
+            Write-Host "Could not find windeployqt in expected locations. Searching entire vcpkg directory..."
+            $found = Get-ChildItem -Path "$env:WINDEPLOY_PREFIX" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+                $windeployqt = $found.FullName
+                Write-Host "Found windeployqt at: $windeployqt"
+            } else {
+                Write-Error "Could not find windeployqt.exe anywhere in vcpkg installation"
+                Write-Host "Contents of vcpkg tools directory:"
+                if (Test-Path "$env:WINDEPLOY_PREFIX\tools") {
+                    Get-ChildItem -Path "$env:WINDEPLOY_PREFIX\tools" -Recurse | Select-Object FullName
+                }
+                exit 1
+            }
         }
 
         Write-Host "Running windeployqt..."
