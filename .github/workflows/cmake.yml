@@ -205,7 +205,7 @@ jobs:
         # Copy QML modules (Qt Quick related)
         $qmlSrcDir = "$env:WINDEPLOY_PREFIX\qml"
         if (Test-Path $qmlSrcDir) {
-            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml", "QtQuick\Controls.2", "QtQuick\Layouts", "QtQuick\Templates.2", "QtQuick\Window.2")
+            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml", "QtQuick\Controls.2", "QtQuick\Layouts", "QtQuick\Templates.2", "QtQuick\Window.2", "Qt\labs\platform", "Qt\labs\settings")
             foreach ($qmlMod in $qmlDirs) {
                 $srcPath = "$qmlSrcDir\$qmlMod"
                 $dstPath = "$binDir\qml\$qmlMod"
@@ -285,12 +285,16 @@ jobs:
         }
         
         Write-Host "Running dependency check with ldd on main EXE..."
+        # Add installDir to PATH temporarily so ldd can find local DLLs
+        $oldPath = $env:PATH
+        $env:PATH = "$installDir;$oldPath"
         & ldd $exePath
         
         if (Test-Path "$installDir\platforms\qwindows.dll") {
             Write-Host "Running dependency check with ldd on platform plugin..."
             & ldd "$installDir\platforms\qwindows.dll"
         }
+        $env:PATH = $oldPath
         
         Write-Host "Running smoke test on installed application..."
         $outputLog = "${{ github.workspace }}\smoke_test_output.log"
