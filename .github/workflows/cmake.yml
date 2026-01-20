@@ -271,12 +271,22 @@ jobs:
             exit 1
         }
         
-        Write-Host "Installed files:"
-        Get-ChildItem -Path $installDir -Recurse | Select-Object FullName
+        Write-Host "Running dependency check with ntldd..."
+        # ntldd -R shows recursive dependencies and marks missing ones
+        # It is usually bundled with MinGW
+        $mingwBin = Split-Path (Get-Command g++).Source
+        $ntldd = "$mingwBin\ntldd.exe"
+        if (Test-Path $ntldd) {
+            & $ntldd -R $exePath
+        } else {
+            Write-Warning "ntldd.exe not found in $mingwBin. Falling back to ldd..."
+            & ldd $exePath
+        }
         
         Write-Host "Running smoke test on installed application..."
         $outputLog = "${{ github.workspace }}\smoke_test_output.log"
         $errorLog = "${{ github.workspace }}\smoke_test_error.log"
+        $startTime = Get-Date
         
         # Start the process and capture output
         $process = Start-Process -FilePath $exePath -PassThru -RedirectStandardOutput $outputLog -RedirectStandardError $errorLog
@@ -287,10 +297,15 @@ jobs:
         if ($process.HasExited) {
             $exitCode = $process.ExitCode
             Write-Error "Application exited prematurely with code $exitCode."
+            
             Write-Host "Standard Output:"
             if (Test-Path $outputLog) { Get-Content $outputLog }
             Write-Host "Standard Error:"
             if (Test-Path $errorLog) { Get-Content $errorLog }
+            
+            Write-Host "Querying Windows Event Logs for Application Errors..."
+            Get-EventLog -LogName Application -After $startTime -EntryType Error | Where-Object { $_.Source -match "Application Error" -or $_.Source -match "SideBySide" } | Format-List
+            
             exit 1
         }
         
