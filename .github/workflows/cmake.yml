@@ -255,6 +255,48 @@ jobs:
         Write-Host "Installer created successfully"
         Get-ChildItem "$env:GITHUB_WORKSPACE\build\installed\output"
 
+    - name: Test Installer (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      working-directory: build/installed
+      run: |
+        $installer = "output\FilmulatorSetup.exe"
+        $installDir = "${{ github.workspace }}\test_install"
+        Write-Host "Installing Filmulator to $installDir..."
+        Start-Process -FilePath $installer -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/DIR=""$installDir""" -Wait
+        
+        $exePath = "$installDir\filmulator.exe"
+        if (-not (Test-Path $exePath)) {
+            Write-Error "Executable not found after installation at $exePath"
+            exit 1
+        }
+        
+        Write-Host "Installed files:"
+        Get-ChildItem -Path $installDir -Recurse | Select-Object FullName
+        
+        Write-Host "Running smoke test on installed application..."
+        $outputLog = "${{ github.workspace }}\smoke_test_output.log"
+        $errorLog = "${{ github.workspace }}\smoke_test_error.log"
+        
+        # Start the process and capture output
+        $process = Start-Process -FilePath $exePath -PassThru -RedirectStandardOutput $outputLog -RedirectStandardError $errorLog
+        
+        # Give it some time to load DLLs and fail if there's an issue
+        Start-Sleep -Seconds 10
+        
+        if ($process.HasExited) {
+            $exitCode = $process.ExitCode
+            Write-Error "Application exited prematurely with code $exitCode."
+            Write-Host "Standard Output:"
+            if (Test-Path $outputLog) { Get-Content $outputLog }
+            Write-Host "Standard Error:"
+            if (Test-Path $errorLog) { Get-Content $errorLog }
+            exit 1
+        }
+        
+        Write-Host "Application started successfully. Smoke test passed!"
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+
     - name: Upload Windows Artifact
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
