@@ -172,6 +172,20 @@ jobs:
             Write-Error "Could not find vcpkg bin directory at $vcpkgBinDir"
             exit 1
         }
+        
+        Write-Host "Bundling compiler runtime DLLs..."
+        $mingwBin = Split-Path (Get-Command g++).Source
+        Write-Host "MinGW bin directory: $mingwBin"
+        $runtimeDlls = @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll")
+        foreach ($dll in $runtimeDlls) {
+            $src = "$mingwBin\$dll"
+            if (Test-Path $src) {
+                Write-Host "Copying $dll from $mingwBin"
+                Copy-Item $src $binDir -Force
+            } else {
+                Write-Warning "Could not find $dll in $mingwBin"
+            }
+        }
 
         Write-Host "Copying Qt plugins..."
         # Copy essential Qt plugins
@@ -222,6 +236,7 @@ jobs:
     - name: Create Installer (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
+      working-directory: build/installed
       run: |
         $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
         if (-not (Test-Path $isccPath)) {
@@ -230,7 +245,7 @@ jobs:
         }
         
         Write-Host "Running Inno Setup Compiler..."
-        & $isccPath "$env:GITHUB_WORKSPACE\build\installed\filmulator_build.iss"
+        & $isccPath "filmulator_build.iss"
         
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Inno Setup compilation failed with exit code $LASTEXITCODE"
@@ -244,8 +259,8 @@ jobs:
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: filmulator-windows
-        path: build/installed
+        name: filmulator-windows-installer
+        path: build/installed/output/FilmulatorSetup.exe
 
     # Tests will be added later when the test framework is set up
     # - name: Test
