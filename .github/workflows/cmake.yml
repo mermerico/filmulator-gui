@@ -173,46 +173,72 @@ jobs:
             exit 1
         }
 
-        Write-Host "Looking for windeployqt..."
-        # Check multiple possible locations for windeployqt
-        $possiblePaths = @(
-            "$env:WINDEPLOY_PREFIX\tools\qt5\bin\windeployqt.exe",
-            "$env:WINDEPLOY_PREFIX\tools\qt5-tools\bin\windeployqt.exe",
-            "$vcpkgBinDir\windeployqt.exe"
-        )
-        
-        $windeployqt = $null
-        foreach ($path in $possiblePaths) {
-            Write-Host "Checking: $path"
-            if (Test-Path $path) {
-                $windeployqt = $path
-                Write-Host "Found windeployqt at: $windeployqt"
-                break
-            }
-        }
-        
-        if (-not $windeployqt) {
-            Write-Host "Could not find windeployqt in expected locations. Searching entire vcpkg directory..."
-            $found = Get-ChildItem -Path "$env:WINDEPLOY_PREFIX" -Recurse -Filter "windeployqt.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-                $windeployqt = $found.FullName
-                Write-Host "Found windeployqt at: $windeployqt"
+        Write-Host "Copying Qt plugins..."
+        # Copy essential Qt plugins
+        $pluginDirs = @("platforms", "imageformats", "iconengines", "styles")
+        foreach ($pluginDir in $pluginDirs) {
+            $srcPath = "$env:WINDEPLOY_PREFIX\plugins\$pluginDir"
+            $dstPath = "$binDir\$pluginDir"
+            if (Test-Path $srcPath) {
+                Write-Host "Copying $pluginDir plugins..."
+                Copy-Item $srcPath $dstPath -Recurse -Force
             } else {
-                Write-Error "Could not find windeployqt.exe anywhere in vcpkg installation"
-                Write-Host "Contents of vcpkg tools directory:"
-                if (Test-Path "$env:WINDEPLOY_PREFIX\tools") {
-                    Get-ChildItem -Path "$env:WINDEPLOY_PREFIX\tools" -Recurse | Select-Object FullName
-                }
-                exit 1
+                Write-Warning "Plugin directory not found: $srcPath"
             }
         }
-
-        Write-Host "Running windeployqt..."
-        & $windeployqt --verbose 2 --qmldir "$env:GITHUB_WORKSPACE\filmulator-gui\qml\filmulator-gui" "$binDir\filmulator.exe"
+        
+        Write-Host "Copying QML modules..."
+        # Copy QML modules (Qt Quick related)
+        $qmlSrcDir = "$env:WINDEPLOY_PREFIX\qml"
+        if (Test-Path $qmlSrcDir) {
+            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml")
+            foreach ($qmlMod in $qmlDirs) {
+                $srcPath = "$qmlSrcDir\$qmlMod"
+                $dstPath = "$binDir\qml\$qmlMod"
+                if (Test-Path $srcPath) {
+                    Write-Host "Copying QML module: $qmlMod..."
+                    New-Item -ItemType Directory -Force -Path (Split-Path $dstPath) | Out-Null
+                    Copy-Item $srcPath $dstPath -Recurse -Force
+                } else {
+                    Write-Warning "QML module not found: $srcPath"
+                }
+            }
+        } else {
+            Write-Warning "QML directory not found at $qmlSrcDir"
+        }
+        
+        # Create qt.conf to help Qt find plugins and QML modules
+        Write-Host "Creating qt.conf..."
+        "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
         
         Copy-Item "$env:GITHUB_WORKSPACE\LICENSE.txt" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator-gui\filmulator-gui80.ico" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator_build.iss" "$env:GITHUB_WORKSPACE\build\installed" -Force
+
+    - name: Install Inno Setup (Windows)
+      if: runner.os == 'Windows'
+      run: choco install innosetup -y
+
+    - name: Create Installer (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+        if (-not (Test-Path $isccPath)) {
+            Write-Error "Inno Setup Compiler not found at $isccPath"
+            exit 1
+        }
+        
+        Write-Host "Running Inno Setup Compiler..."
+        & $isccPath "$env:GITHUB_WORKSPACE\build\installed\filmulator_build.iss"
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Inno Setup compilation failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+        }
+        
+        Write-Host "Installer created successfully"
+        Get-ChildItem "$env:GITHUB_WORKSPACE\build\installed\output"
 
     - name: Upload Windows Artifact
       if: runner.os == 'Windows'

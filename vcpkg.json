@@ -13,10 +13,6 @@
             ]
         },
         "qt5-declarative",
-        {
-            "name": "qt5-tools",
-            "platform": "windows"
-        },
         "qt5-quickcontrols",
         "qt5-quickcontrols2",
         "exiv2",
