@@ -189,7 +189,7 @@ jobs:
 
         Write-Host "Copying Qt plugins..."
         # Copy essential Qt plugins
-        $pluginDirs = @("platforms", "imageformats", "iconengines", "styles")
+        $pluginDirs = @("platforms", "imageformats", "iconengines", "styles", "sqldrivers")
         foreach ($pluginDir in $pluginDirs) {
             $srcPath = "$env:WINDEPLOY_PREFIX\plugins\$pluginDir"
             $dstPath = "$binDir\$pluginDir"
@@ -205,7 +205,7 @@ jobs:
         # Copy QML modules (Qt Quick related)
         $qmlSrcDir = "$env:WINDEPLOY_PREFIX\qml"
         if (Test-Path $qmlSrcDir) {
-            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml")
+            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml", "QtQuick\Controls.2", "QtQuick\Layouts", "QtQuick\Templates.2", "QtQuick\Window.2")
             foreach ($qmlMod in $qmlDirs) {
                 $srcPath = "$qmlSrcDir\$qmlMod"
                 $dstPath = "$binDir\qml\$qmlMod"
@@ -270,17 +270,26 @@ jobs:
             Write-Error "Executable not found after installation at $exePath"
             exit 1
         }
+
+        Write-Host "Verifying bundle structure..."
+        Write-Host "Contents of $installDir/qt.conf:"
+        if (Test-Path "$installDir\qt.conf") { Get-Content "$installDir\qt.conf" } else { Write-Warning "qt.conf MISSING!" }
         
-        Write-Host "Running dependency check with ntldd..."
-        # ntldd -R shows recursive dependencies and marks missing ones
-        # It is usually bundled with MinGW
-        $mingwBin = Split-Path (Get-Command g++).Source
-        $ntldd = "$mingwBin\ntldd.exe"
-        if (Test-Path $ntldd) {
-            & $ntldd -R $exePath
-        } else {
-            Write-Warning "ntldd.exe not found in $mingwBin. Falling back to ldd..."
-            & ldd $exePath
+        $checks = @("platforms\qwindows.dll", "qml\QtQuick\Controls.2", "qml\QtQuick\Layouts")
+        foreach ($check in $checks) {
+            if (Test-Path "$installDir\$check") {
+                Write-Host "Found $check"
+            } else {
+                Write-Warning "$check is MISSING from the bundle!"
+            }
+        }
+        
+        Write-Host "Running dependency check with ldd on main EXE..."
+        & ldd $exePath
+        
+        if (Test-Path "$installDir\platforms\qwindows.dll") {
+            Write-Host "Running dependency check with ldd on platform plugin..."
+            & ldd "$installDir\platforms\qwindows.dll"
         }
         
         Write-Host "Running smoke test on installed application..."
@@ -296,15 +305,16 @@ jobs:
         
         if ($process.HasExited) {
             $exitCode = $process.ExitCode
-            Write-Error "Application exited prematurely with code $exitCode."
+            Write-Host "Application exited prematurely with code $exitCode." -ForegroundColor Red
             
-            Write-Host "Standard Output:"
-            if (Test-Path $outputLog) { Get-Content $outputLog }
-            Write-Host "Standard Error:"
-            if (Test-Path $errorLog) { Get-Content $errorLog }
+            Write-Host "--- Standard Output ---"
+            if (Test-Path $outputLog) { Get-Content $outputLog } else { Write-Host "(no output captured)" }
+            Write-Host "--- Standard Error ---"
+            if (Test-Path $errorLog) { Get-Content $errorLog } else { Write-Host "(no error captured)" }
             
-            Write-Host "Querying Windows Event Logs for Application Errors..."
-            Get-EventLog -LogName Application -After $startTime -EntryType Error | Where-Object { $_.Source -match "Application Error" -or $_.Source -match "SideBySide" } | Format-List
+            Write-Host "--- Querying Windows Event Logs for Application Errors ---"
+            $events = Get-EventLog -LogName Application -After $startTime -EntryType Error -Newest 10 | Where-Object { $_.Source -match "Application Error" -or $_.Source -match "SideBySide" }
+            if ($events) { $events | Format-List } else { Write-Host "No relevant Event Log entries found." }
             
             exit 1
         }
