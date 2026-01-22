@@ -268,7 +268,7 @@ jobs:
         VCPKG_PREFIX: ${{ github.workspace }}/build/${{ matrix.preset }}/vcpkg_installed/${{ matrix.triplet }}
       run: |
         # Install dependencies for AppImage creation
-        sudo apt-get install -y fuse libfuse2 file
+        sudo apt-get install -y fuse libfuse2 file patchelf
         
         # Download linuxdeploy and Qt plugin
         wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
@@ -283,14 +283,23 @@ jobs:
         # Install to AppDir
         cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
         
-        # Set up environment for Qt plugin
+        # Set up environment for Qt plugin - needs library path for detection
         export QMAKE="${VCPKG_PREFIX}/tools/qt5/bin/qmake"
         export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
         export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
+        export LD_LIBRARY_PATH="${VCPKG_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
+        export PATH="${VCPKG_PREFIX}/tools/qt5/bin:$PATH"
         
-        # Create AppImage
+        # Debug: show what we're working with
+        echo "QMAKE: $QMAKE"
+        echo "QT_PLUGIN_PATH: $QT_PLUGIN_PATH"
+        echo "Libs in vcpkg:"
+        ls "${VCPKG_PREFIX}/lib/" | head -20
+        
+        # Create AppImage - specify executable explicitly
         ./linuxdeploy-x86_64.AppImage \
           --appdir AppDir \
+          --executable AppDir/usr/bin/filmulator \
           --plugin qt \
           --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
           --icon-file filmulator-gui/resources/linux/filmulator.png \
@@ -313,19 +322,26 @@ jobs:
       run: |
         APP_BUNDLE="build/${{ matrix.preset }}/Filmulator.app"
         
-        echo "Finding macdeployqt..."
-        MACDEPLOYQT=$(find "${VCPKG_PREFIX}" -name macdeployqt -type f | head -1)
-        if [ -z "$MACDEPLOYQT" ]; then
-          echo "macdeployqt not found in vcpkg installation"
-          find "${VCPKG_PREFIX}" -name "*deploy*" || true
+        # vcpkg doesn't include macdeployqt, so we install Qt5 via brew for the tool
+        echo "Installing Qt5 via Homebrew for macdeployqt..."
+        brew install qt@5
+        
+        # Find macdeployqt from Homebrew Qt
+        MACDEPLOYQT=$(brew --prefix qt@5)/bin/macdeployqt
+        if [ ! -f "$MACDEPLOYQT" ]; then
+          echo "macdeployqt not found at $MACDEPLOYQT"
           exit 1
         fi
         echo "Using: $MACDEPLOYQT"
         
+        # Add vcpkg libs to path so macdeployqt can find them
+        export DYLD_LIBRARY_PATH="${VCPKG_PREFIX}/lib:${DYLD_LIBRARY_PATH:-}"
+        
         echo "Running macdeployqt..."
         "$MACDEPLOYQT" "$APP_BUNDLE" \
           -qmldir=filmulator-gui/qml \
-          -verbose=2
+          -verbose=2 \
+          -libpath="${VCPKG_PREFIX}/lib"
         
         echo "Bundle contents:"
         ls -la "$APP_BUNDLE/Contents/MacOS/"
