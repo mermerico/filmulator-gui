@@ -259,6 +259,9 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       working-directory: build/installed
+      env:
+        QT_QUICK_BACKEND: software
+        QT_QPA_PLATFORM: offscreen
       run: |
         $installer = "output\FilmulatorSetup.exe"
         $installDir = "${{ github.workspace }}\test_install"
