@@ -262,6 +262,211 @@ jobs:
         name: filmulator-windows-installer
         path: build/installed/output/FilmulatorSetup.exe
 
+    - name: Create AppImage (Linux)
+      if: runner.os == 'Linux'
+      env:
+        VCPKG_PREFIX: ${{ github.workspace }}/build/${{ matrix.preset }}/vcpkg_installed/${{ matrix.triplet }}
+      run: |
+        # Install dependencies for AppImage creation
+        sudo apt-get install -y fuse libfuse2 file
+        
+        # Download linuxdeploy and Qt plugin
+        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        chmod +x linuxdeploy*.AppImage
+        
+        # Generate 256x256 icon from SVG
+        sudo apt-get install -y librsvg2-bin
+        rsvg-convert -w 256 -h 256 filmulator-gui/resources/filmulator64icon.svg \
+          -o filmulator-gui/resources/linux/filmulator.png
+        
+        # Install to AppDir
+        cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
+        
+        # Set up environment for Qt plugin
+        export QMAKE="${VCPKG_PREFIX}/tools/qt5/bin/qmake"
+        export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
+        export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
+        
+        # Create AppImage
+        ./linuxdeploy-x86_64.AppImage \
+          --appdir AppDir \
+          --plugin qt \
+          --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
+          --icon-file filmulator-gui/resources/linux/filmulator.png \
+          --output appimage
+        
+        # Rename output
+        mv Filmulator*.AppImage Filmulator-x86_64.AppImage
+
+    - name: Upload Linux Artifact
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: filmulator-linux-appimage
+        path: Filmulator-x86_64.AppImage
+
+    - name: Bundle Qt (macOS)
+      if: runner.os == 'macOS'
+      env:
+        VCPKG_PREFIX: ${{ github.workspace }}/build/${{ matrix.preset }}/vcpkg_installed/${{ matrix.triplet }}
+      run: |
+        APP_BUNDLE="build/${{ matrix.preset }}/Filmulator.app"
+        
+        echo "Finding macdeployqt..."
+        MACDEPLOYQT=$(find "${VCPKG_PREFIX}" -name macdeployqt -type f | head -1)
+        if [ -z "$MACDEPLOYQT" ]; then
+          echo "macdeployqt not found in vcpkg installation"
+          find "${VCPKG_PREFIX}" -name "*deploy*" || true
+          exit 1
+        fi
+        echo "Using: $MACDEPLOYQT"
+        
+        echo "Running macdeployqt..."
+        "$MACDEPLOYQT" "$APP_BUNDLE" \
+          -qmldir=filmulator-gui/qml \
+          -verbose=2
+        
+        echo "Bundle contents:"
+        ls -la "$APP_BUNDLE/Contents/MacOS/"
+        ls -la "$APP_BUNDLE/Contents/Frameworks/" || echo "No Frameworks dir yet"
+
+    - name: Create DMG (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install create-dmg
+        
+        APP_BUNDLE="build/${{ matrix.preset }}/Filmulator.app"
+        
+        # create-dmg can fail on minor issues, so we allow it to fail and check output
+        create-dmg \
+          --volname "Filmulator" \
+          --volicon "filmulator-gui/resources/macos/icon.icns" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --icon "Filmulator.app" 150 185 \
+          --app-drop-link 450 185 \
+          --hide-extension "Filmulator.app" \
+          "Filmulator-macOS-${{ matrix.triplet }}.dmg" \
+          "$APP_BUNDLE" || true
+        
+        # Verify DMG was created
+        if [ -f "Filmulator-macOS-${{ matrix.triplet }}.dmg" ]; then
+          echo "DMG created successfully"
+          ls -la *.dmg
+        else
+          echo "DMG creation failed"
+          exit 1
+        fi
+
+    - name: Upload macOS Artifact
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: filmulator-macos-dmg
+        path: Filmulator-macOS-*.dmg
+
+    - name: Test AppImage (Linux)
+      if: runner.os == 'Linux'
+      env:
+        QT_QPA_PLATFORM: offscreen
+        QT_QUICK_BACKEND: software
+      run: |
+        APPIMAGE="Filmulator-x86_64.AppImage"
+        
+        echo "Verifying AppImage exists..."
+        if [ ! -f "$APPIMAGE" ]; then
+          echo "AppImage not found at $APPIMAGE"
+          exit 1
+        fi
+        
+        echo "Making AppImage executable..."
+        chmod +x "$APPIMAGE"
+        
+        echo "Checking AppImage structure..."
+        ./"$APPIMAGE" --appimage-help || true
+        
+        echo "Running smoke test..."
+        # Start the AppImage in background and capture output
+        ./"$APPIMAGE" &> smoke_test.log &
+        APP_PID=$!
+        
+        # Give it time to load and initialize
+        sleep 10
+        
+        # Check if process is still running
+        if ! ps -p $APP_PID > /dev/null; then
+          echo "Application exited prematurely"
+          echo "--- Output Log ---"
+          cat smoke_test.log || echo "(no log captured)"
+          exit 1
+        fi
+        
+        echo "Application started successfully. Smoke test passed!"
+        kill $APP_PID 2>/dev/null || true
+
+    - name: Test DMG (macOS)
+      if: runner.os == 'macOS'
+      env:
+        QT_QPA_PLATFORM: offscreen
+        QT_QUICK_BACKEND: software
+      run: |
+        DMG="Filmulator-macOS-${{ matrix.triplet }}.dmg"
+        
+        echo "Verifying DMG exists..."
+        if [ ! -f "$DMG" ]; then
+          echo "DMG not found at $DMG"
+          exit 1
+        fi
+        
+        echo "Mounting DMG..."
+        MOUNT_OUTPUT=$(hdiutil attach "$DMG" -nobrowse -readonly)
+        echo "$MOUNT_OUTPUT"
+        VOLUME=$(echo "$MOUNT_OUTPUT" | grep "/Volumes/" | sed 's/.*\(\/Volumes\/.*\)/\1/')
+        echo "Mounted at: $VOLUME"
+        
+        echo "Checking bundle structure..."
+        APP_BUNDLE="$VOLUME/Filmulator.app"
+        if [ ! -d "$APP_BUNDLE" ]; then
+          echo "App bundle not found in DMG"
+          hdiutil detach "$VOLUME"
+          exit 1
+        fi
+        
+        echo "Contents of app bundle:"
+        ls -la "$APP_BUNDLE/Contents/MacOS/"
+        ls -la "$APP_BUNDLE/Contents/Frameworks/" || echo "No Frameworks directory"
+        
+        # Copy to temporary location for testing
+        TEST_DIR="$HOME/filmulator_test"
+        mkdir -p "$TEST_DIR"
+        cp -R "$APP_BUNDLE" "$TEST_DIR/"
+        
+        echo "Running smoke test..."
+        # Start the app in background
+        "$TEST_DIR/Filmulator.app/Contents/MacOS/filmulator-gui" &> smoke_test.log &
+        APP_PID=$!
+        
+        # Give it time to load and initialize
+        sleep 10
+        
+        # Check if process is still running
+        if ! ps -p $APP_PID > /dev/null; then
+          echo "Application exited prematurely"
+          echo "--- Output Log ---"
+          cat smoke_test.log || echo "(no log captured)"
+          hdiutil detach "$VOLUME" || true
+          exit 1
+        fi
+        
+        echo "Application started successfully. Smoke test passed!"
+        kill $APP_PID 2>/dev/null || true
+        
+        # Cleanup
+        hdiutil detach "$VOLUME"
+        rm -rf "$TEST_DIR"
+
     - name: Test Installer (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
