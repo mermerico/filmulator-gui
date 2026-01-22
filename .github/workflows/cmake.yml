@@ -255,6 +255,13 @@ jobs:
         Write-Host "Installer created successfully"
         Get-ChildItem "$env:GITHUB_WORKSPACE\build\installed\output"
 
+    - name: Upload Windows Artifact
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: filmulator-windows-installer
+        path: build/installed/output/FilmulatorSetup.exe
+
     - name: Test Installer (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
@@ -328,13 +335,6 @@ jobs:
         
         Write-Host "Application started successfully. Smoke test passed!"
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-
-    - name: Upload Windows Artifact
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v4
-      with:
-        name: filmulator-windows-installer
-        path: build/installed/output/FilmulatorSetup.exe
 
     # Tests will be added later when the test framework is set up
     # - name: Test
