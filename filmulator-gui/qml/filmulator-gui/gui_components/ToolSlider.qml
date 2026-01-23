@@ -21,7 +21,8 @@ Rectangle {
     property alias valueText: valueText.text
     property alias pressed: slider.pressed
     property alias precisePressed: spinnerCircle.dragging
-    property alias tooltipText: toolTooltip.tooltipText
+    property string tooltipText: ""
+    property bool tooltipInstant: false
 
     property bool changed: true
     property bool editMade: false
@@ -33,6 +34,10 @@ Rectangle {
     property real __padding: 4 * uiScale
 
     property real __precise
+
+    property alias boldValue: slider.boldValue
+
+    property alias boldTickEnabled: slider.boldTickEnabled
 
     signal tooltipWanted(string text, int coordX, int coordY)
 
@@ -156,7 +161,9 @@ Rectangle {
     }
     ToolTip {
         id: toolTooltip
+        tooltipText: (root.stepSize != 0) ? root.tooltipText : root.tooltipText + qsTr("\n\nRight-click on the tool name to open a dial for more precise input.")
         anchors.fill: label
+        instant: root.tooltipInstant
         Component.onCompleted: {
             //Forward the tooltipWanted signal to root.
             toolTooltip.tooltipWanted.connect(root.tooltipWanted)
@@ -165,7 +172,8 @@ Rectangle {
     ToolTip {
         id: buttonTooltip
         anchors.fill: reset
-        tooltipText: qsTr("Reset to default")
+        tooltipText: qsTr("Reset to default.\n\nDouble-right-clicking on the slider will also reset to default.")
+        instant: root.tooltipInstant
         Component.onCompleted: {
             buttonTooltip.tooltipWanted.connect(root.tooltipWanted)
         }
@@ -272,6 +280,7 @@ Rectangle {
             id: spinnerTooltip
             anchors.fill: innerCircle
             tooltipText: qsTr("Spin clockwise to raise the value.\nSpin counterclockwise to reduce the value.")
+            instant: root.tooltipInstant
             Component.onCompleted: {
                 spinnerTooltip.tooltipWanted.connect(root.tooltipWanted)
             }
