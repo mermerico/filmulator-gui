@@ -394,9 +394,6 @@ jobs:
 
     - name: Test AppImage (Linux)
       if: runner.os == 'Linux'
-      env:
-        QT_QPA_PLATFORM: offscreen
-        QT_QUICK_BACKEND: software
       run: |
         APPIMAGE="Filmulator-x86_64.AppImage"
         
@@ -412,9 +409,12 @@ jobs:
         echo "Checking AppImage structure..."
         ./"$APPIMAGE" --appimage-help || true
         
-        echo "Running smoke test..."
-        # Start the AppImage in background and capture output
-        ./"$APPIMAGE" &> smoke_test.log &
+        # Install xvfb for headless X11 testing (AppImage uses xcb platform)
+        sudo apt-get install -y xvfb
+        
+        echo "Running smoke test with xvfb..."
+        # Use xvfb-run to provide virtual X11 display for xcb platform
+        xvfb-run -a ./"$APPIMAGE" &> smoke_test.log &
         APP_PID=$!
         
         # Give it time to load and initialize
