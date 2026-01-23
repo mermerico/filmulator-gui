@@ -270,9 +270,8 @@ jobs:
         # Install dependencies for AppImage creation
         sudo apt-get install -y fuse libfuse2 file patchelf
         
-        # Download linuxdeploy and Qt plugin
+        # Download linuxdeploy (without Qt plugin - we'll deploy Qt manually)
         wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
         chmod +x linuxdeploy*.AppImage
         
         # Generate 256x256 icon from SVG
@@ -283,24 +282,31 @@ jobs:
         # Install to AppDir
         cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
         
-        # Set up environment for Qt plugin - needs library path for detection
-        export QMAKE="${VCPKG_PREFIX}/tools/qt5/bin/qmake"
-        export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
-        export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
-        export LD_LIBRARY_PATH="${VCPKG_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
-        export PATH="${VCPKG_PREFIX}/tools/qt5/bin:$PATH"
+        # Manually deploy Qt libraries (linuxdeploy-plugin-qt has issues with vcpkg Qt)
+        echo "Copying Qt libraries..."
+        mkdir -p AppDir/usr/lib
+        cp -av "${VCPKG_PREFIX}/lib/"libQt5*.so* AppDir/usr/lib/ || true
         
-        # Debug: show what we're working with
-        echo "QMAKE: $QMAKE"
-        echo "QT_PLUGIN_PATH: $QT_PLUGIN_PATH"
-        echo "Libs in vcpkg:"
-        ls "${VCPKG_PREFIX}/lib/" | head -20
+        echo "Copying Qt plugins..."
+        mkdir -p AppDir/usr/plugins
+        cp -rv "${VCPKG_PREFIX}/plugins/"* AppDir/usr/plugins/
         
-        # Create AppImage - specify executable explicitly
+        echo "Copying QML modules..."
+        mkdir -p AppDir/usr/qml
+        cp -rv "${VCPKG_PREFIX}/qml/"* AppDir/usr/qml/
+        
+        # Create qt.conf for the AppImage
+        cat > AppDir/usr/bin/qt.conf << 'EOF'
+        [Paths]
+        Prefix = ..
+        Plugins = plugins
+        Qml2Imports = qml
+        EOF
+        
+        # Use linuxdeploy to bundle remaining dependencies and create AppImage
         ./linuxdeploy-x86_64.AppImage \
           --appdir AppDir \
           --executable AppDir/usr/bin/filmulator \
-          --plugin qt \
           --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
           --icon-file filmulator-gui/resources/linux/filmulator.png \
           --output appimage
@@ -424,9 +430,6 @@ jobs:
 
     - name: Test DMG (macOS)
       if: runner.os == 'macOS'
-      env:
-        QT_QPA_PLATFORM: offscreen
-        QT_QUICK_BACKEND: software
       run: |
         DMG="Filmulator-macOS-${{ matrix.triplet }}.dmg"
         
@@ -453,14 +456,26 @@ jobs:
         echo "Contents of app bundle:"
         ls -la "$APP_BUNDLE/Contents/MacOS/"
         ls -la "$APP_BUNDLE/Contents/Frameworks/" || echo "No Frameworks directory"
+        ls -la "$APP_BUNDLE/Contents/PlugIns/" || echo "No PlugIns directory"
         
-        # Copy to temporary location for testing
+        # Verify essential files exist
+        echo "Verifying bundle contents..."
+        CHECKS=("MacOS/filmulator" "Frameworks/QtCore.framework" "Frameworks/QtQuick.framework")
+        for check in "${CHECKS[@]}"; do
+          if [ -e "$APP_BUNDLE/Contents/$check" ]; then
+            echo "✓ Found $check"
+          else
+            echo "✗ Missing $check"
+          fi
+        done
+        
+        # Copy to temporary location for testing (can't run from mounted DMG)
         TEST_DIR="$HOME/filmulator_test"
         mkdir -p "$TEST_DIR"
         cp -R "$APP_BUNDLE" "$TEST_DIR/"
         
         echo "Running smoke test..."
-        # Start the app in background
+        # macOS runners have a display server, so cocoa platform should work
         "$TEST_DIR/Filmulator.app/Contents/MacOS/filmulator-gui" &> smoke_test.log &
         APP_PID=$!
         
