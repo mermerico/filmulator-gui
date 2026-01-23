@@ -311,8 +311,11 @@ jobs:
           --icon-file filmulator-gui/resources/linux/filmulator.png \
           --output appimage
         
-        # Rename output
-        mv Filmulator*.AppImage Filmulator-x86_64.AppImage
+        # Find the generated AppImage and rename if needed
+        APPIMAGE=$(ls *.AppImage 2>/dev/null | grep -v linuxdeploy | head -1)
+        if [ "$APPIMAGE" != "Filmulator-x86_64.AppImage" ]; then
+          mv "$APPIMAGE" Filmulator-x86_64.AppImage
+        fi
 
     - name: Upload Linux Artifact
       if: runner.os == 'Linux'
