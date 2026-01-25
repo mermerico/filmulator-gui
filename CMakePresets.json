@@ -9,9 +9,6 @@
         {
             "name": "vcpkg-base",
             "hidden": true,
-            "environment": {
-                "VCPKG_ROOT": "/Users/omer/Documents/vcpkg"
-            },
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": {
                     "type": "FILEPATH",
