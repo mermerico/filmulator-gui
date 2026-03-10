@@ -838,6 +838,7 @@ std::tuple<Valid,AbortStatus,FilmParams> ParameterManager::claimFilmParams()
     params.layerTimeDivisor = m_layerTimeDivisor;
     params.rolloffBoundary = m_rolloffBoundary;
     params.toeBoundary = m_toeBoundary;
+    params.highlightCrosstalk = m_highlightCrosstalk;
     std::tuple<Valid,AbortStatus,FilmParams> tup(validity,abort, params);
     return tup;
 }
@@ -1104,6 +1105,19 @@ void ParameterManager::setToeBoundary(float toeBoundary)
         paramLocker.unlock();
         QMutexLocker signalLocker(&signalMutex);
         paramChangeWrapper(QString("setToeBoundary"));
+    }
+}
+
+void ParameterManager::setHighlightCrosstalk(float highlightCrosstalk)
+{
+    if (!justInitialized)
+    {
+        QMutexLocker paramLocker(&paramMutex);
+        m_highlightCrosstalk = highlightCrosstalk;
+        validity = min(validity, Valid::prefilmulation);
+        paramLocker.unlock();
+        QMutexLocker signalLocker(&signalMutex);
+        paramChangeWrapper(QString("setHighlightCrosstalk"));
     }
 }
 
@@ -2540,6 +2554,17 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
         m_toeBoundary = temp_toeBoundary;
     }
 
+    //Highlight crosstalk. This controls the desaturation of highlights. =====================================
+    //nameCol = rec.indexOf("ProfThighlightCrosstalk");
+    //if (-1 == nameCol) { std::cout << "paramManager ProfThighlightCrosstalk" << endl; }
+    //const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
+    const float temp_highlightCrosstalk = 0.0f;
+    d_highlightCrosstalk = temp_highlightCrosstalk;
+    if (copyDefaults == CopyDefaults::loadToParams)
+    {
+        m_highlightCrosstalk = temp_highlightCrosstalk;
+    }
+
     //Post-filmulator black clipping point
     nameCol = rec.indexOf("ProfTblackpoint");
     if (-1 == nameCol) { std::cout << "paramManager ProfTblackpoint" << endl; }
@@ -3107,6 +3132,18 @@ void ParameterManager::loadParams(QString imageID)
     {
         //cout << "ParameterManager::loadParams toeBoundary" << endl;
         m_toeBoundary = temp_toeBoundary;
+        validity = min(validity, Valid::prefilmulation);
+    }
+
+    //Highlight crosstalk. This controls the desaturation of highlights. ==========================================
+    //nameCol = rec.indexOf("ProcThighlightCrosstalk");
+    //if (-1 == nameCol) { std::cout << "paramManager ProcThighlightCrosstalk" << endl; }
+    //const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
+    const float temp_highlightCrosstalk = 0;
+    if ( temp_highlightCrosstalk != m_highlightCrosstalk)
+    {
+        //cout << "ParameterManager::loadParams highlightCrosstalk" << endl;
+        m_highlightCrosstalk = temp_highlightCrosstalk;
         validity = min(validity, Valid::prefilmulation);
     }
 
@@ -3757,6 +3794,15 @@ void ParameterManager::cloneParams(ParameterManager * sourceParams)
     {
         //cout << "ParameterManager::cloneParams toeBoundary" << endl;
         m_toeBoundary = temp_toeBoundary;
+        validity = min(validity, Valid::prefilmulation);
+    }
+
+    //Highlight crosstalk. This controls the desaturation of highlights. =============================================
+    const float temp_highlightCrosstalk = sourceParams->getHighlightCrosstalk();
+    if (temp_highlightCrosstalk != m_highlightCrosstalk)
+    {
+        //cout << "ParameterManager::cloneParams highlightCrosstalk" << endl;
+        m_highlightCrosstalk = temp_highlightCrosstalk;
         validity = min(validity, Valid::prefilmulation);
     }
 

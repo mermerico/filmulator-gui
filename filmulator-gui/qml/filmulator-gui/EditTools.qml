@@ -815,6 +815,36 @@ SlimSplitView {
                 }
 
                 ToolSlider {
+                    id: crosstalkSlider
+                    title: qsTr("Highlight Crosstalk")
+                    tooltipText: qsTr("This should desaturate highlights as they get brighter past the highlight rolloff point, reducing ugly highlight colors.")
+                    minimumValue: 0
+                    maximumValue: 1
+                    value: paramManager.highlightCrosstalk
+                    defaultValue: paramManager.defHighlightCrosstalk
+                    valueText: value.toFixed(6)
+                    boldTickEnabled: false
+                    onValueChanged: {
+                        paramManager.highlightCrosstalk = value
+                    }
+                    onEditComplete: paramManager.writeback()
+                    Connections {
+                        target: paramManager
+                        function onHighlightCrosstalkChanged() {
+                            crosstalkSlider.value = paramManager.highlightCrosstalk
+                        }
+                        function onDefHighlightCrosstalkChanged() {
+                            crosstalkSlider.defaultValue = paramManager.defHighlightCrosstalk
+                        }
+                    }
+                    tooltipInstant: root.helpMode
+                    Component.onCompleted: {
+                        crosstalkSlider.tooltipWanted.connect(root.tooltipWanted)
+                    }
+                    uiScale: root.uiScale
+                }
+
+                ToolSlider {
                     id: filmSizeSlider
                     title: qsTr("Film Area")
                     tooltipText: qsTr("Larger sizes emphasize smaller details and flatten contrast; smaller sizes emphasize larger regional contrasts. This has the same effect as film size in real film. If venturing into Medium or Large Format, keep the Drama slider below 40 to prevent overcooking.\nTypically, when adjusting this, change it until the point where small adjustments make noticeable changes in the appearance of the image. That's usually in the vicinity of the best setting.")

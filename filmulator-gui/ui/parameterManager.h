@@ -119,6 +119,7 @@ struct FilmParams {
     float layerTimeDivisor;
     float rolloffBoundary;
     float toeBoundary;
+    float highlightCrosstalk;
 };
 
 struct BlackWhiteParams {
@@ -252,6 +253,7 @@ class ParameterManager : public QObject
     Q_PROPERTY(float layerTimeDivisor              MEMBER m_layerTimeDivisor              WRITE setLayerTimeDivisor              NOTIFY layerTimeDivisorChanged)
     Q_PROPERTY(float rolloffBoundary               MEMBER m_rolloffBoundary               WRITE setRolloffBoundary               NOTIFY rolloffBoundaryChanged)
     Q_PROPERTY(float toeBoundary                   MEMBER m_toeBoundary                   WRITE setToeBoundary                   NOTIFY toeBoundaryChanged)
+    Q_PROPERTY(float highlightCrosstalk            MEMBER m_highlightCrosstalk            WRITE setHighlightCrosstalk            NOTIFY highlightCrosstalkChanged)
 
     Q_PROPERTY(float defInitialDeveloperConcentration READ getDefInitialDeveloperConcentration NOTIFY defInitialDeveloperConcentrationChanged)
     Q_PROPERTY(float defReservoirThickness            READ getDefReservoirThickness            NOTIFY defReservoirThicknessChanged)
@@ -271,6 +273,7 @@ class ParameterManager : public QObject
     Q_PROPERTY(float defLayerTimeDivisor              READ getDefLayerTimeDivisor              NOTIFY defLayerTimeDivisorChanged)
     Q_PROPERTY(float defRolloffBoundary               READ getDefRolloffBoundary               NOTIFY defRolloffBoundaryChanged)
     Q_PROPERTY(float defToeBoundary                   READ getDefToeBoundary                   NOTIFY defToeBoundaryChanged)
+    Q_PROPERTY(float defHighlightCrosstalk            READ getDefHighlightCrosstalk            NOTIFY defHighlightCrosstalkChanged)
 
     //Whitepoint & Blackpoint
     Q_PROPERTY(float blackpoint  MEMBER m_blackpoint  WRITE setBlackpoint  NOTIFY blackpointChanged)
@@ -486,6 +489,7 @@ public:
     float getDefLayerTimeDivisor(){return d_layerTimeDivisor;}
     float getDefRolloffBoundary(){return d_rolloffBoundary;}
     float getDefToeBoundary(){return d_toeBoundary;}
+    float getDefHighlightCrosstalk(){return d_highlightCrosstalk;}
 
     //Whitepoint & blackpoint
     float getDefBlackpoint(){return d_blackpoint;}
@@ -558,6 +562,7 @@ public:
     float getLayerTimeDivisor(){return m_layerTimeDivisor;}
     float getRolloffBoundary(){return m_rolloffBoundary;}
     float getToeBoundary(){return m_toeBoundary;}
+    float getHighlightCrosstalk(){return m_highlightCrosstalk;}
 
     //Whitepoint & blackpoint
     float getBlackpoint(){return m_blackpoint;}
@@ -734,6 +739,7 @@ protected:
     float m_layerTimeDivisor;
     float m_rolloffBoundary;
     float m_toeBoundary;
+    float m_highlightCrosstalk;
 
     float d_initialDeveloperConcentration;
     float d_reservoirThickness;
@@ -753,6 +759,7 @@ protected:
     float d_layerTimeDivisor;
     float d_rolloffBoundary;
     float d_toeBoundary;
+    float d_highlightCrosstalk;
 
     //Whitepoint & Blackpoint
     float m_blackpoint;
@@ -844,6 +851,7 @@ protected:
     void setLayerTimeDivisor(float);
     void setRolloffBoundary(float);
     void setToeBoundary(float);
+    void setHighlightCrosstalk(float);
 
     //Whitepoint & Blackpoint
     void setBlackpoint(float);
@@ -966,6 +974,7 @@ signals:
     void layerTimeDivisorChanged();
     void rolloffBoundaryChanged();
     void toeBoundaryChanged();
+    void highlightCrosstalkChanged();
 
     void defInitialDeveloperConcentrationChanged();
     void defReservoirThicknessChanged();
@@ -985,6 +994,7 @@ signals:
     void defLayerTimeDivisorChanged();
     void defRolloffBoundaryChanged();
     void defToeBoundaryChanged();
+    void defHighlightCrosstalkChanged();
 
     //Whitepoint & Blackpoint
     void blackpointChanged();
