@@ -28,7 +28,7 @@ void exposure(matrix<float> &input_image, float crystals_per_pixel,
     const int ncols = input_image.nc()/3;
     const float max_crystals = 65535.f - toe_boundary;
     const float crystal_headroom = max_crystals - rolloff_boundary;
-    float crosstalkToe = rolloff_boundary/3;
+    float crosstalkToe = rolloff_boundary/2;
     //Magic number mostly for historical reasons
     crystals_per_pixel *= 0.00015387105f;
 #pragma omp parallel
