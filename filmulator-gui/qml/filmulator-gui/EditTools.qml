@@ -784,7 +784,7 @@ SlimSplitView {
                 ToolSlider {
                     id: rolloffSlider
                     title: qsTr("Highlight Rolloff Point")
-                    tooltipText: qsTr("Sets the point above which the highlights gently stop getting brighter. This controls the saturation of the highlights, and only has a significant effect at high drama settings when the highlights get strongly darkened.\nIf you have a photo with no highlight clipping and none of it extends beyond the right of the prefilm histogram, feel free to raise this all the way to 1.\nIf you have highlight clipping and there are unpleasant color shifts, lower this to taste.")
+                    tooltipText: qsTr("Sets the point above which the highlights gently stop getting brighter. This works together with Highlight Crosstalk to control saturation of the highlights.\nIf you have a photo with no highlight clipping and none of it extends beyond the right of the prefilm histogram, feel free to raise this all the way to 1.\nIf you have unpleasant color shifts from highlight clipping, or strong colors from LED lights, try lowerng this and raising Highlight Crosstalk to taste.")
                     minimumValue: 1
                     maximumValue: 65535
                     value: paramManager.rolloffBoundary
@@ -817,7 +817,7 @@ SlimSplitView {
                 ToolSlider {
                     id: crosstalkSlider
                     title: qsTr("Highlight Crosstalk")
-                    tooltipText: qsTr("This should desaturate highlights as they get brighter past the highlight rolloff point, reducing ugly highlight colors.")
+                    tooltipText: qsTr("This desaturates highlights as they get brighter past the highlight rolloff point, reducing ugly highlight colors and making deeply saturated colors appear brighter and closer to white.")
                     minimumValue: 0
                     maximumValue: 1
                     value: Math.sqrt(paramManager.highlightCrosstalk)

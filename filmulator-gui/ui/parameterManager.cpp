@@ -2115,6 +2115,7 @@ void ParameterManager::selectImage(const QString imageID)
     emit bwGmultChanged();
     emit bwBmultChanged();
     emit toeBoundaryChanged();
+    emit highlightCrosstalkChanged();
 
     emit defDemosaicMethodChanged();
     emit defCaEnabledChanged();
@@ -2164,6 +2165,7 @@ void ParameterManager::selectImage(const QString imageID)
     emit defBwGmultChanged();
     emit defBwBmultChanged();
     emit defToeBoundaryChanged();
+    emit defHighlightCrosstalkChanged();
 
     //Mark that it's safe for sliders to move again.
     QMutexLocker signalLocker(&signalMutex);
