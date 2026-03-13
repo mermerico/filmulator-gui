@@ -820,21 +820,21 @@ SlimSplitView {
                     tooltipText: qsTr("This should desaturate highlights as they get brighter past the highlight rolloff point, reducing ugly highlight colors.")
                     minimumValue: 0
                     maximumValue: 1
-                    value: paramManager.highlightCrosstalk
-                    defaultValue: paramManager.defHighlightCrosstalk
-                    valueText: value.toFixed(6)
+                    value: Math.sqrt(paramManager.highlightCrosstalk)
+                    defaultValue: Math.sqrt(paramManager.defHighlightCrosstalk)
+                    valueText: (value*value).toFixed(6)
                     boldTickEnabled: false
                     onValueChanged: {
-                        paramManager.highlightCrosstalk = value
+                        paramManager.highlightCrosstalk = value*value
                     }
                     onEditComplete: paramManager.writeback()
                     Connections {
                         target: paramManager
                         function onHighlightCrosstalkChanged() {
-                            crosstalkSlider.value = paramManager.highlightCrosstalk
+                            crosstalkSlider.value = Math.sqrt(paramManager.highlightCrosstalk)
                         }
                         function onDefHighlightCrosstalkChanged() {
-                            crosstalkSlider.defaultValue = paramManager.defHighlightCrosstalk
+                            crosstalkSlider.defaultValue = Math.sqrt(paramManager.defHighlightCrosstalk)
                         }
                     }
                     tooltipInstant: root.helpMode
