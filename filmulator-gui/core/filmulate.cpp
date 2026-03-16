@@ -1,4 +1,4 @@
-/* 
+/*
  * This file is part of Filmulator.
  *
  * Copyright 2013 Omer Mano and Carlo Vaccari
@@ -19,9 +19,8 @@
 #include "imagePipeline.h"
 #include <algorithm>
 #include <stdio.h>
-#include <unistd.h>
 
-//Function-------------------------------------------------------------------------
+// Function-------------------------------------------------------------------------
 bool ImagePipeline::filmulate(matrix<float> &input_image,
                               matrix<float> &output_density,
                               ParameterManager * paramManager,
@@ -205,38 +204,112 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
        
         agitate_dif += timeDiff(agitate_start);
     }
-    tout << "Development time: " <<timeDiff(development_start)<< " seconds" << endl;
-    tout << "Develop time: " << develop_dif << " seconds" << endl;
-    tout << "Diffuse time: " << diffuse_dif << " seconds" << endl;
-    tout << "Layer mix time: " << layer_mix_dif << " seconds" << endl;
-    tout << "Agitate time: " << agitate_dif << " seconds" << endl;
-    
-    //Now we compute the density (opacity) of the film.
-    //We assume that overlapping crystals or dye clouds are
-    //nonexistent. It works okay, for now...
-    //The output is crystal_radius^2 * active_crystals_per_pixel
-    struct timeval mult_start;
-    gettimeofday(&mult_start,NULL);
 
+    // Updating for starting the development simulation. Valid is one too high
+    // here.
+    pipeline->updateProgress(Valid::partfilmulation,
+                             float(i) / float(development_steps));
+
+    develop_start = std::chrono::steady_clock::now();
+
+    // This is where we perform the chemical reaction part.
+    // The crystals grow.
+    // The developer in the active layer is consumed.
+    // So is the silver salt in the film.
+    //  The amount consumed increases as the crystals grow larger.
+    // Because the developer and silver salts are consumed in bright regions,
+    //  this reduces the rate at which they grow. This gives us global
+    //  contrast reduction.
+    develop(crystal_radius, crystal_growth_const, active_crystals_per_pixel,
+            silver_salt_density, developer_concentration,
+            active_layer_thickness, developer_consumption_const,
+            silver_salt_consumption_const, timestep);
+
+    develop_dif += timeDiff(develop_start);
+    diffuse_start = std::chrono::steady_clock::now();
+
+    // Check for cancellation
     abort = paramManager->claimFilmAbort();
-    if(abort == AbortStatus::restart)
-    {
-        return true;
+    if (abort == AbortStatus::restart) {
+      return true;
     }
 
-    const int numRows = crystal_radius.nr();
-    const int numCols = crystal_radius.nc();
+    // Updating for starting the diffusion simulation. Valid is one too high
+    // here.
+    pipeline->updateProgress(Valid::partfilmulation,
+                             float(i) / float(development_steps));
 
-    #pragma omp parallel for
-    for (int i = 0; i < numRows; ++i) {
-        for (int j = 0; j < numCols; ++j) {
-            output_density(i, j) = crystal_radius(i, j) * crystal_radius(i, j) * active_crystals_per_pixel(i, j);
-        }
+    // Now, we are going to perform the diffusion part.
+    // Here we mix the layer among itself, which grants us the
+    //  local contrast increases.
+    diffuse(developer_concentration, sigma_const, pixels_per_millimeter,
+            timestep);
+    //        diffuse_short_convolution(developer_concentration,
+    //                                  sigma_const,
+    //                                  pixels_per_millimeter,
+    //                                  timestep);
+    //        diffuse_resize_iir(developer_concentration,
+    //                           sigma_const,
+    //                           pixels_per_millimeter,
+    //                           timestep);
+
+    diffuse_dif += timeDiff(diffuse_start);
+
+    layer_mix_start = std::chrono::steady_clock::now();
+    // This performs mixing between the active layer adjacent to the film
+    //  and the reservoir.
+    // This keeps the effects from getting too crazy.
+    layer_mix(developer_concentration, active_layer_thickness,
+              reservoir_developer_concentration, reservoir_thickness,
+              layer_mix_const, layer_time_divisor, pixels_per_millimeter,
+              timestep);
+
+    layer_mix_dif += timeDiff(layer_mix_start);
+
+    agitate_start = std::chrono::steady_clock::now();
+
+    // I want agitation to only occur in the middle of development, not
+    // at the very beginning or the ends. So, I add half the agitate
+    // period to the current cycle count.
+    if ((i + half_agitate_period) % agitate_period == 0)
+      agitate(developer_concentration, active_layer_thickness,
+              reservoir_developer_concentration, reservoir_thickness,
+              pixels_per_millimeter);
+
+    agitate_dif += timeDiff(agitate_start);
+  }
+  tout << "Development time: " << timeDiff(development_start) << " seconds"
+       << endl;
+  tout << "Develop time: " << develop_dif << " seconds" << endl;
+  tout << "Diffuse time: " << diffuse_dif << " seconds" << endl;
+  tout << "Layer mix time: " << layer_mix_dif << " seconds" << endl;
+  tout << "Agitate time: " << agitate_dif << " seconds" << endl;
+
+  // Now we compute the density (opacity) of the film.
+  // We assume that overlapping crystals or dye clouds are
+  // nonexistent. It works okay, for now...
+  // The output is crystal_radius^2 * active_crystals_per_pixel
+  std::chrono::steady_clock::time_point mult_start;
+  mult_start = std::chrono::steady_clock::now();
+
+  abort = paramManager->claimFilmAbort();
+  if (abort == AbortStatus::restart) {
+    return true;
+  }
+
+  const int numRows = crystal_radius.nr();
+  const int numCols = crystal_radius.nc();
+
+#pragma omp parallel for
+  for (int i = 0; i < numRows; ++i) {
+    for (int j = 0; j < numCols; ++j) {
+      output_density(i, j) = crystal_radius(i, j) * crystal_radius(i, j) *
+                             active_crystals_per_pixel(i, j);
     }
-    tout << "Output density time: "<<timeDiff(mult_start) << endl;
+  }
+  tout << "Output density time: " << timeDiff(mult_start) << endl;
 #ifdef DOUT
-    debug_out.close();
+  debug_out.close();
 #endif
-    return false;
+  return false;
 }
-

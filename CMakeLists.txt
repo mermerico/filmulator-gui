@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.21)
 
+# Custom cmake modules (always needed for DefineCMakeDefaults, CompilerChecks, etc.)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 include(DefineCMakeDefaults)
@@ -25,17 +26,39 @@ find_package(Qt5Quick CONFIG REQUIRED)
 find_package(Qt5Sql CONFIG REQUIRED)
 find_package(Qt5Qml CONFIG REQUIRED)
 find_package(Qt5QuickCompiler CONFIG REQUIRED)
+find_package(Qt5QmlImportScanner REQUIRED)
 # find_package(Qt5LinguistTools CONFIG REQUIRED)
 
-# find a bunch of packages
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GLIB REQUIRED IMPORTED_TARGET glib-2.0)
+
+# find a bunch of packages (vcpkg provides CONFIG mode packages)
 find_package(rtprocess CONFIG REQUIRED)
-find_package(Exiv2 REQUIRED)
-find_package(libraw REQUIRED)
+find_package(exiv2 CONFIG REQUIRED)
+find_package(libraw CONFIG REQUIRED)
 find_package(JPEG REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(OpenMP REQUIRED)
-find_package(LENSFUN REQUIRED)
-find_package(CURL REQUIRED)
+set(_lensfun_found FALSE)
+find_package(lensfun QUIET)
+if(lensfun_FOUND)
+    set(_lensfun_found TRUE)
+endif()
+if(NOT _lensfun_found)
+    pkg_check_modules(LENSFUN QUIET IMPORTED_TARGET lensfun)
+    if(LENSFUN_FOUND)
+        set(_lensfun_found TRUE)
+    endif()
+endif()
+if(NOT _lensfun_found)
+    message(FATAL_ERROR "lensfun not found (CMake module or pkg-config).")
+endif()
+if(lensfun_FOUND)
+    message(STATUS "Lensfun found via FindLENSFUN.cmake.")
+elseif(LENSFUN_FOUND)
+    message(STATUS "Lensfun found via pkg-config.")
+endif()
+find_package(CURL CONFIG REQUIRED)
 find_package(LibArchive REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -125,68 +148,74 @@ if(APPLE)
         ${filmulator_SRCS}
         ${filmulator_RSCS}
     )
-    target_compile_definitions(filmulator PRIVATE)
 elseif(WIN32)
     add_executable(filmulator # WIN32 # comment out WIN32 to get a terminal window
         ${filmulator_SRCS}
         ${filmulator_RSCS}
     )
     target_link_directories(filmulator PRIVATE ${GLIB2_LIBRARY_DIRS})
-    target_compile_definitions(filmulator PRIVATE)
 else()
     add_executable(filmulator
         ${filmulator_SRCS}
         ${filmulator_RSCS}
     )
-    target_compile_definitions(filmulator PRIVATE)
 endif()
+target_compile_definitions(filmulator PRIVATE)
+
+
 
 target_compile_options(filmulator
     PRIVATE
-        ${OpenMP_CXX_FLAGS}
         ${DEFAULT_CXX_COMPILER_FLAGS}
         -DHAVE_CONFIG_H
+        $<$<CXX_COMPILER_ID:MSVC>:/openmp:experimental>
 )
 
+set_target_properties(filmulator PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
+
+# Note: Modern CMake imported targets handle include directories automatically
+# when linked via target_link_libraries. Only local directories need explicit listing.
 target_include_directories(filmulator
     PRIVATE
         filmulator-gui/core
         filmulator-gui/database
         filmulator-gui/ui
         filmulator-gui/qtquick2applicationviewer
-        ${EXIV2_INCLUDE_DIR}
-        ${LIBRAW_INCLUDE_DIR}
-        ${LIBRAW_INCLUDE_DIRS}
-        ${JPEG_INCLUDE_DIRS}
-        ${TIFF_INCLUDE_DIR}
-        ${RTPROCESS_INCLUDE_DIR}
-        ${LENSFUN_INCLUDE_DIR}
-        ${CURL_INCLUDE_DIRS}
-        ${LibArchive_INCLUDE_DIRS}
-        ${GLIB2_INCLUDE_DIRS}
-        ${ZLIB_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}
 )
 #glib2 needed for static lensfun on windows above and below
 #libraw_include_dirs for pointing windows build at it
 
+if(TARGET PkgConfig::LENSFUN)
+    set(LENSFUN_TARGET PkgConfig::LENSFUN)
+elseif(DEFINED LENSFUN_LIBRARY)
+    set(LENSFUN_TARGET ${LENSFUN_LIBRARY})
+else()
+    message(FATAL_ERROR "lensfun target not found")
+endif()
+
+# Use modern CMake imported targets for proper include/link handling
 target_link_libraries(filmulator
-    Qt::Core
-    Qt::Sql
-    Qt::Widgets
-    Qt::Quick
-    Qt::Qml
-    ${EXIV2_LIBRARIES}
-    ${LIBRAW_LIBRARIES}
-    ${JPEG_LIBRARIES}
-    ${TIFF_LIBRARIES}
-    ${LENSFUN_LIBRARY}
-    ${CURL_LIBRARIES}
-    ${LibArchive_LIBRARIES}
-    ${OpenMP_CXX_LIBRARIES}
-    ${GLIB2_LIBRARIES}
-    ${ZLIB_LIBRARIES}
-    rtprocess::rtprocess
+    PRIVATE
+        Qt5::Core
+        Qt5::Sql
+        Qt5::Widgets
+        Qt5::Quick
+        Qt5::Qml
+        Exiv2::exiv2lib       # exiv2 modern target
+        libraw::raw_r         # libraw modern target
+        JPEG::JPEG            # CMake built-in JPEG target
+        TIFF::TIFF            # TIFF modern target
+        ${LENSFUN_TARGET}
+        PkgConfig::GLIB
+        CURL::libcurl         # CURL modern target
+        LibArchive::LibArchive
+        ZLIB::ZLIB            # ZLIB modern target
+        OpenMP::OpenMP_CXX
+        rtprocess::rtprocess
 )
 
     # let's see where all this stuff is...
@@ -209,110 +238,17 @@ target_link_libraries(filmulator
     #message(STATUS "CURL_LIBRARIES=${CURL_LIBRARIES}")
     
 if(APPLE)
-    file(COPY "${CMAKE_SOURCE_DIR}/resources/macos/filmulator-gui" DESTINATION "./Filmulator.app/Contents/MacOS" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE WORLD_EXECUTE)
-    file(COPY "${CMAKE_SOURCE_DIR}/../LICENSE" DESTINATION "./Filmulator.app/Contents/Resources")
-    file(COPY "${CMAKE_SOURCE_DIR}/resources/macos/icon.icns" DESTINATION "./Filmulator.app/Contents/Resources")
-    file(COPY "${CMAKE_SOURCE_DIR}/resources/macos/qt.conf" DESTINATION "./Filmulator.app/Contents/Resources")
-    set(CMAKE_OSX_ARCHITECTURES x86_64)
+    set(CMAKE_OSX_ARCHITECTURES arm64)
+    file(COPY "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/macos/filmulator-gui" DESTINATION "./Filmulator.app/Contents/MacOS" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE WORLD_EXECUTE)
+    file(COPY "${CMAKE_SOURCE_DIR}/LICENSE" DESTINATION "./Filmulator.app/Contents/Resources")
+    file(COPY "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/macos/icon.icns" DESTINATION "./Filmulator.app/Contents/Resources")
+    file(COPY "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/macos/qt.conf" DESTINATION "./Filmulator.app/Contents/Resources")
     set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/build")
-    file(COPY "${CMAKE_SOURCE_DIR}/resources/macos/Info.plist.in" DESTINATION ".")
-    set_source_files_properties(${CMAKE_SOURCE_DIR}/resources/macos/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Filmulator.app/Contents/Resources")
-    set(filmulator ${filmulator} "${CMAKE_SOURCE_DIR}/resources/macos/Icon.icns")
+    file(COPY "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/macos/Info.plist.in" DESTINATION ".")
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/filmulator-gui/resources/macos/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Filmulator.app/Contents/Resources")
+    # Copy QML directory to Resources - REMOVED, using qt5_import_qml_plugins instead
     install(TARGETS filmulator BUNDLE DESTINATION "${CMAKE_SOURCE_DIR}/build")
-    execute_process(COMMAND plutil -replace CFBundleGetInfoString -string "${PROJECT_NAME} ${PROJECT_VERSION}" ./Info.plist.in)
-    execute_process(COMMAND plutil -replace CFBundleVersion -string "${PROJECT_VERSION}" ./Info.plist.in)
-    execute_process(COMMAND plutil -replace LSMinimumSystemVersion -string "${CMAKE_OSX_DEPLOYMENT_TARGET}" ./Info.plist.in)
-    set_target_properties(filmulator PROPERTIES MACOSX_BUNDLE TRUE MACOSX_BUNDLE_INFO_PLIST ./Info.plist.in)
-
-  
-    if (IS_SYMLINK "${EXIV2_LIBRARY}")
-        file(READ_SYMLINK "${EXIV2_LIBRARY}" result)
-	get_filename_component(exiv2_dir "${EXIV2_LIBRARY}" DIRECTORY)
-
-        if (IS_SYMLINK "${exiv2_dir}/${result}") # this is the most likely situation,
-						 # assuming its from homebrew
-            file(READ_SYMLINK "${exiv2_dir}/${result}" result2)
-	    get_filename_component(exiv2_dir2 "${result2}" DIRECTORY)
-
-	    # at this point we need a dirty, greasy hack... read_symlink appears
-	    # to return the wrong thing. so because we fixed the FindExiv2.cmake
-	    # file to actually return a real version number, we can make it ourselves...
-
-	    get_filename_component(exiv2_dir2 "${exiv2_dir}/${result}" DIRECTORY)
-	    file(COPY "${exiv2_dir2}/libexiv2.${EXIV2_VERSION}.dylib" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/")
-	    file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/libexiv2.${EXIV2_VERSION}.dylib" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/libexiv2.dylib")
-
-	else()
-            file(COPY "${exiv2_dir}/${result}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/")
-        endif()
-
-    else()
-	# yeah right its always gonna be a symlink, but we'll put this here just in case...
-	file(COPY "${EXIV2_LIBRARY}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/")
-    endif()
-
-    #LibArchive is a symlink
-    #file(READ_SYMLINK "${LibArchive_INCLUDE_DIR}/../lib/libarchive.dylib" libarchiveresult)
-    if(IS_SYMLINK "${LibArchive_LIBRARY}")
-        file(READ_SYMLINK "${LibArchive_LIBRARY}" libarchiveresult)
-        get_filename_component(libarchive_dir "${LibArchive_LIBRARY}" DIRECTORY)
-        #file(COPY "${LibArchive_INCLUDE_DIR}/../lib/${libarchiveresult}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-        file(COPY "${libarchive_dir}/${libarchiveresult}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-        file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/${libarchiveresult}" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/libarchive.dylib")
-    else()
-	# I really doubt this is the case but we'll cover it just in case
-	file(COPY "${LibArchive_LIBRARY}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-    endif()
-
-    #LIBCURL is a symlink
-    if(IS_SYMLINK "${CURL_LIBRARIES}")
-        file(READ_SYMLINK "${CURL_LIBRARIES}" libcurlresult)
-        get_filename_component(libcurl_dir "${CURL_LIBRARIES}" DIRECTORY)
-        file(COPY "${libcurl_dir}/${libcurlresult}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-        file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/${libcurlresult}" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/libcurl.dylib")
-    else()
-	file(COPY "${CURL_LIBRARIES}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-    endif()
-
-    #LENSFUN is a symlink
-    if(IS_SYMLINK "${LENSFUN_LIBRARY}")
-        file(READ_SYMLINK "${LENSFUN_LIBRARY}" liblensfunresult)
-        get_filename_component(liblensfun_dir "${LENSFUN_LIBRARY}" DIRECTORY)
-        file(READ_SYMLINK "${liblensfun_dir}/${liblensfunresult}" liblensfunresult2)
-        file(COPY "${liblensfun_dir}/${liblensfunresult2}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-        file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/${liblensfunresult2}" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/liblensfun.dylib")
-    else()
-	    file(COPY "${LENSFUN_LIBRARY}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-    endif()
-    
-
-    if(IS_SYMLINK "${JPEG_LIBRARY_RELEASE}")
-        file(READ_SYMLINK "${JPEG_LIBRARY_RELEASE}" result)
-	get_filename_component(libjpeg_dir "${JPEG_LIBRARY_RELEASE}" DIRECTORY)
-        if(IS_SYMLINK "${libjpeg_dir}/${result}")
-            file(READ_SYMLINK "${libjpeg_dir}/${result}" result2)
-	    get_filename_component(libjpeg_dir2 "${libjpeg_dir}/${result}" DIRECTORY)
-            file(COPY "${libjpeg_dir2}/${result2}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-            file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/${result2}" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/libjpeg.dylib")
-        endif()
-    endif()
-
-    if(IS_SYMLINK "${TIFF_LIBRARY_RELEASE}")
-        file(READ_SYMLINK "${TIFF_LIBRARY_RELEASE}" result)
-	get_filename_component(libtiff_dir "${TIFF_LIBRARY_RELEASE}" DIRECTORY)
-        if(IS_SYMLINK "${libtiff_dir}/${result}")
-	    file(READ_SYMLINK "${libtiff_dir}/${result}" result2)
-	    get_filename_component(libtiff_dir2 "${libtiff_dir}/${result}" DIRECTORY)
-            file(COPY "${libtiff_dir2}/${result2}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-            file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/${result2}" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/libtiff.dylib")
-        endif()
-    endif()
-
-    file(COPY "${librtprocess_dylib}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-    get_filename_component(librtprocess_name "${librtprocess_dylib}" NAME)
-    file(RENAME "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/${librtprocess_name}" "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks/librtprocess.0.dylib")
-    file(COPY "${OpenMP_libomp_LIBRARY}" DESTINATION "${CMAKE_SOURCE_DIR}/build/Filmulator.app/Contents/Frameworks")
-
+    set_target_properties(filmulator PROPERTIES MACOSX_BUNDLE TRUE MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/macos/Info.plist.in")
 else()
     install(TARGETS filmulator
         RUNTIME
@@ -320,5 +256,7 @@ else()
     )
 
 endif()
+
+qt5_import_qml_plugins(filmulator)
 
 add_subdirectory(filmulator-gui/qml)

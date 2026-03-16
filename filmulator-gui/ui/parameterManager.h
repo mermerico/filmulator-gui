@@ -1,103 +1,103 @@
 #ifndef PARAMETERMANAGER_H
 #define PARAMETERMANAGER_H
 
-#include <QObject>
-#include <QVariant>
-#include <QSqlQuery>
-#include <QSqlRecord>
-#include <QMutex>
-#include <QMutexLocker>
-#include <QDateTime>
-#include <QString>
-#include <QDebug>
-#include <tuple>
-#include <iostream>
-#include <memory>
-#include <lensfun/lensfun.h>
 #include "../core/filmSim.hpp"
 #include "../database/exifFunctions.h"
+#include <QDateTime>
+#include <QDebug>
+#include <QMutex>
+#include <QMutexLocker>
+#include <QObject>
+#include <QSqlQuery>
+#include <QSqlRecord>
+#include <QString>
+#include <QVariant>
+#include <iostream>
+#include <lensfun/lensfun.h>
+#include <memory>
+#include <string>
+#include <tuple>
 
-enum Valid {none,
-            partload,
-            load,
-            partdemosaic,
-            demosaic,
-            partpostdemosaic,
-            postdemosaic,
-            partnrnlmeans,
-            nrnlmeans,
-            partnrimpulse,
-            nrimpulse,
-            partnrchroma,
-            nrchroma,
-            partprefilmulation,
-            prefilmulation,
-            partfilmulation,
-            filmulation,
-            partblackwhite,
-            blackwhite,
-            partcolorcurve,
-            colorcurve,
-            partfilmlikecurve,
-            filmlikecurve,
-            count};
+enum Valid {
+  none,
+  partload,
+  load,
+  partdemosaic,
+  demosaic,
+  partpostdemosaic,
+  postdemosaic,
+  partnrnlmeans,
+  nrnlmeans,
+  partnrimpulse,
+  nrimpulse,
+  partnrchroma,
+  nrchroma,
+  partprefilmulation,
+  prefilmulation,
+  partfilmulation,
+  filmulation,
+  partblackwhite,
+  blackwhite,
+  partcolorcurve,
+  colorcurve,
+  partfilmlikecurve,
+  filmlikecurve,
+  count
+};
 
-enum FilmFetch {initial,
-                subsequent};
+enum FilmFetch { initial, subsequent };
 
-enum AbortStatus {proceed,
-                  restart};
+enum AbortStatus { proceed, restart };
 
-enum CopyDefaults {loadToParams,
-                   loadOnlyDefaults};
+enum CopyDefaults { loadToParams, loadOnlyDefaults };
 
-//We want a struct for each stage of the pipeline for validity.
+// We want a struct for each stage of the pipeline for validity.
 struct LoadParams {
-    std::string fullFilename;
-    bool tiffIn;
-    bool jpegIn;
+  std::string fullFilename;
+  bool tiffIn;
+  bool jpegIn;
 };
 
 struct DemosaicParams {
-    int caEnabled;
-    int demosaicMethod;
+  int caEnabled;
+  int demosaicMethod;
 };
 
 struct PostDemosaicParams {
-    float temperature;
-    float tint;
-    int highlights;
-    bool nrEnabled;
-    float exposureComp;
+  float temperature;
+  float tint;
+  int highlights;
+  bool nrEnabled;
+  float exposureComp;
 };
 
 struct NlmeansNRParams {
-    bool nrEnabled;
-    int nlClusters;
-    float nlThresh;
-    float nlStrength;
+  bool nrEnabled;
+  int nlClusters;
+  float nlThresh;
+  float nlStrength;
 };
 
 struct ImpulseNRParams {
-    bool nrEnabled;
-    float impulseThresh;
+  bool nrEnabled;
+  float impulseThresh;
 };
 
 struct ChromaNRParams {
-    bool nrEnabled;
-    float chromaStrength;
+  bool nrEnabled;
+  float chromaStrength;
 };
 
 struct PrefilmParams {
-    bool nrEnabled;
-    QString cameraName;
-    QString lensName;
-    bool lensfunCA;
-    bool lensfunVignetting;
-    bool lensfunDistortion;
-    float focalLength;
-    float fnumber;
-    float rotationAngle;
+  bool nrEnabled;
+  QString cameraName;
+  QString lensName;
+  bool lensfunCA;
+  bool lensfunVignetting;
+  bool lensfunDistortion;
+  float focalLength;
+  float fnumber;
+  float rotationAngle;
 };
 
 struct FilmParams {
@@ -123,34 +123,34 @@ struct FilmParams {
 };
 
 struct BlackWhiteParams {
-    float blackpoint;
-    float whitepoint;
-    float cropHeight;
-    float cropAspect;
-    float cropVoffset;
-    float cropHoffset;
-    int rotation;
+  float blackpoint;
+  float whitepoint;
+  float cropHeight;
+  float cropAspect;
+  float cropVoffset;
+  float cropHoffset;
+  int rotation;
 };
 
-struct CropParams {//just for cropping the histogram search area
-    float cropHeight;
-    float cropAspect;
-    float cropVoffset;
-    float cropHoffset;
-    int rotation;
+struct CropParams { // just for cropping the histogram search area
+  float cropHeight;
+  float cropAspect;
+  float cropVoffset;
+  float cropHoffset;
+  int rotation;
 };
 
 struct FilmlikeCurvesParams {
-    float shadowsX;
-    float shadowsY;
-    float highlightsX;
-    float highlightsY;
-    float vibrance;
-    float saturation;
-    bool monochrome;
-    float bwRmult;
-    float bwGmult;
-    float bwBmult;
+  float shadowsX;
+  float shadowsY;
+  float highlightsX;
+  float highlightsY;
+  float vibrance;
+  float saturation;
+  bool monochrome;
+  float bwRmult;
+  float bwGmult;
+  float bwBmult;
 };
 
 class ParameterManager : public QObject
@@ -589,14 +589,14 @@ public:
 
 
 public slots:
-    //When the quick pipeline gets the params changed, we'll automatically
-    // have the clone pipeline update its params.
-    //This will turn changeMadeSinceCheck true, but only if it's a clone
-    void cloneParams(ParameterManager * sourceParams);
+  // When the quick pipeline gets the params changed, we'll automatically
+  //  have the clone pipeline update its params.
+  // This will turn changeMadeSinceCheck true, but only if it's a clone
+  void cloneParams(ParameterManager *sourceParams);
 
-    //If this is a preload pipeline, we need to stop computation
-    // when *another* pipeline changes, but we don't need params copied
-    void cancelComputation();
+  // If this is a preload pipeline, we need to stop computation
+  //  when *another* pipeline changes, but we don't need params copied
+  void cancelComputation();
 
 protected:
     //This is here for the sql insertion to pull the values from.
