@@ -2,6 +2,7 @@ Filmulator-Testing-2/Filmulator-Testing-2.pro.user
 *.so
 *.a
 build*/
+.cache/
 
 # vcpkg
 vcpkg_installed/

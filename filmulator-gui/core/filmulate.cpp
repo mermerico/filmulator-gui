@@ -57,10 +57,10 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
     float highlight_crosstalk = filmParam.highlightCrosstalk;
 
     //Set up timers
-    struct timeval initialize_start, development_start, develop_start,
+    std::chrono::steady_clock::time_point initialize_start, development_start, develop_start,
                    diffuse_start, agitate_start, layer_mix_start;
     double develop_dif = 0, diffuse_dif = 0, agitate_dif = 0, layer_mix_dif= 0;           
-    gettimeofday(&initialize_start,NULL);
+    initialize_start = std::chrono::steady_clock::now();
 
     int nrows = (int) input_image.nr();
     int ncols = (int) input_image.nc()/3;
@@ -115,7 +115,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
    
     tout << "Initialization time: " << timeDiff(initialize_start)
          << " seconds" << endl;
-    gettimeofday(&development_start,NULL);
+    development_start = std::chrono::steady_clock::now();
 
     //Now we begin the main development/diffusion loop, which approximates the
     //differential equation of film development.
@@ -131,7 +131,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
         //Updating for starting the development simulation. Valid is one too high here.
         pipeline->updateProgress(Valid::partfilmulation, float(i)/float(development_steps));
 
-        gettimeofday(&develop_start,NULL);
+        develop_start = std::chrono::steady_clock::now();
 
         //This is where we perform the chemical reaction part.
         //The crystals grow.
@@ -147,7 +147,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
                 silver_salt_consumption_const,timestep);
         
         develop_dif += timeDiff(develop_start);
-        gettimeofday(&diffuse_start,NULL);
+        diffuse_start = std::chrono::steady_clock::now();
 
         //Check for cancellation
         abort = paramManager->claimFilmAbort();
@@ -177,7 +177,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
 
         diffuse_dif += timeDiff(diffuse_start);
 
-        gettimeofday(&layer_mix_start,NULL);        
+        layer_mix_start = std::chrono::steady_clock::now();
         //This performs mixing between the active layer adjacent to the film
         // and the reservoir.
         //This keeps the effects from getting too crazy.
@@ -192,7 +192,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
         
         layer_mix_dif += timeDiff(layer_mix_start);
         
-        gettimeofday(&agitate_start,NULL);
+        agitate_start = std::chrono::steady_clock::now();
         
         //I want agitation to only occur in the middle of development, not
         //at the very beginning or the ends. So, I add half the agitate
@@ -205,79 +205,6 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
         agitate_dif += timeDiff(agitate_start);
     }
 
-    // Updating for starting the development simulation. Valid is one too high
-    // here.
-    pipeline->updateProgress(Valid::partfilmulation,
-                             float(i) / float(development_steps));
-
-    develop_start = std::chrono::steady_clock::now();
-
-    // This is where we perform the chemical reaction part.
-    // The crystals grow.
-    // The developer in the active layer is consumed.
-    // So is the silver salt in the film.
-    //  The amount consumed increases as the crystals grow larger.
-    // Because the developer and silver salts are consumed in bright regions,
-    //  this reduces the rate at which they grow. This gives us global
-    //  contrast reduction.
-    develop(crystal_radius, crystal_growth_const, active_crystals_per_pixel,
-            silver_salt_density, developer_concentration,
-            active_layer_thickness, developer_consumption_const,
-            silver_salt_consumption_const, timestep);
-
-    develop_dif += timeDiff(develop_start);
-    diffuse_start = std::chrono::steady_clock::now();
-
-    // Check for cancellation
-    abort = paramManager->claimFilmAbort();
-    if (abort == AbortStatus::restart) {
-      return true;
-    }
-
-    // Updating for starting the diffusion simulation. Valid is one too high
-    // here.
-    pipeline->updateProgress(Valid::partfilmulation,
-                             float(i) / float(development_steps));
-
-    // Now, we are going to perform the diffusion part.
-    // Here we mix the layer among itself, which grants us the
-    //  local contrast increases.
-    diffuse(developer_concentration, sigma_const, pixels_per_millimeter,
-            timestep);
-    //        diffuse_short_convolution(developer_concentration,
-    //                                  sigma_const,
-    //                                  pixels_per_millimeter,
-    //                                  timestep);
-    //        diffuse_resize_iir(developer_concentration,
-    //                           sigma_const,
-    //                           pixels_per_millimeter,
-    //                           timestep);
-
-    diffuse_dif += timeDiff(diffuse_start);
-
-    layer_mix_start = std::chrono::steady_clock::now();
-    // This performs mixing between the active layer adjacent to the film
-    //  and the reservoir.
-    // This keeps the effects from getting too crazy.
-    layer_mix(developer_concentration, active_layer_thickness,
-              reservoir_developer_concentration, reservoir_thickness,
-              layer_mix_const, layer_time_divisor, pixels_per_millimeter,
-              timestep);
-
-    layer_mix_dif += timeDiff(layer_mix_start);
-
-    agitate_start = std::chrono::steady_clock::now();
-
-    // I want agitation to only occur in the middle of development, not
-    // at the very beginning or the ends. So, I add half the agitate
-    // period to the current cycle count.
-    if ((i + half_agitate_period) % agitate_period == 0)
-      agitate(developer_concentration, active_layer_thickness,
-              reservoir_developer_concentration, reservoir_thickness,
-              pixels_per_millimeter);
-
-    agitate_dif += timeDiff(agitate_start);
-  }
   tout << "Development time: " << timeDiff(development_start) << " seconds"
        << endl;
   tout << "Develop time: " << develop_dif << " seconds" << endl;
