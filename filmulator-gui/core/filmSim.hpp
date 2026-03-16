@@ -73,23 +73,28 @@ struct filmulateParams { // TODO: adjust variable names.
 };
 
 void exposure(matrix<float> &input_image, float crystals_per_pixel,
-              float rolloff_boundary, float toe_boundary);
+        float rolloff_boundary, float toe_boundary, float highlight_crosstalk);
 
-// Equalizes the concentration of developer across the reservoir and all pixels.
-void agitate(matrix<float> &developerConcentration, float activeLayerThickness,
-             float &reservoirDeveloperConcentration, float reservoirThickness,
-             float pixelsPerMillimeter);
+//Equalizes the concentration of developer across the reservoir and all pixels.
+void agitate( matrix<float> &developerConcentration, float activeLayerThickness,
+              float &reservoirDeveloperConcentration, float reservoirThickness,
+              float pixelsPerMillimeter );
 
-// This simulates one step of the development reaction.
-void develop(matrix<float> &crystalRad, float crystalGrowthConst,
-             const matrix<float> &activeCrystalsPerPixel,
-             matrix<float> &silverSaltDensity,
-             matrix<float> &develConcentration, float activeLayerThickness,
-             float developerConsumptionConst, float silverSaltConsumptionConst,
-             float timestep);
+//This simulates one step of the development reaction.
+void develop( matrix<float> &crystalRad,
+              float crystalGrowthConst,
+              const matrix<float> &activeCrystalsPerPixel,
+              matrix<float> &silverSaltDensity,
+              matrix<float> &develConcentration,
+              float activeLayerThickness,
+              float developerConsumptionConst,
+              float silverSaltConsumptionConst,
+              float timestep);
 
-void diffuse(matrix<float> &developer_concentration, float sigma_const,
-             float pixels_per_millimeter, float timestep);
+void diffuse(matrix<float> &developer_concentration,
+        float sigma_const,
+        float pixels_per_millimeter,
+        float timestep);
 
 void diffuse_short_convolution(matrix<float> &developer_concentration,
                                const float sigma_const,
