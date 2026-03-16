@@ -23,7 +23,7 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
     //initialize lensfun db
     QDir dir = QDir::home();
     QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    dirstr.append("/filmulator/version_2");
+    dirstr.append("/filmulator/version_1");
     std::string stdstring = dirstr.toStdString();
 
     ldb = lf_db_new();
