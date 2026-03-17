@@ -46,22 +46,41 @@ ParameterManager::ParameterManager() : QObject(0)
     customWbAvail = false;
 
     //initialize lensfun db
-    QDir dir = QDir::home();
     QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    dirstr.append("/filmulator/version_2");
-    std::string stdstring = dirstr.toStdString();
-    cout << "ParamManager directory string: " << stdstring << endl;
+    dirstr.append("/filmulator/version_1/");
+    cout << "ParamManager lensfun dirstring: " << dirstr.toStdString() << endl;
+    QDir dir(dirstr);
+    QStringList filters;
+    filters << "*.xml";
+    QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoDotAndDotDot);
 
     cout << "ParamManager initializing lensfun db" << endl;
     ldb = lf_db_new();
     if (!ldb)
     {
-        cout << "Failed to create database!" << endl;
+        cout << "ParamManager lensfun failed to create database!" << endl;
     }
 
-    ldb->Load(stdstring.c_str());
-
-    cout << "ParamManager done initializing lensfun" << endl;
+    foreach (const QFileInfo &fileInfo, fileList) {
+        const QString filename = fileInfo.absoluteFilePath();
+        const std::string stdstring = filename.toStdString();
+        cout << "ParamManager lensfun loading file " << stdstring << endl;
+        lfError loadError = ldb->Load(stdstring.c_str());
+        if (loadError == LF_WRONG_FORMAT)
+        {
+            cout << "ParamManager lensfun database wrong format!" << endl;
+        }
+        else if (loadError == LF_NO_DATABASE)
+        {
+            cout << "ParamManager lensfun no database found!" << endl;
+        }
+        else if (loadError == LF_NO_ERROR)
+        {
+            //cout << "ParamManager lensfun database loaded" << endl;
+        } else {
+            cout << "ParamManager lensfun what happened? " << loadError << endl;
+        }
+    }
 
     validity = Valid::none;
 
