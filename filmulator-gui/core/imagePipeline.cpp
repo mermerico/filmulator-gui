@@ -15,6 +15,43 @@ ImagePipeline::ImagePipeline(Cache cacheIn, Histo histoIn,
   valid = Valid::none;
   filename = "";
 
+  //initialize lensfun db
+  QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+  dirstr.append("/filmulator/version_1/");
+  cout << "ImagePipeline lensfun dirstring: " << dirstr.toStdString() << endl;
+  QDir dir(dirstr);
+  QStringList filters;
+  filters << "*.xml";
+  QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoDotAndDotDot);
+
+  cout << "ImagePipeline initializing lensfun db" << endl;
+  ldb = lf_db_new();
+  if (!ldb)
+  {
+      cout << "ImagePipeline lensfun failed to create database!" << endl;
+  }
+
+  foreach (const QFileInfo &fileInfo, fileList) {
+      const QString filename = fileInfo.absoluteFilePath();
+      const std::string stdstring = filename.toStdString();
+      cout << "ImagePipeline lensfun loading file " << stdstring << endl;
+      lfError loadError = ldb->Load(stdstring.c_str());
+      if (loadError == LF_WRONG_FORMAT)
+      {
+          cout << "ImagePipeline lensfun database wrong format!" << endl;
+      }
+      else if (loadError == LF_NO_DATABASE)
+      {
+          cout << "ImagePipeline lensfun no database found!" << endl;
+      }
+      else if (loadError == LF_NO_ERROR)
+      {
+          //cout << "ImagePipeline lensfun database loaded" << endl;
+      } else {
+          cout << "ImagePipeline lensfun what happened? " << loadError << endl;
+      }
+  }
+
   completionTimes.resize(Valid::count);
   completionTimes[Valid::none] = 0;
   completionTimes[Valid::load] = 5;
@@ -1240,14 +1277,6 @@ matrix<unsigned short> &ImagePipeline::processImage(
 
     // Lensfun processing
     cout << "lensfun start" << endl;
-    lfDatabase *ldb = lf_db_new();
-    QDir dir = QDir::home();
-    QString dirstr =
-        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    dirstr.append("/filmulator/version_2");
-    std::string stdstring = dirstr.toStdString();
-    ldb->Load(stdstring.c_str());
-
     std::string camName = prefilmParam.cameraName.toStdString();
     const lfCamera *camera = NULL;
     const lfCamera **cameraList = ldb->FindCamerasExt(NULL, camName.c_str());

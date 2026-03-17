@@ -59,6 +59,9 @@ public:
   // The resolution of a quick preview
   int resolution;
 
+  // Lensfun database object
+  lfDatabase *ldb;
+
 protected:
   matrix<unsigned short> &emptyMatrix() { return empty; }
 
