@@ -1223,6 +1223,7 @@ SlimSplitView {
                     maximumValue: 2.0
                     value: paramManager.bwRmult
                     defaultValue: paramManager.defBwRmult
+                    valueText: value.toFixed(5)
                     boldTickEnabled: true
                     boldValue: defaultValue
                     onValueChanged: {
@@ -1255,6 +1256,7 @@ SlimSplitView {
                     maximumValue: 2.0
                     value: paramManager.bwGmult
                     defaultValue: paramManager.defBwGmult
+                    valueText: value.toFixed(5)
                     boldTickEnabled: true
                     boldValue: defaultValue
                     onValueChanged: {
@@ -1287,6 +1289,7 @@ SlimSplitView {
                     maximumValue: 2.0
                     value: paramManager.bwBmult
                     defaultValue: paramManager.defBwBmult
+                    valueText: value.toFixed(5)
                     boldTickEnabled: true
                     boldValue: defaultValue
                     onValueChanged: {
