@@ -159,20 +159,48 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       env:
-        # vcpkg manifest mode puts dependencies and tools inside the build directory
-        WINDEPLOY_PREFIX: ${{ github.workspace }}\build\${{ matrix.preset }}\vcpkg_installed\${{ matrix.triplet }}
+        VCPKG_PREFIX: ${{ github.workspace }}\build\${{ matrix.preset }}\vcpkg_installed\${{ matrix.triplet }}
       run: |
         $binDir = "$env:GITHUB_WORKSPACE\build\installed\bin"
-        $vcpkgBinDir = "$env:WINDEPLOY_PREFIX\bin"
-        
-        Write-Host "Bundling DLLs from $vcpkgBinDir to $binDir"
-        if (Test-Path $vcpkgBinDir) {
-            Copy-Item "$vcpkgBinDir\*.dll" $binDir -Force
-        } else {
-            Write-Error "Could not find vcpkg bin directory at $vcpkgBinDir"
+        $exePath = "$binDir\filmulator.exe"
+        $vcpkgBinDir = "$env:VCPKG_PREFIX\bin"
+        $windeployqt = "$env:VCPKG_PREFIX\tools\qt5\windeployqt.exe"
+
+        if (-not (Test-Path $windeployqt)) {
+            # Fallback: search for windeployqt in tools
+            $windeployqt = Get-ChildItem -Path "$env:VCPKG_PREFIX\tools" -Filter "windeployqt.exe" -Recurse | Select-Object -First 1 -ExpandProperty FullName
+        }
+        if (-not $windeployqt) {
+            Write-Error "windeployqt.exe not found under $env:VCPKG_PREFIX\tools"
             exit 1
         }
-        
+        Write-Host "Using windeployqt: $windeployqt"
+
+        # Add vcpkg bin to PATH so windeployqt can find Qt DLLs
+        $env:PATH = "$vcpkgBinDir;$env:PATH"
+
+        Write-Host "Running windeployqt (smart Qt deployment)..."
+        & $windeployqt `
+          --release `
+          --qmldir "$env:GITHUB_WORKSPACE\filmulator-gui\qml" `
+          --no-translations `
+          --no-system-d3d-compiler `
+          --no-opengl-sw `
+          --dir $binDir `
+          $exePath
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "windeployqt failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+        }
+
+        Write-Host "Bundling non-Qt vcpkg DLLs..."
+        # Copy only non-Qt DLLs from vcpkg (windeployqt already handled Qt ones)
+        Get-ChildItem "$vcpkgBinDir\*.dll" | Where-Object { $_.Name -notmatch '^Qt' } | ForEach-Object {
+            Write-Host "Copying $_"
+            Copy-Item $_.FullName $binDir -Force
+        }
+
         Write-Host "Bundling compiler runtime DLLs..."
         $mingwBin = Split-Path (Get-Command g++).Source
         Write-Host "MinGW bin directory: $mingwBin"
@@ -180,51 +208,17 @@ jobs:
         foreach ($dll in $runtimeDlls) {
             $src = "$mingwBin\$dll"
             if (Test-Path $src) {
-                Write-Host "Copying $dll from $mingwBin"
+                Write-Host "Copying $dll"
                 Copy-Item $src $binDir -Force
             } else {
                 Write-Warning "Could not find $dll in $mingwBin"
             }
         }
 
-        Write-Host "Copying Qt plugins..."
-        # Copy essential Qt plugins
-        $pluginDirs = @("platforms", "imageformats", "iconengines", "styles", "sqldrivers")
-        foreach ($pluginDir in $pluginDirs) {
-            $srcPath = "$env:WINDEPLOY_PREFIX\plugins\$pluginDir"
-            $dstPath = "$binDir\$pluginDir"
-            if (Test-Path $srcPath) {
-                Write-Host "Copying $pluginDir plugins..."
-                Copy-Item $srcPath $dstPath -Recurse -Force
-            } else {
-                Write-Warning "Plugin directory not found: $srcPath"
-            }
-        }
-        
-        Write-Host "Copying QML modules..."
-        # Copy QML modules (Qt Quick related)
-        $qmlSrcDir = "$env:WINDEPLOY_PREFIX\qml"
-        if (Test-Path $qmlSrcDir) {
-            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml", "QtQuick\Controls.2", "QtQuick\Layouts", "QtQuick\Templates.2", "QtQuick\Window.2", "Qt\labs\platform", "Qt\labs\settings")
-            foreach ($qmlMod in $qmlDirs) {
-                $srcPath = "$qmlSrcDir\$qmlMod"
-                $dstPath = "$binDir\qml\$qmlMod"
-                if (Test-Path $srcPath) {
-                    Write-Host "Copying QML module: $qmlMod..."
-                    New-Item -ItemType Directory -Force -Path (Split-Path $dstPath) | Out-Null
-                    Copy-Item $srcPath $dstPath -Recurse -Force
-                } else {
-                    Write-Warning "QML module not found: $srcPath"
-                }
-            }
-        } else {
-            Write-Warning "QML directory not found at $qmlSrcDir"
-        }
-        
         # Create qt.conf to help Qt find plugins and QML modules
         Write-Host "Creating qt.conf..."
         "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
-        
+
         Copy-Item "$env:GITHUB_WORKSPACE\LICENSE.txt" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator-gui\filmulator-gui80.ico" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator_build.iss" "$env:GITHUB_WORKSPACE\build\installed" -Force
@@ -269,51 +263,63 @@ jobs:
       run: |
         # Install dependencies for AppImage creation
         sudo apt-get install -y fuse libfuse2 file patchelf
-        
-        # Download linuxdeploy (without Qt plugin - we'll deploy Qt manually)
-        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy*.AppImage
-        
+
         # Generate 256x256 icon from SVG
         sudo apt-get install -y librsvg2-bin
         rsvg-convert -w 256 -h 256 filmulator-gui/resources/filmulator64icon.svg \
           -o filmulator-gui/resources/linux/filmulator.png
-        
+
         # Install to AppDir
         cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
-        
-        # Manually deploy Qt libraries (linuxdeploy-plugin-qt has issues with vcpkg Qt)
-        echo "Copying Qt libraries..."
-        mkdir -p AppDir/usr/lib
-        cp -av "${VCPKG_PREFIX}/lib/"libQt5*.so* AppDir/usr/lib/ || true
-        
-        echo "Copying Qt plugins..."
-        mkdir -p AppDir/usr/plugins
-        cp -rv "${VCPKG_PREFIX}/plugins/"* AppDir/usr/plugins/
-        
-        echo "Copying QML modules..."
-        mkdir -p AppDir/usr/qml
-        cp -rv "${VCPKG_PREFIX}/qml/"* AppDir/usr/qml/
-        
-        # Create qt.conf for the AppImage
+
+        # Fix install layout: linuxdeployqt expects executable at usr/bin/<name>
+        mkdir -p AppDir/usr/bin
+        [ -f AppDir/bin/filmulator ] && mv AppDir/bin/filmulator AppDir/usr/bin/filmulator || true
+
+        # Copy desktop file and icon into the AppDir
+        mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
+        cp filmulator-gui/resources/linux/filmulator.desktop \
+           AppDir/usr/share/applications/
+        cp filmulator-gui/resources/linux/filmulator.png \
+           AppDir/usr/share/icons/hicolor/256x256/apps/filmulator.png
+        cp filmulator-gui/resources/linux/filmulator.png \
+           AppDir/filmulator.png
+
+        # Create qt.conf so Qt finds its plugins/qml inside the AppImage
         cat > AppDir/usr/bin/qt.conf << 'EOF'
         [Paths]
         Prefix = ..
         Plugins = plugins
         Qml2Imports = qml
         EOF
-        
-        # Use linuxdeploy to bundle remaining dependencies and create AppImage
-        ./linuxdeploy-x86_64.AppImage \
-          --appdir AppDir \
-          --executable AppDir/usr/bin/filmulator \
-          --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
-          --icon-file filmulator-gui/resources/linux/filmulator.png \
-          --output appimage
-        
+
+        # Download linuxdeployqt — the Qt-aware smart deployment tool
+        # (same tool as the old .travis.yml; analyses ldd output and copies
+        #  only the Qt/non-Qt libs that are actually needed by the binary)
+        wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
+        chmod +x linuxdeployqt-continuous-x86_64.AppImage
+
+        # Point linuxdeployqt at the vcpkg Qt so it finds plugins & QML
+        export LD_LIBRARY_PATH="${VCPKG_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
+        export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
+        export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
+        export QTDIR="${VCPKG_PREFIX}"
+
+        # linuxdeployqt is an AppImage itself; APPIMAGE_EXTRACT_AND_RUN lets it
+        # run without FUSE (which GitHub Actions doesn't have as a kernel module)
+        # -unsupported-allow-new-glibc bypasses the Ubuntu 16.04 era glibc check
+        APPIMAGE_EXTRACT_AND_RUN=1 \
+        ./linuxdeployqt-continuous-x86_64.AppImage \
+          AppDir/usr/share/applications/filmulator.desktop \
+          -appimage \
+          -qmldir=filmulator-gui/qml \
+          -extra-plugins=sqldrivers/libqsqlite.so \
+          -unsupported-allow-new-glibc \
+          -verbose=2
+
         # Find the generated AppImage and rename if needed
-        APPIMAGE=$(ls *.AppImage 2>/dev/null | grep -v linuxdeploy | head -1)
-        if [ "$APPIMAGE" != "Filmulator-x86_64.AppImage" ]; then
+        APPIMAGE=$(ls *.AppImage 2>/dev/null | grep -v linuxdeployqt | head -1)
+        if [ -n "$APPIMAGE" ] && [ "$APPIMAGE" != "Filmulator-x86_64.AppImage" ]; then
           mv "$APPIMAGE" Filmulator-x86_64.AppImage
         fi
 
