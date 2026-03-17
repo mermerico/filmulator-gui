@@ -2063,6 +2063,10 @@ void ParameterManager::selectImage(const QString imageID)
         isMonochrome = wb.length()==0;
         colorAvail = !isMonochrome;
         emit colorAvailChanged();
+    } else {
+        isMonochrome = false;
+        colorAvail = true;
+        emit colorAvailChanged();
     }
     isSraw = isSraw || (isWeird && !isMonochrome);
     demosaicAvail = !isSraw && !isWeird && !isMonochrome;
