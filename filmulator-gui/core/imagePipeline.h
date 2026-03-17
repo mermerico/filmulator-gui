@@ -13,6 +13,7 @@ enum QuickQuality { LowQuality, PreviewQuality, HighQuality };
 class ImagePipeline {
 public:
   ImagePipeline(Cache, Histo, QuickQuality);
+  ~ImagePipeline();
 
   // Loads and processes an image according to the 'params' structure,
   // monitoring 'aborted' for cancellation.

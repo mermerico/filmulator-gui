@@ -67,6 +67,12 @@ ImagePipeline::ImagePipeline(Cache cacheIn, Histo histoIn,
   // completionTimes[Valid::filmlikecurve] = 10;
 }
 
+ImagePipeline::~ImagePipeline() {
+    if (ldb != NULL) {
+        lf_db_destroy(ldb);
+    }
+}
+
 // int ImagePipeline::libraw_callback(void *data, LibRaw_progress p, int
 // iteration, int expected) but we only need data.
 int ImagePipeline::libraw_callback(void *data, LibRaw_progress, int, int) {
@@ -1445,11 +1451,6 @@ matrix<unsigned short> &ImagePipeline::processImage(
       lf_free(lensList);
     }
     lf_free(cameraList);
-
-    // cleanup lensfun
-    if (ldb != NULL) {
-      lf_db_destroy(ldb);
-    }
 
     cout << "after lensfun " << endl;
 
