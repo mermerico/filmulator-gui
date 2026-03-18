@@ -164,58 +164,93 @@ jobs:
         $binDir = "$env:GITHUB_WORKSPACE\build\installed\bin"
         $exePath = "$binDir\filmulator.exe"
         $vcpkgBinDir = "$env:VCPKG_PREFIX\bin"
-        $windeployqt = "$env:VCPKG_PREFIX\tools\qt5\windeployqt.exe"
-
-        if (-not (Test-Path $windeployqt)) {
-            # Fallback: search for windeployqt in tools
-            $windeployqt = Get-ChildItem -Path "$env:VCPKG_PREFIX\tools" -Filter "windeployqt.exe" -Recurse | Select-Object -First 1 -ExpandProperty FullName
-        }
-        if (-not $windeployqt) {
-            Write-Error "windeployqt.exe not found under $env:VCPKG_PREFIX\tools"
-            exit 1
-        }
-        Write-Host "Using windeployqt: $windeployqt"
-
-        # Add vcpkg bin to PATH so windeployqt can find Qt DLLs
-        $env:PATH = "$vcpkgBinDir;$env:PATH"
-
-        Write-Host "Running windeployqt (smart Qt deployment)..."
-        & $windeployqt `
-          --release `
-          --qmldir "$env:GITHUB_WORKSPACE\filmulator-gui\qml" `
-          --no-translations `
-          --no-system-d3d-compiler `
-          --no-opengl-sw `
-          --dir $binDir `
-          $exePath
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "windeployqt failed with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
-        }
-
-        Write-Host "Bundling non-Qt vcpkg DLLs..."
-        # Copy only non-Qt DLLs from vcpkg (windeployqt already handled Qt ones)
-        Get-ChildItem "$vcpkgBinDir\*.dll" | Where-Object { $_.Name -notmatch '^Qt' } | ForEach-Object {
-            Write-Host "Copying $_"
-            Copy-Item $_.FullName $binDir -Force
-        }
-
-        Write-Host "Bundling compiler runtime DLLs..."
         $mingwBin = Split-Path (Get-Command g++).Source
-        Write-Host "MinGW bin directory: $mingwBin"
+
+        # Add vcpkg bin + MinGW bin to PATH so ldd can resolve all DLLs
+        $env:PATH = "$vcpkgBinDir;$mingwBin;$env:PATH"
+
+        Write-Host "Using ldd to find DLLs actually linked by the binary..."
+        # ldd returns lines like: "  Qt5Core.dll => D:\...\bin\Qt5Core.dll (0x...)"
+        # We want only DLLs that resolve from our vcpkg bin dir (case-insensitive path match)
+        $lddOutput = & ldd $exePath 2>$null
+        $vcpkgBinDirLower = $vcpkgBinDir.ToLower().Replace('\', '/')
+        $vcpkgDlls = $lddOutput | Where-Object { $_ -match "=>" } | ForEach-Object {
+            if ($_ -match "=>\s+(\S+)\s+\(") {
+                $matches[1]
+            }
+        } | Where-Object {
+            $_ -and (Test-Path $_) -and $_.ToLower().Replace('\', '/').StartsWith($vcpkgBinDirLower)
+        }
+
+        Write-Host "Copying $($vcpkgDlls.Count) vcpkg DLLs resolved by ldd..."
+        foreach ($dllPath in $vcpkgDlls) {
+            $dllName = Split-Path -Leaf $dllPath
+            Write-Host "  $dllName"
+            Copy-Item $dllPath $binDir -Force
+        }
+
+        # Runtime DLLs that ldd won't show (already on system PATH during ldd)
+        Write-Host "Bundling compiler runtime DLLs..."
         $runtimeDlls = @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll", "libgomp-1.dll")
         foreach ($dll in $runtimeDlls) {
             $src = "$mingwBin\$dll"
             if (Test-Path $src) {
-                Write-Host "Copying $dll"
+                Write-Host "  $dll"
                 Copy-Item $src $binDir -Force
             } else {
                 Write-Warning "Could not find $dll in $mingwBin"
             }
         }
 
-        # Create qt.conf to help Qt find plugins and QML modules
+        Write-Host "Copying required Qt plugins..."
+        # Only copy the plugin categories the app actually uses
+        $pluginDirs = @{
+            "platforms"    = @("qwindows.dll")           # required: windowing
+            "sqldrivers"   = @("qsqlite.dll")            # required: SQLite database
+            "imageformats" = @("qjpeg.dll", "qtiff.dll") # optional: file I/O
+            "iconengines"  = @("qsvgicon.dll")            # optional: icons
+            "styles"       = @("qwindowsvistastyle.dll")  # optional: native style
+        }
+        foreach ($pluginDir in $pluginDirs.Keys) {
+            $dstPath = "$binDir\$pluginDir"
+            New-Item -ItemType Directory -Force -Path $dstPath | Out-Null
+            foreach ($dll in $pluginDirs[$pluginDir]) {
+                $src = "$env:VCPKG_PREFIX\plugins\$pluginDir\$dll"
+                if (Test-Path $src) {
+                    Write-Host "  $pluginDir\$dll"
+                    Copy-Item $src $dstPath -Force
+                } else {
+                    Write-Warning "Plugin not found: $pluginDir\$dll"
+                }
+            }
+        }
+
+        Write-Host "Copying required QML modules..."
+        # Only the QML modules actually imported by the app's QML files
+        $qmlMods = @(
+            "QtQuick",
+            "QtQuick\Controls.2",
+            "QtQuick\Layouts",
+            "QtQuick\Templates.2",
+            "QtQuick\Window.2",
+            "QtQml",
+            "Qt\labs\platform",
+            "Qt\labs\settings"
+        )
+        $qmlSrc = "$env:VCPKG_PREFIX\qml"
+        foreach ($mod in $qmlMods) {
+            $src = "$qmlSrc\$mod"
+            $dst = "$binDir\qml\$mod"
+            if (Test-Path $src) {
+                Write-Host "  qml\$mod"
+                New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
+                Copy-Item $src $dst -Recurse -Force
+            } else {
+                Write-Warning "QML module not found: $mod"
+            }
+        }
+
+        # qt.conf tells Qt where to find plugins and QML relative to the exe
         Write-Host "Creating qt.conf..."
         "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
 
@@ -304,6 +339,9 @@ jobs:
         export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
         export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
         export QTDIR="${VCPKG_PREFIX}"
+        # linuxdeployqt requires 'qmake' on PATH to detect the Qt installation;
+        # without it, it exits with code 1 immediately after parsing the desktop file
+        export PATH="${VCPKG_PREFIX}/tools/qt5:${PATH}"
 
         # linuxdeployqt is an AppImage itself; APPIMAGE_EXTRACT_AND_RUN lets it
         # run without FUSE (which GitHub Actions doesn't have as a kernel module)
