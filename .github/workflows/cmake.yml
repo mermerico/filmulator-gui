@@ -170,17 +170,17 @@ jobs:
         $env:PATH = "$vcpkgBinDir;$mingwBin;$env:PATH"
 
         Write-Host "Using ldd to find DLLs actually linked by the binary..."
-        # ldd returns lines like: "  Qt5Core.dll => D:\...\bin\Qt5Core.dll (0x...)"
-        # We want only DLLs that resolve from our vcpkg bin dir (case-insensitive path match)
+        # MinGW ldd outputs unix-style paths: "  Qt5Core.dll => /d/a/.../bin/Qt5Core.dll (0x...)"
+        # We extract just the DLL filename, then check if it exists in our vcpkg bin dir.
+        # This is path-format-agnostic (avoids /d/a/ vs D:\a\ mismatch).
         $lddOutput = & ldd $exePath 2>$null
-        $vcpkgBinDirLower = $vcpkgBinDir.ToLower().Replace('\', '/')
         $vcpkgDlls = $lddOutput | Where-Object { $_ -match "=>" } | ForEach-Object {
             if ($_ -match "=>\s+(\S+)\s+\(") {
-                $matches[1]
+                $filename = Split-Path $matches[1] -Leaf
+                $candidate = "$vcpkgBinDir\$filename"
+                if (Test-Path $candidate) { $candidate }
             }
-        } | Where-Object {
-            $_ -and (Test-Path $_) -and $_.ToLower().Replace('\', '/').StartsWith($vcpkgBinDirLower)
-        }
+        } | Where-Object { $_ }
 
         Write-Host "Copying $($vcpkgDlls.Count) vcpkg DLLs resolved by ldd..."
         foreach ($dllPath in $vcpkgDlls) {
@@ -342,6 +342,17 @@ jobs:
         # linuxdeployqt requires 'qmake' on PATH to detect the Qt installation;
         # without it, it exits with code 1 immediately after parsing the desktop file
         export PATH="${VCPKG_PREFIX}/tools/qt5:${PATH}"
+
+        # --- DIAGNOSTICS: show env before calling linuxdeployqt ---
+        echo "=== which qmake ==="
+        which qmake || echo "qmake NOT found on PATH"
+        echo "=== qmake -v ==="
+        qmake -v 2>&1 || echo "qmake -v failed"
+        echo "=== ls tools/qt5 ==="
+        ls -la "${VCPKG_PREFIX}/tools/qt5/" 2>&1 | head -20 || echo "tools/qt5 not found"
+        echo "=== ldd on filmulator binary ==="
+        LD_LIBRARY_PATH="${VCPKG_PREFIX}/lib" ldd AppDir/usr/bin/filmulator 2>&1 | head -30
+        echo "=== end diagnostics ==="
 
         # linuxdeployqt is an AppImage itself; APPIMAGE_EXTRACT_AND_RUN lets it
         # run without FUSE (which GitHub Actions doesn't have as a kernel module)
