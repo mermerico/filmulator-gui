@@ -313,6 +313,12 @@ jobs:
         mkdir -p AppDir/usr/bin
         [ -f AppDir/bin/filmulator ] && mv AppDir/bin/filmulator AppDir/usr/bin/filmulator || true
 
+        # cmake --install strips the build rpath (see log: 'Set non-toolchain portion
+        # of runtime path to ""'). Without rpath, ldd can't resolve the vcpkg Qt .so
+        # files, so linuxdeployqt sees zero Qt dependencies and exits with code 1.
+        # Restore the rpath so ldd finds Qt, then linuxdeployqt bundles everything.
+        patchelf --set-rpath "${VCPKG_PREFIX}/lib" AppDir/usr/bin/filmulator
+
         # Copy desktop file and icon into the AppDir
         mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
         cp filmulator-gui/resources/linux/filmulator.desktop \
