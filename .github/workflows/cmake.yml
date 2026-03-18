@@ -250,7 +250,42 @@ jobs:
             }
         }
 
-        # qt.conf tells Qt where to find plugins and QML relative to the exe
+        # Second pass: QML plugins and platform plugins have their own Qt module
+        # dependencies (e.g. qtquickcontrols2plugin.dll needs Qt5QuickControls2.dll
+        # and Qt5QuickTemplates2.dll). These are loaded at runtime by the QML engine
+        # and are invisible to ldd on the main EXE. Scan all DLLs we just copied
+        # (plugins + QML dirs) and pick up any additional vcpkg deps.
+        Write-Host "Second ldd pass: scanning plugin/QML DLLs for additional vcpkg deps..."
+        $allCopiedDlls = @()
+        foreach ($pluginDir in $pluginDirs.Keys) {
+            $allCopiedDlls += Get-ChildItem "$binDir\$pluginDir" -Filter *.dll -ErrorAction SilentlyContinue
+        }
+        $allCopiedDlls += Get-ChildItem "$binDir\qml" -Filter *.dll -Recurse -ErrorAction SilentlyContinue
+
+        $extraDlls = @{}
+        foreach ($dll in $allCopiedDlls) {
+            $lddOut = & ldd $dll.FullName 2>$null
+            $lddOut | Where-Object { $_ -match "=>" } | ForEach-Object {
+                if ($_ -match "=>\s+(\S+)\s+\(") {
+                    $name = Split-Path $matches[1] -Leaf
+                    $candidate = "$vcpkgBinDir\$name"
+                    if ((Test-Path $candidate) -and -not (Test-Path "$binDir\$name")) {
+                        $extraDlls[$name] = $candidate
+                    }
+                }
+            }
+        }
+        if ($extraDlls.Count -gt 0) {
+            Write-Host "  Copying $($extraDlls.Count) additional vcpkg DLLs from plugin deps:"
+            foreach ($entry in $extraDlls.GetEnumerator()) {
+                Write-Host "    $($entry.Key)"
+                Copy-Item $entry.Value $binDir -Force
+            }
+        } else {
+            Write-Host "  No additional vcpkg DLLs needed."
+        }
+
+
         Write-Host "Creating qt.conf..."
         "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
 
