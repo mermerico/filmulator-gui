@@ -205,11 +205,11 @@ jobs:
         Write-Host "Copying required Qt plugins..."
         # Only copy the plugin categories the app actually uses
         $pluginDirs = @{
-            "platforms"    = @("qwindows.dll")           # required: windowing
-            "sqldrivers"   = @("qsqlite.dll")            # required: SQLite database
-            "imageformats" = @("qjpeg.dll", "qtiff.dll") # optional: file I/O
-            "iconengines"  = @("qsvgicon.dll")            # optional: icons
-            "styles"       = @("qwindowsvistastyle.dll")  # optional: native style
+            "platforms"    = @("qwindows.dll", "qoffscreen.dll") # required: windowing + headless CI
+            "sqldrivers"   = @("qsqlite.dll")                   # required: SQLite database
+            "imageformats" = @("qjpeg.dll", "qtiff.dll")        # optional: file I/O
+            "iconengines"  = @("qsvgicon.dll")                  # optional: icons
+            "styles"       = @("qwindowsvistastyle.dll")        # optional: native style
         }
         foreach ($pluginDir in $pluginDirs.Keys) {
             $dstPath = "$binDir\$pluginDir"
@@ -297,7 +297,9 @@ jobs:
         VCPKG_PREFIX: ${{ github.workspace }}/build/${{ matrix.preset }}/vcpkg_installed/${{ matrix.triplet }}
       run: |
         # Install dependencies for AppImage creation
-        sudo apt-get install -y fuse libfuse2 file patchelf
+        # qt5-qmake: linuxdeployqt requires a working qmake to detect Qt;
+        #   the qtchooser stub installed by build-dep is broken on this runner
+        sudo apt-get install -y fuse libfuse2 file patchelf qt5-qmake
 
         # Generate 256x256 icon from SVG
         sudo apt-get install -y librsvg2-bin
@@ -339,19 +341,18 @@ jobs:
         export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
         export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
         export QTDIR="${VCPKG_PREFIX}"
-        # linuxdeployqt requires 'qmake' on PATH to detect the Qt installation;
-        # without it, it exits with code 1 immediately after parsing the desktop file
-        export PATH="${VCPKG_PREFIX}/tools/qt5:${PATH}"
+        # linuxdeployqt requires a working 'qmake' on PATH to detect the Qt installation.
+        # vcpkg puts qmake under tools/qt5/bin/ (not tools/qt5/), and we also installed
+        # qt5-qmake via apt above as a reliable fallback.
+        export PATH="${VCPKG_PREFIX}/tools/qt5/bin:${VCPKG_PREFIX}/tools/qt5:${PATH}"
 
-        # --- DIAGNOSTICS: show env before calling linuxdeployqt ---
+        # --- DIAGNOSTICS: confirm qmake is working before linuxdeployqt ---
         echo "=== which qmake ==="
         which qmake || echo "qmake NOT found on PATH"
         echo "=== qmake -v ==="
         qmake -v 2>&1 || echo "qmake -v failed"
-        echo "=== ls tools/qt5 ==="
-        ls -la "${VCPKG_PREFIX}/tools/qt5/" 2>&1 | head -20 || echo "tools/qt5 not found"
-        echo "=== ldd on filmulator binary ==="
-        LD_LIBRARY_PATH="${VCPKG_PREFIX}/lib" ldd AppDir/usr/bin/filmulator 2>&1 | head -30
+        echo "=== ls tools/qt5/bin ==="
+        ls -la "${VCPKG_PREFIX}/tools/qt5/bin/" 2>&1 | head -20 || echo "tools/qt5/bin not found"
         echo "=== end diagnostics ==="
 
         # linuxdeployqt is an AppImage itself; APPIMAGE_EXTRACT_AND_RUN lets it
@@ -605,7 +606,11 @@ jobs:
         $errorLog = "${{ github.workspace }}\smoke_test_error.log"
         $startTime = Get-Date
         
-        # Start the process and capture output
+        # Start the process and capture output.
+        # QT_QPA_PLATFORM must be set explicitly here — Start-Process spawns a new
+        # process tree and doesn't inherit the job-level env: block variables.
+        $env:QT_QPA_PLATFORM = "offscreen"
+        $env:QT_QUICK_BACKEND = "software"
         $process = Start-Process -FilePath $exePath -PassThru -RedirectStandardOutput $outputLog -RedirectStandardError $errorLog
         
         # Give it some time to load DLLs and fail if there's an issue
