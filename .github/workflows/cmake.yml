@@ -647,16 +647,25 @@ jobs:
         }
         $env:PATH = $oldPath
         
+        Write-Host "=== DLLs in install root ==="
+        Get-ChildItem "$installDir" -Filter *.dll | Select-Object -ExpandProperty Name | Sort-Object
+        Write-Host "=== QML dirs in install ==="
+        Get-ChildItem "$installDir\qml" -Recurse -Directory | Select-Object -ExpandProperty FullName
+
         Write-Host "Running smoke test on installed application..."
         $outputLog = "${{ github.workspace }}\smoke_test_output.log"
         $errorLog = "${{ github.workspace }}\smoke_test_error.log"
         $startTime = Get-Date
-        
-        # Start the process and capture output.
-        # QT_QPA_PLATFORM must be set explicitly here — Start-Process spawns a new
-        # process tree and doesn't inherit the job-level env: block variables.
-        $env:QT_QPA_PLATFORM = "offscreen"
+
+        # QT_QPA_PLATFORM: use 'windows' — GitHub Actions Windows VMs have a desktop
+        # session (Windows Server 2022 with GPU), so the native windows platform
+        # works fine and avoids any cascading failure from the offscreen plugin chain.
+        # QML_IMPORT_TRACE + QT_DEBUG_PLUGINS: verbose tracing to diagnose why
+        # 'Connections is not a type' keeps appearing.
+        $env:QT_QPA_PLATFORM = "windows"
         $env:QT_QUICK_BACKEND = "software"
+        $env:QML_IMPORT_TRACE = "1"
+        $env:QT_DEBUG_PLUGINS = "1"
         $process = Start-Process -FilePath $exePath -PassThru -RedirectStandardOutput $outputLog -RedirectStandardError $errorLog
         
         # Give it some time to load DLLs and fail if there's an issue
