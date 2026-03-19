@@ -226,14 +226,19 @@ jobs:
         }
 
         Write-Host "Copying required QML modules..."
-        # Only the QML modules actually imported by the app's QML files
+        # Only the QML modules actually imported by the app's QML files.
+        # NOTE: Do NOT include QtQml here. Connections/Component/QtObject are C++
+        # built-in types registered by Qt5Qml.dll itself. Copying qml/QtQml/ adds a
+        # qmldir that tries to load a plugin overlay (qtqmlplugin.dll); if that plugin
+        # has missing deps it breaks the entire QtQml module registration, making
+        # Connections unavailable. The app uses import QtQuick 2.12 (not QtQml 2.x)
+        # so the built-in registration is all that's needed.
         $qmlMods = @(
             "QtQuick",
             "QtQuick\Controls.2",
             "QtQuick\Layouts",
             "QtQuick\Templates.2",
             "QtQuick\Window.2",
-            "QtQml",
             "Qt\labs\platform",
             "Qt\labs\settings"
         )
