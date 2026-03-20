@@ -337,9 +337,7 @@ jobs:
         VCPKG_PREFIX: ${{ github.workspace }}/build/${{ matrix.preset }}/vcpkg_installed/${{ matrix.triplet }}
       run: |
         # Install dependencies for AppImage creation
-        # qt5-qmake: linuxdeployqt requires a working qmake to detect Qt;
-        #   the qtchooser stub installed by build-dep is broken on this runner
-        sudo apt-get install -y fuse libfuse2 file patchelf qt5-qmake
+        sudo apt-get install -y fuse libfuse2 file patchelf
 
         # Generate 256x256 icon from SVG
         sudo apt-get install -y librsvg2-bin
@@ -349,15 +347,9 @@ jobs:
         # Install to AppDir
         cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
 
-        # Fix install layout: linuxdeployqt expects executable at usr/bin/<name>
+        # Fix install layout: appimagetool expects executable at usr/bin/<name>
         mkdir -p AppDir/usr/bin
         [ -f AppDir/bin/filmulator ] && mv AppDir/bin/filmulator AppDir/usr/bin/filmulator || true
-
-        # cmake --install strips the build rpath (see log: 'Set non-toolchain portion
-        # of runtime path to ""'). Without rpath, ldd can't resolve the vcpkg Qt .so
-        # files, so linuxdeployqt sees zero Qt dependencies and exits with code 1.
-        # Restore the rpath so ldd finds Qt, then linuxdeployqt bundles everything.
-        patchelf --set-rpath "${VCPKG_PREFIX}/lib" AppDir/usr/bin/filmulator
 
         # Copy desktop file and icon into the AppDir
         mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
@@ -368,78 +360,37 @@ jobs:
         cp filmulator-gui/resources/linux/filmulator.png \
            AppDir/filmulator.png
 
-        # Create qt.conf so Qt finds its plugins/qml inside the AppImage
-        cat > AppDir/usr/bin/qt.conf << 'EOF'
-        [Paths]
-        Prefix = ..
-        Plugins = plugins
-        Qml2Imports = qml
-        EOF
-
-        # Download linuxdeployqt — the Qt-aware smart deployment tool
-        # (same tool as the old .travis.yml; analyses ldd output and copies
-        #  only the Qt/non-Qt libs that are actually needed by the binary)
-        wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage"
-        chmod +x linuxdeployqt-continuous-x86_64.AppImage
-
-        # Point linuxdeployqt at the vcpkg Qt so it finds plugins & QML
-        export LD_LIBRARY_PATH="${VCPKG_PREFIX}/lib:${LD_LIBRARY_PATH:-}"
-        export QML2_IMPORT_PATH="${VCPKG_PREFIX}/qml"
-        export QT_PLUGIN_PATH="${VCPKG_PREFIX}/plugins"
-        export QTDIR="${VCPKG_PREFIX}"
-        # linuxdeployqt requires a working 'qmake' on PATH to detect the Qt installation.
-        # vcpkg puts qmake under tools/qt5/bin/ (not tools/qt5/), and we also installed
-        # qt5-qmake via apt above as a reliable fallback.
-        export PATH="${VCPKG_PREFIX}/tools/qt5/bin:${VCPKG_PREFIX}/tools/qt5:${PATH}"
-
-        # --- DIAGNOSTICS: confirm qmake is working before linuxdeployqt ---
-        echo "=== which qmake ==="
-        which qmake || echo "qmake NOT found on PATH"
-        echo "=== qmake -v ==="
-        qmake -v 2>&1 || echo "qmake -v failed"
-        echo "=== ls tools/qt5/bin ==="
-        ls -la "${VCPKG_PREFIX}/tools/qt5/bin/" 2>&1 | head -20 || echo "tools/qt5/bin not found"
-        echo "=== end diagnostics ==="
-
-        # --- PRE-FLIGHT: verify binary, rpath, and Qt presence before linuxdeployqt ---
-        echo "=== Binary location in AppDir ==="
-        find AppDir -name filmulator -type f 2>/dev/null || echo "Binary NOT found in AppDir"
-
-        echo "=== patchelf rpath ==="
-        patchelf --print-rpath AppDir/usr/bin/filmulator 2>&1 || echo "patchelf failed"
-
-        echo "=== ldd on binary ==="
-        ldd AppDir/usr/bin/filmulator 2>&1 || echo "ldd failed"
-
-        echo "=== Qt core libs ==="
-        ls "${VCPKG_PREFIX}/lib/"libQt5Core.so* 2>&1 || echo "Qt libs NOT found"
-
-        echo "=== Qt plugins ==="
-        ls "${VCPKG_PREFIX}/plugins/" 2>&1 | head -20 || echo "plugins dir not found"
-
-        echo "=== QML modules ==="
-        ls "${VCPKG_PREFIX}/qml/" 2>&1 | head -20 || echo "qml dir not found"
-        echo "=== end pre-flight ==="
-
-        # linuxdeployqt is an AppImage itself; APPIMAGE_EXTRACT_AND_RUN lets it
-        # run without FUSE (which GitHub Actions doesn't have as a kernel module)
-        # -unsupported-allow-new-glibc bypasses the Ubuntu 16.04 era glibc check
-        # Use || true so the step continues and prints all output even on failure
-        APPIMAGE_EXTRACT_AND_RUN=1 \
-        ./linuxdeployqt-continuous-x86_64.AppImage \
-          AppDir/usr/share/applications/filmulator.desktop \
-          -appimage \
-          -qmldir=filmulator-gui/qml \
-          -extra-plugins=sqldrivers/libqsqlite.so \
-          -unsupported-allow-new-glibc \
-          -verbose=3 \
-          || { echo "linuxdeployqt FAILED (see above)"; exit 1; }
-
-        # Find the generated AppImage and rename if needed
-        APPIMAGE=$(ls *.AppImage 2>/dev/null | grep -v linuxdeployqt | head -1)
-        if [ -n "$APPIMAGE" ] && [ "$APPIMAGE" != "Filmulator-x86_64.AppImage" ]; then
-          mv "$APPIMAGE" Filmulator-x86_64.AppImage
+        # Qt is statically linked, so we only need to bundle the one vcpkg
+        # shared lib that ldd resolves from vcpkg (libdbus-1.so.3).
+        # All Qt code, plugins, and QML types are compiled into the binary.
+        mkdir -p AppDir/usr/lib
+        DBUS_SO=$(ldd AppDir/usr/bin/filmulator \
+          | awk '/libdbus-1/{print $3}' \
+          | grep "${VCPKG_PREFIX}" || true)
+        if [ -n "$DBUS_SO" ]; then
+          echo "Bundling vcpkg dbus: $DBUS_SO"
+          cp -P "$DBUS_SO"* AppDir/usr/lib/ 2>/dev/null || cp "$DBUS_SO" AppDir/usr/lib/
+        else
+          echo "libdbus-1 not from vcpkg (or not linked) — skipping bundle"
         fi
+
+        # Write AppRun — sets LD_LIBRARY_PATH so bundled libs are found,
+        # then exec the binary in-place (no rpath rewrite needed).
+        cat > AppDir/AppRun << 'APPRUN'
+        #!/bin/sh
+        HERE="$(dirname "$(readlink -f "$0")")"
+        export LD_LIBRARY_PATH="$HERE/usr/lib:${LD_LIBRARY_PATH:-}"
+        exec "$HERE/usr/bin/filmulator" "$@"
+        APPRUN
+        chmod +x AppDir/AppRun
+
+        # Download appimagetool — packages an AppDir as-is, no library analysis
+        wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+        chmod +x appimagetool-x86_64.AppImage
+
+        # Package the AppDir into a final AppImage
+        ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 \
+        ./appimagetool-x86_64.AppImage AppDir Filmulator-x86_64.AppImage
 
     - name: Upload Linux Artifact
       if: runner.os == 'Linux'
