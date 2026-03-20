@@ -401,9 +401,30 @@ jobs:
         ls -la "${VCPKG_PREFIX}/tools/qt5/bin/" 2>&1 | head -20 || echo "tools/qt5/bin not found"
         echo "=== end diagnostics ==="
 
+        # --- PRE-FLIGHT: verify binary, rpath, and Qt presence before linuxdeployqt ---
+        echo "=== Binary location in AppDir ==="
+        find AppDir -name filmulator -type f 2>/dev/null || echo "Binary NOT found in AppDir"
+
+        echo "=== patchelf rpath ==="
+        patchelf --print-rpath AppDir/usr/bin/filmulator 2>&1 || echo "patchelf failed"
+
+        echo "=== ldd on binary ==="
+        ldd AppDir/usr/bin/filmulator 2>&1 || echo "ldd failed"
+
+        echo "=== Qt core libs ==="
+        ls "${VCPKG_PREFIX}/lib/"libQt5Core.so* 2>&1 || echo "Qt libs NOT found"
+
+        echo "=== Qt plugins ==="
+        ls "${VCPKG_PREFIX}/plugins/" 2>&1 | head -20 || echo "plugins dir not found"
+
+        echo "=== QML modules ==="
+        ls "${VCPKG_PREFIX}/qml/" 2>&1 | head -20 || echo "qml dir not found"
+        echo "=== end pre-flight ==="
+
         # linuxdeployqt is an AppImage itself; APPIMAGE_EXTRACT_AND_RUN lets it
         # run without FUSE (which GitHub Actions doesn't have as a kernel module)
         # -unsupported-allow-new-glibc bypasses the Ubuntu 16.04 era glibc check
+        # Use || true so the step continues and prints all output even on failure
         APPIMAGE_EXTRACT_AND_RUN=1 \
         ./linuxdeployqt-continuous-x86_64.AppImage \
           AppDir/usr/share/applications/filmulator.desktop \
@@ -411,7 +432,8 @@ jobs:
           -qmldir=filmulator-gui/qml \
           -extra-plugins=sqldrivers/libqsqlite.so \
           -unsupported-allow-new-glibc \
-          -verbose=2
+          -verbose=3 \
+          || { echo "linuxdeployqt FAILED (see above)"; exit 1; }
 
         # Find the generated AppImage and rename if needed
         APPIMAGE=$(ls *.AppImage 2>/dev/null | grep -v linuxdeployqt | head -1)
