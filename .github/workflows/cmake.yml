@@ -359,6 +359,9 @@ jobs:
            AppDir/usr/share/icons/hicolor/256x256/apps/filmulator.png
         cp filmulator-gui/resources/linux/filmulator.png \
            AppDir/filmulator.png
+        # appimagetool requires the .desktop file in the AppDir root
+        cp filmulator-gui/resources/linux/filmulator.desktop \
+           AppDir/filmulator.desktop
 
         # Qt is statically linked, so we only need to bundle the one vcpkg
         # shared lib that ldd resolves from vcpkg (libdbus-1.so.3).
