@@ -75,14 +75,14 @@ camconst_status camconst_download()
 // If they're the same magnitude, I'll use this one.
 camconst_status camconst_read(const QString inputMakeModel, const float iso, const float fnumber, double whiteLevel[4], double blackLevel[4])
 {
-    whiteLevel[0] = 0;
-    whiteLevel[1] = 0;
-    whiteLevel[2] = 0;
-    whiteLevel[3] = 0;
-    blackLevel[0] = 0;
-    blackLevel[0] = 0;
-    blackLevel[0] = 0;
-    blackLevel[0] = 0;
+    whiteLevel[0] = 0.0;
+    whiteLevel[1] = 0.0;
+    whiteLevel[2] = 0.0;
+    whiteLevel[3] = 0.0;
+    blackLevel[0] = 0.0;
+    blackLevel[1] = 0.0;
+    blackLevel[2] = 0.0;
+    blackLevel[3] = 0.0;
 
     QString filePath = camconst_dir();
     QFile file(filePath);
