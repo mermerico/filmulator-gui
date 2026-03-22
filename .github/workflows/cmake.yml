@@ -159,146 +159,77 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       env:
-        VCPKG_PREFIX: ${{ github.workspace }}\build\${{ matrix.preset }}\vcpkg_installed\${{ matrix.triplet }}
+        # vcpkg manifest mode puts dependencies and tools inside the build directory
+        WINDEPLOY_PREFIX: ${{ github.workspace }}\build\${{ matrix.preset }}\vcpkg_installed\${{ matrix.triplet }}
       run: |
         $binDir = "$env:GITHUB_WORKSPACE\build\installed\bin"
-        $exePath = "$binDir\filmulator.exe"
-        $vcpkgBinDir = "$env:VCPKG_PREFIX\bin"
-        $mingwBin = Split-Path (Get-Command g++).Source
-
-        # Add vcpkg bin + MinGW bin to PATH so ldd can resolve all DLLs
-        $env:PATH = "$vcpkgBinDir;$mingwBin;$env:PATH"
-
-        Write-Host "Using ldd to find DLLs actually linked by the binary..."
-        # MinGW ldd outputs unix-style paths: "  Qt5Core.dll => /d/a/.../bin/Qt5Core.dll (0x...)"
-        # We extract just the DLL filename, then check if it exists in our vcpkg bin dir.
-        # This is path-format-agnostic (avoids /d/a/ vs D:\a\ mismatch).
-        $lddOutput = & ldd $exePath 2>$null
-        $vcpkgDlls = $lddOutput | Where-Object { $_ -match "=>" } | ForEach-Object {
-            if ($_ -match "=>\s+(\S+)\s+\(") {
-                $filename = Split-Path $matches[1] -Leaf
-                $candidate = "$vcpkgBinDir\$filename"
-                if (Test-Path $candidate) { $candidate }
-            }
-        } | Where-Object { $_ }
-
-        Write-Host "Copying $($vcpkgDlls.Count) vcpkg DLLs resolved by ldd..."
-        foreach ($dllPath in $vcpkgDlls) {
-            $dllName = Split-Path -Leaf $dllPath
-            Write-Host "  $dllName"
-            Copy-Item $dllPath $binDir -Force
+        $vcpkgBinDir = "$env:WINDEPLOY_PREFIX\bin"
+        
+        Write-Host "Bundling DLLs from $vcpkgBinDir to $binDir"
+        if (Test-Path $vcpkgBinDir) {
+            Copy-Item "$vcpkgBinDir\*.dll" $binDir -Force
+        } else {
+            Write-Error "Could not find vcpkg bin directory at $vcpkgBinDir"
+            exit 1
         }
-
-        # Runtime DLLs that ldd won't show (already on system PATH during ldd)
+        
         Write-Host "Bundling compiler runtime DLLs..."
+        $mingwBin = Split-Path (Get-Command g++).Source
+        Write-Host "MinGW bin directory: $mingwBin"
         $runtimeDlls = @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll", "libgomp-1.dll")
         foreach ($dll in $runtimeDlls) {
             $src = "$mingwBin\$dll"
             if (Test-Path $src) {
-                Write-Host "  $dll"
+                Write-Host "Copying $dll from $mingwBin"
                 Copy-Item $src $binDir -Force
             } else {
                 Write-Warning "Could not find $dll in $mingwBin"
             }
         }
 
-        Write-Host "Copying required Qt plugins..."
-        # Only copy the plugin categories the app actually uses
-        $pluginDirs = @{
-            "platforms"    = @("qwindows.dll", "qoffscreen.dll") # required: windowing + headless CI
-            "sqldrivers"   = @("qsqlite.dll")                   # required: SQLite database
-            "imageformats" = @("qjpeg.dll", "qtiff.dll")        # optional: file I/O
-            "iconengines"  = @("qsvgicon.dll")                  # optional: icons
-            "styles"       = @("qwindowsvistastyle.dll")        # optional: native style
-        }
-        foreach ($pluginDir in $pluginDirs.Keys) {
+        Write-Host "Copying Qt plugins..."
+        # Copy essential Qt plugins
+        $pluginDirs = @("platforms", "imageformats", "iconengines", "styles", "sqldrivers")
+        foreach ($pluginDir in $pluginDirs) {
+            $srcPath = "$env:WINDEPLOY_PREFIX\plugins\$pluginDir"
             $dstPath = "$binDir\$pluginDir"
-            New-Item -ItemType Directory -Force -Path $dstPath | Out-Null
-            foreach ($dll in $pluginDirs[$pluginDir]) {
-                $src = "$env:VCPKG_PREFIX\plugins\$pluginDir\$dll"
-                if (Test-Path $src) {
-                    Write-Host "  $pluginDir\$dll"
-                    Copy-Item $src $dstPath -Force
-                } else {
-                    Write-Warning "Plugin not found: $pluginDir\$dll"
-                }
-            }
-        }
-
-        Write-Host "Copying required QML modules..."
-        # Only the QML modules actually imported by the app's QML files.
-        # NOTE: Do NOT include QtQml here. Connections/Component/QtObject are C++
-        # built-in types registered by Qt5Qml.dll itself. Copying qml/QtQml/ adds a
-        # qmldir that tries to load a plugin overlay (qtqmlplugin.dll); if that plugin
-        # has missing deps it breaks the entire QtQml module registration, making
-        # Connections unavailable. The app uses import QtQuick 2.12 (not QtQml 2.x)
-        # so the built-in registration is all that's needed.
-        $qmlMods = @(
-            "QtQuick",
-            "QtQuick\Controls.2",
-            "QtQuick\Layouts",
-            "QtQuick\Templates.2",
-            "QtQuick\Window.2",
-            "QtQml\Models.2",
-            "Qt\labs\platform",
-            "Qt\labs\settings"
-        )
-        $qmlSrc = "$env:VCPKG_PREFIX\qml"
-        foreach ($mod in $qmlMods) {
-            $src = "$qmlSrc\$mod"
-            $dst = "$binDir\qml\$mod"
-            if (Test-Path $src) {
-                Write-Host "  qml\$mod"
-                New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-                Copy-Item $src $dst -Recurse -Force
+            if (Test-Path $srcPath) {
+                Write-Host "Copying $pluginDir plugins..."
+                Copy-Item $srcPath $dstPath -Recurse -Force
             } else {
-                Write-Warning "QML module not found: $mod"
+                Write-Warning "Plugin directory not found: $srcPath"
             }
         }
-
-        # Second pass: QML plugins and platform plugins have their own Qt module
-        # dependencies (e.g. qtquickcontrols2plugin.dll needs Qt5QuickControls2.dll
-        # and Qt5QuickTemplates2.dll). These are loaded at runtime by the QML engine
-        # and are invisible to ldd on the main EXE. Scan all DLLs we just copied
-        # (plugins + QML dirs) and pick up any additional vcpkg deps.
-        Write-Host "Second ldd pass: scanning plugin/QML DLLs for additional vcpkg deps..."
-        $allCopiedDlls = @()
-        foreach ($pluginDir in $pluginDirs.Keys) {
-            $allCopiedDlls += Get-ChildItem "$binDir\$pluginDir" -Filter *.dll -ErrorAction SilentlyContinue
-        }
-        $allCopiedDlls += Get-ChildItem "$binDir\qml" -Filter *.dll -Recurse -ErrorAction SilentlyContinue
-
-        $extraDlls = @{}
-        foreach ($dll in $allCopiedDlls) {
-            $lddOut = & ldd $dll.FullName 2>$null
-            $lddOut | Where-Object { $_ -match "=>" } | ForEach-Object {
-                if ($_ -match "=>\s+(\S+)\s+\(") {
-                    $name = Split-Path $matches[1] -Leaf
-                    $candidate = "$vcpkgBinDir\$name"
-                    if ((Test-Path $candidate) -and -not (Test-Path "$binDir\$name")) {
-                        $extraDlls[$name] = $candidate
-                    }
+        
+        Write-Host "Copying QML modules..."
+        # Copy QML modules (Qt Quick related)
+        $qmlSrcDir = "$env:WINDEPLOY_PREFIX\qml"
+        if (Test-Path $qmlSrcDir) {
+            $qmlDirs = @("QtQuick", "QtQuick.2", "QtQml", "QtQuick\Controls.2", "QtQuick\Layouts", "QtQuick\Templates.2", "QtQuick\Window.2", "Qt\labs\platform", "Qt\labs\settings")
+            foreach ($qmlMod in $qmlDirs) {
+                $srcPath = "$qmlSrcDir\$qmlMod"
+                $dstPath = "$binDir\qml\$qmlMod"
+                if (Test-Path $srcPath) {
+                    Write-Host "Copying QML module: $qmlMod..."
+                    New-Item -ItemType Directory -Force -Path (Split-Path $dstPath) | Out-Null
+                    Copy-Item $srcPath $dstPath -Recurse -Force
+                } else {
+                    Write-Warning "QML module not found: $srcPath"
                 }
-            }
-        }
-        if ($extraDlls.Count -gt 0) {
-            Write-Host "  Copying $($extraDlls.Count) additional vcpkg DLLs from plugin deps:"
-            foreach ($entry in $extraDlls.GetEnumerator()) {
-                Write-Host "    $($entry.Key)"
-                Copy-Item $entry.Value $binDir -Force
             }
         } else {
-            Write-Host "  No additional vcpkg DLLs needed."
+            Write-Warning "QML directory not found at $qmlSrcDir"
         }
-
+        
         Write-Host "Stripping all EXEs and DLLs to significantly reduce package size..."
         Get-ChildItem -Path $binDir -Recurse -Include *.exe, *.dll | ForEach-Object {
             & strip $_.FullName
         }
 
+        # Create qt.conf to help Qt find plugins and QML modules
         Write-Host "Creating qt.conf..."
         "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
-
+        
         Copy-Item "$env:GITHUB_WORKSPACE\LICENSE.txt" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator-gui\filmulator-gui80.ico" $binDir -Force
         Copy-Item "$env:GITHUB_WORKSPACE\filmulator_build.iss" "$env:GITHUB_WORKSPACE\build\installed" -Force
@@ -628,25 +559,12 @@ jobs:
         }
         $env:PATH = $oldPath
         
-        Write-Host "=== DLLs in install root ==="
-        Get-ChildItem "$installDir" -Filter *.dll | Select-Object -ExpandProperty Name | Sort-Object
-        Write-Host "=== QML dirs in install ==="
-        Get-ChildItem "$installDir\qml" -Recurse -Directory | Select-Object -ExpandProperty FullName
-
         Write-Host "Running smoke test on installed application..."
         $outputLog = "${{ github.workspace }}\smoke_test_output.log"
         $errorLog = "${{ github.workspace }}\smoke_test_error.log"
         $startTime = Get-Date
-
-        # QT_QPA_PLATFORM: use 'windows' — GitHub Actions Windows VMs have a desktop
-        # session (Windows Server 2022 with GPU), so the native windows platform
-        # works fine and avoids any cascading failure from the offscreen plugin chain.
-        # QML_IMPORT_TRACE + QT_DEBUG_PLUGINS: verbose tracing to diagnose why
-        # 'Connections is not a type' keeps appearing.
-        $env:QT_QPA_PLATFORM = "windows"
-        $env:QT_QUICK_BACKEND = "software"
-        $env:QML_IMPORT_TRACE = "1"
-        $env:QT_DEBUG_PLUGINS = "1"
+        
+        # Start the process and capture output
         $process = Start-Process -FilePath $exePath -PassThru -RedirectStandardOutput $outputLog -RedirectStandardError $errorLog
         
         # Give it some time to load DLLs and fail if there's an issue
