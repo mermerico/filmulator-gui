@@ -153,7 +153,7 @@ jobs:
 
     - name: Install (Windows)
       if: runner.os == 'Windows'
-      run: cmake --install build/${{ matrix.preset }} --prefix build/installed
+      run: cmake --install build/${{ matrix.preset }} --prefix build/installed --strip
 
     - name: Bundle DLLs + Qt (Windows)
       if: runner.os == 'Windows'
@@ -291,6 +291,10 @@ jobs:
             Write-Host "  No additional vcpkg DLLs needed."
         }
 
+        Write-Host "Stripping all EXEs and DLLs to significantly reduce package size..."
+        Get-ChildItem -Path $binDir -Recurse -Include *.exe, *.dll | ForEach-Object {
+            & strip $_.FullName
+        }
 
         Write-Host "Creating qt.conf..."
         "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
