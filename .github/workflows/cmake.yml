@@ -346,7 +346,7 @@ jobs:
           -o filmulator-gui/resources/linux/filmulator.png
 
         # Install to AppDir
-        cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
+        cmake --install build/${{ matrix.preset }} --prefix AppDir/usr --strip
 
         # Fix install layout: appimagetool expects executable at usr/bin/<name>
         mkdir -p AppDir/usr/bin
