@@ -239,6 +239,7 @@ jobs:
             "QtQuick\Layouts",
             "QtQuick\Templates.2",
             "QtQuick\Window.2",
+            "QtQml\Models.2",
             "Qt\labs\platform",
             "Qt\labs\settings"
         )
