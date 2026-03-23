@@ -66,6 +66,8 @@ jobs:
         sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
         sudo apt-get update
         sudo apt-get build-dep -y qtbase5-dev
+        # Remove unwanted database headers so Qt doesn't compile their sqldrivers and create dependencies
+        sudo apt-get remove -y freetds-dev libsybdb5 unixodbc-dev libpq-dev libmysqlclient-dev || true
         sudo apt-get install -y \
           ninja-build \
           mold \
@@ -147,6 +149,18 @@ jobs:
 
     - name: Configure CMake
       run: cmake --preset ${{ matrix.preset }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+
+    - name: Print vcpkg ABI info
+      if: always()
+      shell: bash
+      run: |
+        echo "=== vcpkg ABI Info ==="
+        find "build/${{ matrix.preset }}/vcpkg_installed" -name "*.vcpkg_abi_info.txt" -type f 2>/dev/null | while read -r f; do
+            echo "--------------------------------------------------------"
+            echo "FILE: $f"
+            echo "--------------------------------------------------------"
+            cat "$f"
+        done || echo "No ABI info files found or directory does not exist."
 
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
@@ -406,6 +420,41 @@ jobs:
         name: filmulator-macos-dmg
         path: Filmulator-macOS-*.dmg
 
+  test-installers:
+    name: ${{ matrix.os }}-test
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            triplet: x64-linux
+          - os: windows-latest
+            triplet: x64-mingw-dynamic
+          - os: macos-latest
+            triplet: arm64-osx
+
+    steps:
+    - name: Download Linux Artifact
+      if: runner.os == 'Linux'
+      uses: actions/download-artifact@v4
+      with:
+        name: filmulator-linux-appimage
+
+    - name: Download macOS Artifact
+      if: runner.os == 'macOS'
+      uses: actions/download-artifact@v4
+      with:
+        name: filmulator-macos-dmg
+
+    - name: Download Windows Artifact
+      if: runner.os == 'Windows'
+      uses: actions/download-artifact@v4
+      with:
+        name: filmulator-windows-installer
+
     - name: Test AppImage (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -518,7 +567,6 @@ jobs:
     - name: Test Installer (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      working-directory: build/installed
       env:
         QT_QUICK_BACKEND: software
         QT_QPA_PLATFORM: offscreen
