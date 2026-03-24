@@ -824,6 +824,7 @@ SlimSplitView {
                     defaultValue: Math.sqrt(paramManager.defHighlightCrosstalk)
                     valueText: (value*value).toFixed(6)
                     boldTickEnabled: true
+                    visible: paramManager.colorAvail //requires color images
                     onValueChanged: {
                         paramManager.highlightCrosstalk = value*value
                     }
