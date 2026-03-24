@@ -423,6 +423,7 @@ jobs:
   test-installers:
     name: ${{ matrix.os }}-test
     needs: build
+    if: ${{ !cancelled() }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
