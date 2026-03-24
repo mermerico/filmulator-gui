@@ -1219,13 +1219,17 @@ SlimSplitView {
                     highlight: monochromeSwitch.hovered
                     title: qsTr("Red Weight")
                     tooltipText: qsTr("How much to weight the red channel when converting to monochrome.")
-                    minimumValue: -2.0
+                    minimumValue: -1.0
                     maximumValue: 2.0
                     value: paramManager.bwRmult
                     defaultValue: paramManager.defBwRmult
                     valueText: value.toFixed(5)
                     boldTickEnabled: true
                     boldValue: defaultValue
+                    secondTickEnabled: true
+                    secondTickValue: 0
+                    thirdTickEnabled: true
+                    thirdTickValue: 1
                     onValueChanged: {
                         paramManager.bwRmult = value
                     }
@@ -1252,13 +1256,17 @@ SlimSplitView {
                     highlight: monochromeSwitch.hovered
                     title: qsTr("Green Weight")
                     tooltipText: qsTr("How much to weight the green channel when converting to monochrome.")
-                    minimumValue: -2.0
+                    minimumValue: -1.0
                     maximumValue: 2.0
                     value: paramManager.bwGmult
                     defaultValue: paramManager.defBwGmult
                     valueText: value.toFixed(5)
                     boldTickEnabled: true
                     boldValue: defaultValue
+                    secondTickEnabled: true
+                    secondTickValue: 0
+                    thirdTickEnabled: true
+                    thirdTickValue: 1
                     onValueChanged: {
                         paramManager.bwGmult = value
                     }
@@ -1285,13 +1293,17 @@ SlimSplitView {
                     highlight: monochromeSwitch.hovered
                     title: qsTr("Blue Weight")
                     tooltipText: qsTr("How much to weight the blue channel when converting to monochrome.")
-                    minimumValue: -2.0
+                    minimumValue: -1.0
                     maximumValue: 2.0
                     value: paramManager.bwBmult
                     defaultValue: paramManager.defBwBmult
                     valueText: value.toFixed(5)
                     boldTickEnabled: true
                     boldValue: defaultValue
+                    secondTickEnabled: true
+                    secondTickValue: 0
+                    thirdTickEnabled: true
+                    thirdTickValue: 1
                     onValueChanged: {
                         paramManager.bwBmult = value
                     }
