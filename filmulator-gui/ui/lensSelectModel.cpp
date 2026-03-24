@@ -77,11 +77,13 @@ void LensSelectModel::update(QString cameraString, QString lensString)
 
     QString tempLensString = lensString;
     bool searchAllMounts = false;
-    if (lensString.front() == "\\")
-    {
-        tempLensString.remove(0,1);
-        searchAllMounts = true;
-        cout << "LensSelectModel lensfun searching all mounts" << endl;
+    if (lensString.length() > 0) {
+        if (lensString.front() == "\\")
+        {
+            tempLensString.remove(0,1);
+            searchAllMounts = true;
+            cout << "LensSelectModel lensfun searching all mounts" << endl;
+        }
     }
     std::string lensStr = tempLensString.toStdString();
 
