@@ -155,12 +155,23 @@ jobs:
       shell: bash
       run: |
         echo "=== vcpkg ABI Info ==="
-        find "build/${{ matrix.preset }}/vcpkg_installed" -name "*.vcpkg_abi_info.txt" -type f 2>/dev/null | while read -r f; do
+        if [ ! -d "build/${{ matrix.preset }}/vcpkg_installed" ]; then
+            echo "Directory build/${{ matrix.preset }}/vcpkg_installed does not exist."
+            exit 0
+        fi
+        
+        found=0
+        while IFS= read -r f; do
+            found=1
             echo "--------------------------------------------------------"
             echo "FILE: $f"
             echo "--------------------------------------------------------"
             cat "$f"
-        done || echo "No ABI info files found or directory does not exist."
+        done < <(find "build/${{ matrix.preset }}/vcpkg_installed" -name "*vcpkg_abi_info.txt" -type f 2>/dev/null)
+        
+        if [ $found -eq 0 ]; then
+            echo "No ABI info files found."
+        fi
 
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
