@@ -24,7 +24,7 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
     //initialize lensfun db
     QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     dirstr.append("/filmulator/version_1/");
-    cout << "LensSelectModel lensfun dirstring: " << dirstr.toStdString() << endl;
+    //cout << "LensSelectModel lensfun dirstring: " << dirstr.toStdString() << endl;
     QDir dir(dirstr);
     QStringList filters;
     filters << "*.xml";
@@ -40,24 +40,26 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
     foreach (const QFileInfo &fileInfo, fileList) {
         const QString filename = fileInfo.absoluteFilePath();
         const std::string stdstring = filename.toStdString();
-        cout << "LensSelectModel lensfun loading file " << stdstring << endl;
+        //cout << "LensSelectModel lensfun loading file " << stdstring << endl;
         lfError loadError = ldb->Load(stdstring.c_str());
         if (loadError == LF_WRONG_FORMAT)
         {
+            cout << "LensSelectModel lensfun loading file " << stdstring << endl;
             cout << "LensSelectModel lensfun database wrong format!" << endl;
         }
         else if (loadError == LF_NO_DATABASE)
         {
+            cout << "LensSelectModel lensfun loading file " << stdstring << endl;
             cout << "LensSelectModel lensfun no database found!" << endl;
         }
         else if (loadError == LF_NO_ERROR)
         {
             //cout << "LensSelectModel lensfun database loaded" << endl;
         } else {
+            cout << "LensSelectModel lensfun loading file " << stdstring << endl;
             cout << "LensSelectModel lensfun what happened? " << loadError << endl;
         }
     }
-    cout << "LensSelectModel lensfun we get here too" << endl;
 }
 
 LensSelectModel::~LensSelectModel()
