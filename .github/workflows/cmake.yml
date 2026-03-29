@@ -391,6 +391,20 @@ jobs:
           -verbose=2 \
           -libpath="${VCPKG_PREFIX}/lib"
         
+        echo "Bundling libomp manually..."
+        LIBOMP_DIR="$(brew --prefix libomp)/lib"
+        # In case Frameworks directory wasn't created by macdeployqt
+        mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+        cp "$LIBOMP_DIR/libomp.dylib" "$APP_BUNDLE/Contents/Frameworks/"
+        install_name_tool -id @executable_path/../Frameworks/libomp.dylib "$APP_BUNDLE/Contents/Frameworks/libomp.dylib"
+        
+        LIBOMP_LINK_PATH=$(otool -L "$APP_BUNDLE/Contents/MacOS/filmulator" | awk '/libomp/{print $1}')
+        if [ -n "$LIBOMP_LINK_PATH" ]; then
+          install_name_tool -change "$LIBOMP_LINK_PATH" @executable_path/../Frameworks/libomp.dylib "$APP_BUNDLE/Contents/MacOS/filmulator"
+        else
+          echo "Warning: libomp not found in otool -L output. Might not be linked."
+        fi
+        
         echo "Bundle contents:"
         ls -la "$APP_BUNDLE/Contents/MacOS/"
         ls -la "$APP_BUNDLE/Contents/Frameworks/" || echo "No Frameworks dir yet"
@@ -509,9 +523,6 @@ jobs:
     - name: Test DMG (macOS)
       if: runner.os == 'macOS'
       run: |
-        # Install libomp because it is dynamically linked but our macOS bundle doesn't pack homebrew dependencies yet
-        brew install libomp
-        
         DMG="Filmulator-macOS-${{ matrix.triplet }}.dmg"
         
         echo "Verifying DMG exists..."
