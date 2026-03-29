@@ -484,8 +484,8 @@ jobs:
         echo "Checking AppImage structure..."
         ./"$APPIMAGE" --appimage-help || true
         
-        # Install xvfb for headless X11 testing (AppImage uses xcb platform)
-        sudo apt-get install -y xvfb
+        # Install xvfb for headless X11 testing and libfuse2 for AppImage (missing on ubuntu-24.04 runners)
+        sudo apt-get install -y xvfb libfuse2
         
         echo "Running smoke test with xvfb..."
         # Use xvfb-run to provide virtual X11 display for xcb platform
@@ -509,6 +509,9 @@ jobs:
     - name: Test DMG (macOS)
       if: runner.os == 'macOS'
       run: |
+        # Install libomp because it is dynamically linked but our macOS bundle doesn't pack homebrew dependencies yet
+        brew install libomp
+        
         DMG="Filmulator-macOS-${{ matrix.triplet }}.dmg"
         
         echo "Verifying DMG exists..."
@@ -583,7 +586,8 @@ jobs:
         QT_QUICK_BACKEND: software
         QT_QPA_PLATFORM: offscreen
       run: |
-        $installer = "output\FilmulatorSetup.exe"
+        # Github artifact download implicitly flattens to the workspace root
+        $installer = "FilmulatorSetup.exe"
         $installDir = "${{ github.workspace }}\test_install"
         Write-Host "Installing Filmulator to $installDir..."
         Start-Process -FilePath $installer -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/DIR=""$installDir""" -Wait
