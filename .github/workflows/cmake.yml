@@ -10,6 +10,9 @@ permissions:
   packages: write
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: ${{ matrix.os }}-build
@@ -34,7 +37,7 @@ jobs:
 
     env:
       BUILD_TYPE: Release
-      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,${{ github.event_name == 'pull_request' && 'read' || 'readwrite' }}"
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
       VCPKG_NUGET_TIMEOUT: 1200
       VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
