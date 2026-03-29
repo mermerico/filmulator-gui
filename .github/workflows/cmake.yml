@@ -339,8 +339,11 @@ jobs:
         done
         
         # 2. Xcb plugins (icccm, image, keysyms, etc.) are dlopen'd at runtime by Qt and 
-        # won't appear in ldd. Explicitly bundle them from vcpkg.
-        cp -P "${VCPKG_PREFIX}"/lib/libxcb-*.so* AppDir/usr/lib/ 2>/dev/null || true
+        # won't appear in ldd. Since qtbase5-dev installed them via apt-get build-dep,
+        # explicitly bundle them from the system root into the AppImage.
+        for plugin in icccm image keysyms randr render-util shape sync xfixes xinerama xkb; do
+          cp -P /usr/lib/x86_64-linux-gnu/libxcb-${plugin}.so* AppDir/usr/lib/ 2>/dev/null || true
+        done
 
         # Write AppRun — sets LD_LIBRARY_PATH so bundled libs are found,
         # then exec the binary in-place (no rpath rewrite needed).
