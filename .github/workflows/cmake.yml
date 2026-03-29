@@ -327,19 +327,20 @@ jobs:
         cp filmulator-gui/resources/linux/filmulator.desktop \
            AppDir/filmulator.desktop
 
-        # Qt is statically linked, so we only need to bundle the one vcpkg
-        # shared lib that ldd resolves from vcpkg (libdbus-1.so.3).
-        # All Qt code, plugins, and QML types are compiled into the binary.
+        # Qt is statically linked, but it dynamically links to some system/vcpkg shared
+        # libs (like libdbus-1.so.3, libxcb-icccm.so.4). We dynamically copy all 
+        # shared libraries resolving to our vcpkg installation prefix.
         mkdir -p AppDir/usr/lib
-        DBUS_SO=$(ldd AppDir/usr/bin/filmulator \
-          | awk '/libdbus-1/{print $3}' \
-          | grep "${VCPKG_PREFIX}" || true)
-        if [ -n "$DBUS_SO" ]; then
-          echo "Bundling vcpkg dbus: $DBUS_SO"
-          cp -P "$DBUS_SO"* AppDir/usr/lib/ 2>/dev/null || cp "$DBUS_SO" AppDir/usr/lib/
-        else
-          echo "libdbus-1 not from vcpkg (or not linked) — skipping bundle"
-        fi
+        echo "Bundling vcpkg shared libraries..."
+        
+        # 1. First, recursively find dependencies linked natively:
+        ldd AppDir/usr/bin/filmulator | awk '{print $3}' | grep "${VCPKG_PREFIX}" | while read -r lib; do
+          cp -P "$lib"* AppDir/usr/lib/ 2>/dev/null || cp "$lib" AppDir/usr/lib/
+        done
+        
+        # 2. Xcb plugins (icccm, image, keysyms, etc.) are dlopen'd at runtime by Qt and 
+        # won't appear in ldd. Explicitly bundle them from vcpkg.
+        cp -P "${VCPKG_PREFIX}"/lib/libxcb-*.so* AppDir/usr/lib/ 2>/dev/null || true
 
         # Write AppRun — sets LD_LIBRARY_PATH so bundled libs are found,
         # then exec the binary in-place (no rpath rewrite needed).
