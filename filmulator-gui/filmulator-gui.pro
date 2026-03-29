@@ -110,6 +110,7 @@ HEADERS += \
     core/interface.h \
     core/lut.hpp \
     core/matrix.hpp \
+    core/myLibraw.h \
     core/nlmeans/nlmeans.hpp \
     core/rawtherapee/boxblur.h \
     core/rawtherapee/cplx_wavelet_dec.h \

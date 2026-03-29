@@ -191,7 +191,7 @@ matrix<unsigned short> &ImagePipeline::processImage(
     }
 
     if (!loadParam.tiffIn && !loadParam.jpegIn) {
-      std::unique_ptr<LibRaw> libraw = unique_ptr<LibRaw>(new LibRaw());
+      std::unique_ptr<MyLibRaw> libraw = unique_ptr<MyLibRaw>(new MyLibRaw());
 
       // Open the file.
       int libraw_error;
@@ -241,6 +241,14 @@ matrix<unsigned short> &ImagePipeline::processImage(
              << endl;
         cout << "libraw error text: " << libraw_strerror(libraw_error) << endl;
         return emptyMatrix();
+      }
+
+      bool needs_phase_one_free = false;
+      libraw_error = libraw->phaseone_fix(needs_phase_one_free);
+      if (libraw_error) {
+          cout << "mylibraw phaseone_fix failed?" << endl;
+          cout << "mylibraw error text: " << libraw_strerror(libraw_error) << endl;
+          return emptyMatrix();
       }
 
       bool isFloat = libraw->have_fpdata();
@@ -775,6 +783,10 @@ matrix<unsigned short> &ImagePipeline::processImage(
       cout << "max of raw red:   " << rawRMax << endl;
       cout << "max of raw green: " << rawGMax << endl;
       cout << "max of raw blue:  " << rawBMax << endl;
+
+      if(needs_phase_one_free) {
+          libraw->my_phase_one_free_tempbuffer();
+      }
     }
     valid = paramManager->markLoadComplete();
     updateProgress(valid, 0.0f);

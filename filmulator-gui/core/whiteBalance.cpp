@@ -566,9 +566,11 @@ void optimizeWBMults(std::string file,
     //limit temperature to prevent crashes when calculating planckian locus
     if (temperature < 1500) //5D Classic hits its limit at 1674 but for custom WB we should be fine
     {
+        cout << "Optimized WB temperature too low: " << temperature << endl;
         temperature = 1500;
     } else if (temperature > 20000)
     {
+        cout << "Optimized WB temperature too high: " << temperature << endl;
         temperature = 20000;
     }
     tint = lowCoord[1];
