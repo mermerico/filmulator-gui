@@ -312,23 +312,29 @@ jobs:
         cmake --install build/${{ matrix.preset }} --prefix AppDir/usr --strip
 
         # Fix install layout: appimagetool expects executable at usr/bin/<name>
-        mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/bin AppDir/usr/lib
         [ -f AppDir/bin/filmulator ] && mv AppDir/bin/filmulator AppDir/usr/bin/filmulator || true
 
-        # Use linuxdeploy to handle AppRun, icons, and automated dependency inspection natively
+        # 1. Xcb plugins (icccm, image, keysyms, etc.) are dlopen'd at runtime by Qt and 
+        # won't appear in ldd. Explicitly bundle them into the AppImage before running linuxdeploy
+        for plugin in icccm image keysyms randr render-util shape sync xfixes xinerama xkb xinput shm util composite damage; do
+          cp -P /usr/lib/x86_64-linux-gnu/libxcb-${plugin}.so* AppDir/usr/lib/ 2>/dev/null || true
+        done
+        # libxkbcommon is also dlopen'd and required by Qt's xcb platform plugin
+        cp -P /usr/lib/x86_64-linux-gnu/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
+        cp -P "${VCPKG_PREFIX}"/lib/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
+
+        # Use purely linuxdeploy to handle standard AppRun, icons, desktop file, and dynamic ldd chasing natively
         wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-        wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
-        chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+        chmod +x linuxdeploy-x86_64.AppImage
 
         # Use appimage tool via extraction because runner prevents FUSE
-        # We supply QMAKE path so the qt plugin finds our vcpkg installation
-        APPIMAGE_EXTRACT_AND_RUN=1 QMAKE="${VCPKG_PREFIX}/tools/qt5/bin/qmake" \
+        APPIMAGE_EXTRACT_AND_RUN=1 \
         ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --executable AppDir/usr/bin/filmulator \
             --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
             --icon-file filmulator-gui/resources/linux/filmulator.png \
-            --plugin qt \
             --output appimage
         
         # Rename standard output to exact expected static name
