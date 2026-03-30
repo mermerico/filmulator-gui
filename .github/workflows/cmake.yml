@@ -315,56 +315,24 @@ jobs:
         mkdir -p AppDir/usr/bin
         [ -f AppDir/bin/filmulator ] && mv AppDir/bin/filmulator AppDir/usr/bin/filmulator || true
 
-        # Copy desktop file and icon into the AppDir
-        mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
-        cp filmulator-gui/resources/linux/filmulator.desktop \
-           AppDir/usr/share/applications/
-        cp filmulator-gui/resources/linux/filmulator.png \
-           AppDir/usr/share/icons/hicolor/256x256/apps/filmulator.png
-        cp filmulator-gui/resources/linux/filmulator.png \
-           AppDir/filmulator.png
-        # appimagetool requires the .desktop file in the AppDir root
-        cp filmulator-gui/resources/linux/filmulator.desktop \
-           AppDir/filmulator.desktop
+        # Use linuxdeploy to handle AppRun, icons, and automated dependency inspection natively
+        wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+        wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+        chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
 
-        # Qt is statically linked, but it dynamically links to some system/vcpkg shared
-        # libs (like libdbus-1.so.3, libxcb-icccm.so.4). We dynamically copy all 
-        # shared libraries resolving to our vcpkg installation prefix.
-        mkdir -p AppDir/usr/lib
-        echo "Bundling vcpkg shared libraries..."
+        # Use appimage tool via extraction because runner prevents FUSE
+        # We supply QMAKE path so the qt plugin finds our vcpkg installation
+        APPIMAGE_EXTRACT_AND_RUN=1 QMAKE="${VCPKG_PREFIX}/tools/qt5/bin/qmake" \
+        ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/filmulator \
+            --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
+            --icon-file filmulator-gui/resources/linux/filmulator.png \
+            --plugin qt \
+            --output appimage
         
-        # 1. First, recursively find dependencies linked natively:
-        ldd AppDir/usr/bin/filmulator | awk '{print $3}' | grep "${VCPKG_PREFIX}" | while read -r lib; do
-          cp -P "$lib"* AppDir/usr/lib/ 2>/dev/null || cp "$lib" AppDir/usr/lib/
-        done
-        
-        # 2. Xcb plugins (icccm, image, keysyms, etc.) are dlopen'd at runtime by Qt and 
-        # won't appear in ldd. Since qtbase5-dev installed them via apt-get build-dep,
-        # explicitly bundle them from the system root into the AppImage.
-        for plugin in icccm image keysyms randr render-util shape sync xfixes xinerama xkb xinput shm util composite damage; do
-          cp -P /usr/lib/x86_64-linux-gnu/libxcb-${plugin}.so* AppDir/usr/lib/ 2>/dev/null || true
-        done
-        # libxkbcommon is also dlopen'd and required by Qt's xcb platform plugin
-        cp -P /usr/lib/x86_64-linux-gnu/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
-        cp -P "${VCPKG_PREFIX}"/lib/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
-
-        # Write AppRun — sets LD_LIBRARY_PATH so bundled libs are found,
-        # then exec the binary in-place (no rpath rewrite needed).
-        cat > AppDir/AppRun << 'APPRUN'
-        #!/bin/sh
-        HERE="$(dirname "$(readlink -f "$0")")"
-        export LD_LIBRARY_PATH="$HERE/usr/lib:${LD_LIBRARY_PATH:-}"
-        exec "$HERE/usr/bin/filmulator" "$@"
-        APPRUN
-        chmod +x AppDir/AppRun
-
-        # Download appimagetool — packages an AppDir as-is, no library analysis
-        wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
-        chmod +x appimagetool-x86_64.AppImage
-
-        # Package the AppDir into a final AppImage
-        ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 \
-        ./appimagetool-x86_64.AppImage AppDir Filmulator-x86_64.AppImage
+        # Rename standard output to exact expected static name
+        mv Filmulator*.AppImage Filmulator-x86_64.AppImage
 
     - name: Upload Linux Artifact
       if: runner.os == 'Linux'
