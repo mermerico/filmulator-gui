@@ -10,6 +10,9 @@ permissions:
   packages: write
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: ${{ matrix.os }}-build
@@ -34,7 +37,7 @@ jobs:
 
     env:
       BUILD_TYPE: Release
-      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,${{ github.event_name == 'pull_request' && 'read' || 'readwrite' }}"
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
       VCPKG_NUGET_TIMEOUT: 1200
       VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
@@ -66,6 +69,8 @@ jobs:
         sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
         sudo apt-get update
         sudo apt-get build-dep -y qtbase5-dev
+        # Remove unwanted database headers so Qt doesn't compile their sqldrivers and create dependencies
+        sudo apt-get remove -y freetds-dev libsybdb5 unixodbc-dev libpq-dev libmysqlclient-dev || true
         sudo apt-get install -y \
           ninja-build \
           mold \
@@ -148,12 +153,35 @@ jobs:
     - name: Configure CMake
       run: cmake --preset ${{ matrix.preset }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
+    - name: Print vcpkg ABI info
+      if: always()
+      shell: bash
+      run: |
+        echo "=== vcpkg ABI Info ==="
+        if [ ! -d "build/${{ matrix.preset }}/vcpkg_installed" ]; then
+            echo "Directory build/${{ matrix.preset }}/vcpkg_installed does not exist."
+            exit 0
+        fi
+        
+        found=0
+        while IFS= read -r f; do
+            found=1
+            echo "--------------------------------------------------------"
+            echo "FILE: $f"
+            echo "--------------------------------------------------------"
+            cat "$f"
+        done < <(find "build/${{ matrix.preset }}/vcpkg_installed" -name "*vcpkg_abi_info.txt" -type f 2>/dev/null)
+        
+        if [ $found -eq 0 ]; then
+            echo "No ABI info files found."
+        fi
+
     - name: Build
       run: cmake --build --preset ${{ matrix.preset }}
 
     - name: Install (Windows)
       if: runner.os == 'Windows'
-      run: cmake --install build/${{ matrix.preset }} --prefix build/installed
+      run: cmake --install build/${{ matrix.preset }} --prefix build/installed --strip
 
     - name: Bundle DLLs + Qt (Windows)
       if: runner.os == 'Windows'
@@ -221,6 +249,11 @@ jobs:
             Write-Warning "QML directory not found at $qmlSrcDir"
         }
         
+        Write-Host "Stripping all EXEs and DLLs to significantly reduce package size..."
+        Get-ChildItem -Path $binDir -Recurse -Include *.exe, *.dll | ForEach-Object {
+            & strip $_.FullName
+        }
+
         # Create qt.conf to help Qt find plugins and QML modules
         Write-Host "Creating qt.conf..."
         "[Paths]`nPlugins = .`nQml2Imports = ./qml" | Out-File -FilePath "$binDir\qt.conf" -Encoding ASCII
@@ -269,53 +302,42 @@ jobs:
       run: |
         # Install dependencies for AppImage creation
         sudo apt-get install -y fuse libfuse2 file patchelf
-        
-        # Download linuxdeploy (without Qt plugin - we'll deploy Qt manually)
-        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy*.AppImage
-        
+
         # Generate 256x256 icon from SVG
         sudo apt-get install -y librsvg2-bin
         rsvg-convert -w 256 -h 256 filmulator-gui/resources/filmulator64icon.svg \
           -o filmulator-gui/resources/linux/filmulator.png
-        
+
         # Install to AppDir
-        cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
-        
-        # Manually deploy Qt libraries (linuxdeploy-plugin-qt has issues with vcpkg Qt)
-        echo "Copying Qt libraries..."
-        mkdir -p AppDir/usr/lib
-        cp -av "${VCPKG_PREFIX}/lib/"libQt5*.so* AppDir/usr/lib/ || true
-        
-        echo "Copying Qt plugins..."
-        mkdir -p AppDir/usr/plugins
-        cp -rv "${VCPKG_PREFIX}/plugins/"* AppDir/usr/plugins/
-        
-        echo "Copying QML modules..."
-        mkdir -p AppDir/usr/qml
-        cp -rv "${VCPKG_PREFIX}/qml/"* AppDir/usr/qml/
-        
-        # Create qt.conf for the AppImage
-        cat > AppDir/usr/bin/qt.conf << 'EOF'
-        [Paths]
-        Prefix = ..
-        Plugins = plugins
-        Qml2Imports = qml
-        EOF
-        
-        # Use linuxdeploy to bundle remaining dependencies and create AppImage
+        cmake --install build/${{ matrix.preset }} --prefix AppDir/usr --strip
+
+        # Fix install layout: appimagetool expects executable at usr/bin/<name>
+        mkdir -p AppDir/usr/bin AppDir/usr/lib
+        [ -f AppDir/bin/filmulator ] && mv AppDir/bin/filmulator AppDir/usr/bin/filmulator || true
+
+        # 1. Xcb plugins (icccm, image, keysyms, etc.) are dlopen'd at runtime by Qt and 
+        # won't appear in ldd. Explicitly bundle them into the AppImage before running linuxdeploy
+        for plugin in icccm image keysyms randr render-util shape sync xfixes xinerama xkb xinput shm util composite damage; do
+          cp -P /usr/lib/x86_64-linux-gnu/libxcb-${plugin}.so* AppDir/usr/lib/ 2>/dev/null || true
+        done
+        # libxkbcommon is also dlopen'd and required by Qt's xcb platform plugin
+        cp -P /usr/lib/x86_64-linux-gnu/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
+        cp -P "${VCPKG_PREFIX}"/lib/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
+
+        # Use purely linuxdeploy to handle standard AppRun, icons, desktop file, and dynamic ldd chasing natively
+        wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+        chmod +x linuxdeploy-x86_64.AppImage
+
+        # Use appimage tool via extraction because runner prevents FUSE
+        APPIMAGE_EXTRACT_AND_RUN=1 \
         ./linuxdeploy-x86_64.AppImage \
-          --appdir AppDir \
-          --executable AppDir/usr/bin/filmulator \
-          --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
-          --icon-file filmulator-gui/resources/linux/filmulator.png \
-          --output appimage
+            --appdir AppDir \
+            --executable AppDir/usr/bin/filmulator \
+            --desktop-file filmulator-gui/resources/linux/filmulator.desktop \
+            --icon-file filmulator-gui/resources/linux/filmulator.png \
+            --output appimage
         
-        # Find the generated AppImage and rename if needed
-        APPIMAGE=$(ls *.AppImage 2>/dev/null | grep -v linuxdeploy | head -1)
-        if [ "$APPIMAGE" != "Filmulator-x86_64.AppImage" ]; then
-          mv "$APPIMAGE" Filmulator-x86_64.AppImage
-        fi
+
 
     - name: Upload Linux Artifact
       if: runner.os == 'Linux'
@@ -351,6 +373,20 @@ jobs:
           -qmldir=filmulator-gui/qml \
           -verbose=2 \
           -libpath="${VCPKG_PREFIX}/lib"
+        
+        echo "Bundling libomp manually..."
+        LIBOMP_DIR="$(brew --prefix libomp)/lib"
+        # In case Frameworks directory wasn't created by macdeployqt
+        mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+        cp "$LIBOMP_DIR/libomp.dylib" "$APP_BUNDLE/Contents/Frameworks/"
+        install_name_tool -id @executable_path/../Frameworks/libomp.dylib "$APP_BUNDLE/Contents/Frameworks/libomp.dylib"
+        
+        LIBOMP_LINK_PATH=$(otool -L "$APP_BUNDLE/Contents/MacOS/filmulator" | awk '/libomp/{print $1}')
+        if [ -n "$LIBOMP_LINK_PATH" ]; then
+          install_name_tool -change "$LIBOMP_LINK_PATH" @executable_path/../Frameworks/libomp.dylib "$APP_BUNDLE/Contents/MacOS/filmulator"
+        else
+          echo "Warning: libomp not found in otool -L output. Might not be linked."
+        fi
         
         echo "Bundle contents:"
         ls -la "$APP_BUNDLE/Contents/MacOS/"
@@ -392,6 +428,42 @@ jobs:
         name: filmulator-macos-dmg
         path: Filmulator-macOS-*.dmg
 
+  test-installers:
+    name: ${{ matrix.os }}-test
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            triplet: x64-linux
+          - os: windows-latest
+            triplet: x64-mingw-dynamic
+          - os: macos-latest
+            triplet: arm64-osx
+
+    steps:
+    - name: Download Linux Artifact
+      if: runner.os == 'Linux'
+      uses: actions/download-artifact@v4
+      with:
+        name: filmulator-linux-appimage
+
+    - name: Download macOS Artifact
+      if: runner.os == 'macOS'
+      uses: actions/download-artifact@v4
+      with:
+        name: filmulator-macos-dmg
+
+    - name: Download Windows Artifact
+      if: runner.os == 'Windows'
+      uses: actions/download-artifact@v4
+      with:
+        name: filmulator-windows-installer
+
     - name: Test AppImage (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -409,8 +481,9 @@ jobs:
         echo "Checking AppImage structure..."
         ./"$APPIMAGE" --appimage-help || true
         
-        # Install xvfb for headless X11 testing (AppImage uses xcb platform)
-        sudo apt-get install -y xvfb
+        # Install xvfb for headless X11 testing, libfuse2 for AppImage (missing on ubuntu-24.04 runners)
+        # Also install system-level OpenGL graphics libraries (libgl1, libegl1) since headless runners lack them by default.
+        sudo apt-get update && sudo apt-get install -y xvfb libfuse2 libgl1 libegl1
         
         echo "Running smoke test with xvfb..."
         # Use xvfb-run to provide virtual X11 display for xcb platform
@@ -504,12 +577,12 @@ jobs:
     - name: Test Installer (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      working-directory: build/installed
       env:
         QT_QUICK_BACKEND: software
         QT_QPA_PLATFORM: offscreen
       run: |
-        $installer = "output\FilmulatorSetup.exe"
+        # Github artifact download implicitly flattens to the workspace root
+        $installer = "FilmulatorSetup.exe"
         $installDir = "${{ github.workspace }}\test_install"
         Write-Host "Installing Filmulator to $installDir..."
         Start-Process -FilePath $installer -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/DIR=""$installDir""" -Wait
