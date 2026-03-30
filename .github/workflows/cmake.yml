@@ -337,8 +337,7 @@ jobs:
             --icon-file filmulator-gui/resources/linux/filmulator.png \
             --output appimage
         
-        # Rename standard output to exact expected static name
-        mv Filmulator*.AppImage Filmulator-x86_64.AppImage
+
 
     - name: Upload Linux Artifact
       if: runner.os == 'Linux'
