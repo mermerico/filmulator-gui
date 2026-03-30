@@ -344,6 +344,9 @@ jobs:
         for plugin in icccm image keysyms randr render-util shape sync xfixes xinerama xkb xinput shm util composite damage; do
           cp -P /usr/lib/x86_64-linux-gnu/libxcb-${plugin}.so* AppDir/usr/lib/ 2>/dev/null || true
         done
+        # libxkbcommon is also dlopen'd and required by Qt's xcb platform plugin
+        cp -P /usr/lib/x86_64-linux-gnu/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
+        cp -P "${VCPKG_PREFIX}"/lib/libxkbcommon*.so* AppDir/usr/lib/ 2>/dev/null || true
 
         # Write AppRun — sets LD_LIBRARY_PATH so bundled libs are found,
         # then exec the binary in-place (no rpath rewrite needed).
