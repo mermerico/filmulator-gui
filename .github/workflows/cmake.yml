@@ -508,8 +508,9 @@ jobs:
         echo "Checking AppImage structure..."
         ./"$APPIMAGE" --appimage-help || true
         
-        # Install xvfb for headless X11 testing and libfuse2 for AppImage (missing on ubuntu-24.04 runners)
-        sudo apt-get install -y xvfb libfuse2
+        # Install xvfb for headless X11 testing, libfuse2 for AppImage (missing on ubuntu-24.04 runners)
+        # Also install system-level OpenGL graphics libraries (libgl1, libegl1) since headless runners lack them by default.
+        sudo apt-get update && sudo apt-get install -y xvfb libfuse2 libgl1 libegl1
         
         echo "Running smoke test with xvfb..."
         # Use xvfb-run to provide virtual X11 display for xcb platform
