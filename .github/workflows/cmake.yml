@@ -60,6 +60,12 @@ jobs:
         echo "Disk space after cleanup:"
         df -h /
 
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        python-version: "3.14.3"
+        enable-cache: true
+
     - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: |
@@ -158,7 +164,7 @@ jobs:
     - name: Run E2E Tests (Linux)
       if: runner.os == 'Linux'
       run: |
-        xvfb-run -a bash -c "./build/${{ matrix.preset }}/filmulator --test-mode & sleep 10 && python3 tests/e2e/test_basic_workflow.py"
+        xvfb-run -a bash -c "./build/${{ matrix.preset }}/filmulator --test-mode & sleep 10 && uv run python tests/e2e/test_raw_pipeline.py"
 
     - name: Run E2E Tests (macOS)
       if: runner.os == 'macOS'
@@ -166,7 +172,7 @@ jobs:
         ./build/${{ matrix.preset }}/filmulator.app/Contents/MacOS/filmulator --test-mode &
         PID=$!
         sleep 10
-        python3 tests/e2e/test_basic_workflow.py
+        uv run python tests/e2e/test_raw_pipeline.py
         kill $PID || true
 
     - name: Run E2E Tests (Windows)
@@ -175,7 +181,7 @@ jobs:
       run: |
         Start-Process -FilePath ".\build\${{ matrix.preset }}\filmulator.exe" -ArgumentList "--test-mode" -PassThru
         Start-Sleep -Seconds 10
-        python tests/e2e/test_basic_workflow.py
+        uv run python tests/e2e/test_raw_pipeline.py
         Stop-Process -Name "filmulator" -Force -ErrorAction SilentlyContinue
 
     - name: Install (Windows)

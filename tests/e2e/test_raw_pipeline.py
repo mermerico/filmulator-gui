@@ -57,7 +57,7 @@ def mouse_double_click(proxy, object_name):
     time.sleep(0.05)
     proxy.mouseClick(path)
 
-def run_test(no_start=False):
+def run_test(no_start=False, keep_output=False):
     raw_file_path = os.path.abspath("tests/data/raw/_DSC0355.NEF")
     raw_dir_path = os.path.dirname(raw_file_path)
     golden_file_path = os.path.abspath("tests/e2e/golden/golden_raw_pipeline.jpg")
@@ -288,9 +288,17 @@ def run_test(no_start=False):
         
         print("Waiting for export file...")
         def check_export_file():
-            return os.path.exists(output_file_path)
+            if not os.path.exists(output_file_path):
+                return False
+            # Check for JPEG EOI marker (FF D9) at the end
+            try:
+                with open(output_file_path, "rb") as f:
+                    f.seek(-2, os.SEEK_END)
+                    return f.read(2) == b"\xff\xd9"
+            except:
+                return False
             
-        if not poll_for_condition(check_export_file, timeout=2, check_interval=0.3):
+        if not poll_for_condition(check_export_file, timeout=10, check_interval=0.5):
             print("Error: Export timed out")
             print(f"Export file path: {output_file_path}")
             return False
@@ -340,16 +348,18 @@ def run_test(no_start=False):
         except:
             pass
         
-        try:
-            if os.path.exists(output_file_path):
-                os.remove(output_file_path)
-        except:
-            pass
+        if not keep_output:
+            try:
+                if os.path.exists(output_file_path):
+                    os.remove(output_file_path)
+            except:
+                pass
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run E2E raw pipeline test")
     parser.add_argument("--no-start", action="store_true", help="Do not start Filmulator, connect to existing instance on port 9000")
+    parser.add_argument("--keep-output", action="store_true", help="Do not delete the output image after the test")
     args = parser.parse_args()
     
-    success = run_test(no_start=args.no_start)
+    success = run_test(no_start=args.no_start, keep_output=args.keep_output)
     sys.exit(0 if success else 1)
