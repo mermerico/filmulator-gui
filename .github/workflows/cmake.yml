@@ -392,6 +392,13 @@ jobs:
         ls -la "$APP_BUNDLE/Contents/MacOS/"
         ls -la "$APP_BUNDLE/Contents/Frameworks/" || echo "No Frameworks dir yet"
 
+    - name: Ad-hoc sign the bundle (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        APP_BUNDLE="build/${{ matrix.preset }}/Filmulator.app"
+        echo "Ad-hoc signing the entire bundle..."
+        codesign --force --deep -s - "$APP_BUNDLE"
+
     - name: Create DMG (macOS)
       if: runner.os == 'macOS'
       run: |
@@ -552,7 +559,16 @@ jobs:
         
         echo "Running smoke test..."
         # macOS runners have a display server, so cocoa platform should work
-        "$TEST_DIR/Filmulator.app/Contents/MacOS/filmulator-gui" &> smoke_test.log &
+        LAUNCHER="$TEST_DIR/Filmulator.app/Contents/MacOS/filmulator-gui"
+        if [ ! -f "$LAUNCHER" ]; then
+          echo "Error: Launcher script not found at $LAUNCHER"
+          exit 1
+        fi
+
+        # Make sure launcher is executable
+        chmod +x "$LAUNCHER"
+        
+        "$LAUNCHER" &> smoke_test.log &
         APP_PID=$!
         
         # Give it time to load and initialize
@@ -560,9 +576,14 @@ jobs:
         
         # Check if process is still running
         if ! ps -p $APP_PID > /dev/null; then
-          echo "Application exited prematurely"
-          echo "--- Output Log ---"
+          echo "Application exited prematurely or crashed"
+          echo "--- Smoke Test Log ---"
           cat smoke_test.log || echo "(no log captured)"
+          
+          # Try to get more info from system log if it crashed
+          echo "--- Tail of system console log (last 50 lines) ---"
+          log show --predicate 'process == "filmulator"' --last 2m | tail -n 50
+          
           hdiutil detach "$VOLUME" || true
           exit 1
         fi
