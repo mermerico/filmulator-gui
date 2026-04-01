@@ -63,8 +63,11 @@ struct filmulateParams
   float highlightCrosstalk;
 };
 
-void exposure(matrix<float> &input_image, float crystals_per_pixel,
-        float rolloff_boundary, float toe_boundary, float highlight_crosstalk);
+void exposure(matrix<float> &input_image,
+  float crystals_per_pixel,
+  float rolloff_boundary,
+  float toe_boundary,
+  float highlight_crosstalk);
 
 void develop(matrix<float> &crystalRad,
   float crystalGrowthConst,

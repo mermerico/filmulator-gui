@@ -86,7 +86,9 @@ jobs:
           libtool \
           libltdl-dev \
           mono-complete \
-          xvfb
+          xvfb \
+          clang-tidy \
+          clang-format
 
     - name: Install macOS Dependencies
       if: runner.os == 'macOS'
@@ -184,7 +186,17 @@ jobs:
         fi
 
     - name: Build
-      run: cmake --build --preset ${{ matrix.preset }}
+      run: cmake --build build/${{ matrix.preset }}
+
+    - name: Check Formatting
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cmake --build build/${{ matrix.preset }} --target format
+        git diff --exit-code
+
+    - name: Run Clang-Tidy
+      if: matrix.os == 'ubuntu-latest'
+      run: cmake --build build/${{ matrix.preset }} --target tidy
 
     - name: Test
       run: ctest --preset ${{ matrix.preset }} --output-on-failure

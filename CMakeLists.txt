@@ -328,13 +328,22 @@ add_subdirectory(filmulator-gui/qml)
 # Code formatting and linting
 find_program(CLANG_FORMAT "clang-format")
 if(CLANG_FORMAT)
+    file(GLOB_RECURSE ALL_S_FILES 
+        "filmulator-gui/*.cpp" 
+        "filmulator-gui/*.hpp" 
+        "filmulator-gui/*.h"
+        "tests/*.cpp"
+        "tests/*.hpp"
+        "tests/*.h"
+    )
+    # Exclude third-party cJSON
+    list(REMOVE_ITEM ALL_S_FILES "${CMAKE_SOURCE_DIR}/filmulator-gui/database/cJSON.c")
+    
     add_custom_target(
         format
-        COMMAND ${CLANG_FORMAT} -i -style=file
-        ${filmulator_CORE_SRCS}
-        filmulator-gui/main.cpp
+        COMMAND ${CLANG_FORMAT} -i -style=file ${ALL_S_FILES}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running clang-format..."
+        COMMENT "Running clang-format on all source files..."
     )
 endif()
 
@@ -343,10 +352,8 @@ if(CLANG_TIDY)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "" FORCE)
     add_custom_target(
         tidy
-        COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR}
-        ${filmulator_CORE_SRCS}
-        filmulator-gui/main.cpp
+        COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR} ${filmulator_CORE_SRCS} filmulator-gui/main.cpp
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running clang-tidy..."
+        COMMENT "Running clang-tidy on core source files..."
     )
 endif()

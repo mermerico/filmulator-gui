@@ -17,19 +17,19 @@ static const std::string GOLDEN_DIR = "../tests/golden/data/";
 
 // Helper to create a ParameterManager instance ensuring QCoreApplication
 // existence
-class TestParameterManager : public ParameterManager {
+class TestParameterManager : public ParameterManager
+{
 public:
   TestParameterManager() : ParameterManager() {}
 };
 
-TEST_CASE("nlmeans basic operation", "[golden][nlmeans]") {
+TEST_CASE("nlmeans basic operation", "[golden][nlmeans]")
+{
   // Ensure QCoreApplication exists for QObject
   static int argc = 1;
-  static char *argv[] = {(char *)"test"};
+  static char *argv[] = { (char *)"test" };
   static QCoreApplication *app = nullptr;
-  if (!QCoreApplication::instance()) {
-    app = new QCoreApplication(argc, argv);
-  }
+  if (!QCoreApplication::instance()) { app = new QCoreApplication(argc, argv); }
 
   TestParameterManager paramManager;
 
@@ -46,12 +46,9 @@ TEST_CASE("nlmeans basic operation", "[golden][nlmeans]") {
   for (int row = 0; row < height; row++) {
     for (int col = 0; col < width; col++) {
       float val = static_cast<float>(col) / width;
-      input(row, col * 3 + 0) =
-          std::max(0.0f, std::min(1.0f, val + noise(gen)));
-      input(row, col * 3 + 1) =
-          std::max(0.0f, std::min(1.0f, val + noise(gen)));
-      input(row, col * 3 + 2) =
-          std::max(0.0f, std::min(1.0f, val + noise(gen)));
+      input(row, col * 3 + 0) = std::max(0.0f, std::min(1.0f, val + noise(gen)));
+      input(row, col * 3 + 1) = std::max(0.0f, std::min(1.0f, val + noise(gen)));
+      input(row, col * 3 + 2) = std::max(0.0f, std::min(1.0f, val + noise(gen)));
     }
   }
 
@@ -64,8 +61,7 @@ TEST_CASE("nlmeans basic operation", "[golden][nlmeans]") {
   paramManager.setValid(Valid::partnrnlmeans);
 
   // x is rows (height), y is cols (width) based on implementation analysis
-  bool aborted = kMeansNLMApprox((float *)input, clusters, threshold, h, height,
-                                 width, (float *)output, &paramManager);
+  bool aborted = kMeansNLMApprox((float *)input, clusters, threshold, h, height, width, (float *)output, &paramManager);
 
   REQUIRE_FALSE(aborted);
 
@@ -85,14 +81,12 @@ TEST_CASE("nlmeans basic operation", "[golden][nlmeans]") {
       float inVal = input(row, col * 3 + 1);
       float outVal = output(row, col * 3 + 1);
 
-      float inNeighbors =
-          (input(row, (col - 1) * 3 + 1) + input(row, (col + 1) * 3 + 1) +
-           input(row - 1, col * 3 + 1) + input(row + 1, col * 3 + 1)) /
-          4.0f;
-      float outNeighbors =
-          (output(row, (col - 1) * 3 + 1) + output(row, (col + 1) * 3 + 1) +
-           output(row - 1, col * 3 + 1) + output(row + 1, col * 3 + 1)) /
-          4.0f;
+      float inNeighbors = (input(row, (col - 1) * 3 + 1) + input(row, (col + 1) * 3 + 1) + input(row - 1, col * 3 + 1)
+                            + input(row + 1, col * 3 + 1))
+                          / 4.0f;
+      float outNeighbors = (output(row, (col - 1) * 3 + 1) + output(row, (col + 1) * 3 + 1)
+                             + output(row - 1, col * 3 + 1) + output(row + 1, col * 3 + 1))
+                           / 4.0f;
 
       inputVar += (inVal - inNeighbors) * (inVal - inNeighbors);
       outputVar += (outVal - outNeighbors) * (outVal - outNeighbors);
@@ -104,11 +98,12 @@ TEST_CASE("nlmeans basic operation", "[golden][nlmeans]") {
   REQUIRE(outputVar < inputVar);
 }
 
-TEST_CASE("nlmeans golden comparison", "[golden][nlmeans]") {
+TEST_CASE("nlmeans golden comparison", "[golden][nlmeans]")
+{
   // Ensure QCoreApplication exists
   if (!QCoreApplication::instance()) {
     static int argc = 1;
-    static char *argv[] = {(char *)"test"};
+    static char *argv[] = { (char *)"test" };
     new QCoreApplication(argc, argv);
   }
   TestParameterManager paramManager;
@@ -131,14 +126,9 @@ TEST_CASE("nlmeans golden comparison", "[golden][nlmeans]") {
       float base = check ? 0.7f : 0.3f;
 
       // Add some edges
-      if (row > 30 && row < 60 && col > 30 && col < 60) {
-        base = 0.5f;
-      }
+      if (row > 30 && row < 60 && col > 30 && col < 60) { base = 0.5f; }
 
-      for (int c = 0; c < 3; c++) {
-        input(row, col * 3 + c) =
-            std::max(0.0f, std::min(1.0f, base + noise(gen)));
-      }
+      for (int c = 0; c < 3; c++) { input(row, col * 3 + c) = std::max(0.0f, std::min(1.0f, base + noise(gen))); }
     }
   }
 
@@ -147,8 +137,7 @@ TEST_CASE("nlmeans golden comparison", "[golden][nlmeans]") {
   float h = 10.0f;
 
   paramManager.setValid(Valid::partnrnlmeans);
-  kMeansNLMApprox((float *)input, clusters, threshold, h, height, width,
-                  (float *)output, &paramManager);
+  kMeansNLMApprox((float *)input, clusters, threshold, h, height, width, (float *)output, &paramManager);
 
   std::string goldenPath = GOLDEN_DIR + "nlmeans_denoised.bin";
 
