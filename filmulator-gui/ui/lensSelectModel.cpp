@@ -1,6 +1,8 @@
 #include "lensSelectModel.h"
 #include "../core/logging.h"
 #include <QDir>
+#include <QFileInfo>
+#include <QFileInfoList>
 #include <QStandardPaths>
 #include <iostream>
 
@@ -20,15 +22,22 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
   scoreList.clear();
 
   // initialize lensfun db
-  QDir dir = QDir::home();
   QString dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-  dirstr.append("/filmulator/version_1");
-  std::string stdstring = dirstr.toStdString();
+  dirstr.append("/filmulator/version_2/");
+  QDir dir(dirstr);
+  QStringList filters;
+  filters << "*.xml";
+  QFileInfoList fileList =
+    dir.entryInfoList(filters, static_cast<QDir::Filters>(QDir::Files | QDir::NoDotAndDotDot));
 
   ldb = lf_db_new();
   if (!ldb) { FILM_ERROR("Failed to create database!"); }
 
-  ldb->Load(stdstring.c_str());
+  for (const QFileInfo &fileInfo : fileList) {
+    const QString filename = fileInfo.absoluteFilePath();
+    const std::string stdstring = filename.toStdString();
+    ldb->Load(stdstring.c_str());
+  }
 }
 
 LensSelectModel::~LensSelectModel()
@@ -45,9 +54,11 @@ void LensSelectModel::update(QString cameraString, QString lensString)
 
   QString tempLensString = lensString;
   bool searchAllMounts = false;
-  if (lensString.front() == "\\") {
-    tempLensString.remove(0, 1);
-    searchAllMounts = true;
+  if (!lensString.isEmpty()) {
+    if (lensString.front() == '\\') {
+      tempLensString.remove(0, 1);
+      searchAllMounts = true;
+    }
   }
   std::string lensStr = tempLensString.toStdString();
 
@@ -58,8 +69,12 @@ void LensSelectModel::update(QString cameraString, QString lensString)
   scoreList.clear();
 
   const lfCamera *camera = NULL;
-  const lfCamera **cameraList = ldb->FindCamerasExt(NULL, camStr.c_str());
-  if (cameraList && !searchAllMounts) { camera = cameraList[0]; }
+  const lfCamera **cameraList = ldb->FindCameras(NULL, camStr.c_str());
+  if (cameraList && !searchAllMounts) {
+    camera = cameraList[0];
+  } else if (!searchAllMounts) {
+    FILM_DEBUG("LensSelectModel lensfun no camera; camStr: {}", camStr);
+  }
   lf_free(cameraList);
 
   if (lensStr.length() > 0) {

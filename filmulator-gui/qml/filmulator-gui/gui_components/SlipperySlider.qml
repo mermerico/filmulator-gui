@@ -161,6 +161,14 @@ Item {
 
     property real boldValue: 0
 
+    property bool secondTickEnabled: false
+
+    property real secondTickValue: 0
+
+    property bool thirdTickEnabled: false
+
+    property real thirdTickValue: 0
+
     /*! \internal */
     //property bool __horizontal: true//orientation === Qt.Horizontal
 
@@ -261,6 +269,26 @@ Item {
             height: 3 * uiScale
             radius: 1 * uiScale
             visible: boldValue >= minimumValue && boldValue <= maximumValue && boldTickEnabled
+            color: Colors.darkGray
+        }
+        Rectangle {
+            id: secondTickRect
+            x: posAtMinimum + fakeHandle.width/2 + (secondTickValue-minimumValue)*posRange/valRange - width/2
+            y: 0.5 * uiScale
+            width: 2 * uiScale
+            height: 3 * uiScale
+            radius: 1 * uiScale
+            visible: secondTickValue >= minimumValue && secondTickValue <= maximumValue && secondTickEnabled
+            color: Colors.darkGray
+        }
+        Rectangle {
+            id: thirdTickRect
+            x: posAtMinimum + fakeHandle.width/2 + (thirdTickValue-minimumValue)*posRange/valRange - width/2
+            y: 0.5 * uiScale
+            width: 2 * uiScale
+            height: 3 * uiScale
+            radius: 0 * uiScale
+            visible: thirdTickValue >= minimumValue && thirdTickValue <= maximumValue && thirdTickEnabled
             color: Colors.darkGray
         }
     }

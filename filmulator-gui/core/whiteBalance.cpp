@@ -477,8 +477,21 @@ void optimizeWBMults(std::string file,
       return;
     }
 
-    // Remember the low value
-    // Sort the coordinates.
+    temperature = lowCoord[0];
+    // limit temperature to prevent crashes when calculating planckian locus
+    if (temperature < 1500) // 5D Classic hits its limit at 1674 but for custom WB we should be fine
+    {
+      cout << "Optimized WB temperature too low: " << temperature << endl;
+      temperature = 1500;
+    } else if (temperature > 20000) {
+      cout << "Optimized WB temperature too high: " << temperature << endl;
+      temperature = 20000;
+    }
+
+    if (low > mid) {
+      lowCoord.swap(midCoord);
+      swap(low, mid);
+    }
     if (mid > hi) {
       midCoord.swap(hiCoord);
       swap(mid, hi);
@@ -487,10 +500,7 @@ void optimizeWBMults(std::string file,
       lowCoord.swap(midCoord);
       swap(low, mid);
     }
-    if (mid > hi) {
-      midCoord.swap(hiCoord);
-      swap(mid, hi);
-    }// End sort
+    // End sort
     if (oldLow - low < TOLERANCE)// if it hasn't improved enough
     {
       repeats++;

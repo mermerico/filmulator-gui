@@ -1,15 +1,13 @@
 #include "LoadStage.h"
+#include "../../core/myLibraw.h"
 #include "../../database/camconst.h"
 #include "../../database/exifFunctions.h"
 #include "../filmSim.hpp"
 #include <QDir>
 #include <cmath>
 #include <iostream>
+#include <omp.h>
 #include <memory>
-
-// Define missing OMP macro if needed due to header issues
-// But build system defines -fopenmp, so it should be fine.
-// filmSim.hpp includes libraw.h
 
 using namespace std;
 
@@ -23,8 +21,8 @@ std::optional<RawImage>
   // Check for abort early
   if (context.isAborted()) return std::nullopt;
 
-  output.isCR3 = QString::fromStdString(params.fullFilename).endsWith(".cr3", Qt::CaseInsensitive);
-  const bool isDNG = QString::fromStdString(params.fullFilename).endsWith(".dng", Qt::CaseInsensitive);
+  output.isCR3 = QString::fromStdString(params.fullFilename).endsWith(QStringLiteral(".cr3"), Qt::CaseInsensitive);
+  const bool isDNG = QString::fromStdString(params.fullFilename).endsWith(QStringLiteral(".dng"), Qt::CaseInsensitive);
 
   // Tiff or Jpeg loading
   if (params.tiffIn || params.jpegIn) {
@@ -46,7 +44,7 @@ std::optional<RawImage>
   }
 
   // RAW Loading
-  std::unique_ptr<LibRaw> libraw = std::make_unique<LibRaw>();
+  std::unique_ptr<MyLibRaw> libraw = std::make_unique<MyLibRaw>();
 
   // Open the file.
   int libraw_error;
@@ -80,6 +78,13 @@ std::optional<RawImage>
   libraw_error = libraw->unpack();
   if (libraw_error) {
     cout << "LoadStage: Could not unpack or canceled. " << libraw_strerror(libraw_error) << endl;
+    return std::nullopt;
+  }
+
+  bool needs_phase_one_free = false;
+  libraw_error = libraw->phaseone_fix(needs_phase_one_free);
+  if (libraw_error) {
+    cout << "LoadStage: MyLibRaw phaseone_fix failed?" << endl;
     return std::nullopt;
   }
 
@@ -341,6 +346,8 @@ std::optional<RawImage>
         output.data[row][col] = RAW[rowoffset + col + leftmargin] - tempBlackpoint;
       }
     }
+  if (needs_phase_one_free) {
+      libraw->my_phase_one_free_tempbuffer();
   }
 
   return output;

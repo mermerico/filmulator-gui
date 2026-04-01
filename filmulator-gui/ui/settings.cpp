@@ -310,7 +310,7 @@ void Settings::checkLensfunStatus()
   QString dirstr = qEnvironmentVariable("FILMULATOR_DB_DIR");
   if (dirstr.isEmpty()) {
     dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    dirstr.append("/filmulator");
+    dirstr.append("/filmulator/version_2/");
   }
 
   lensfunStatus = "checking";
@@ -318,30 +318,39 @@ void Settings::checkLensfunStatus()
 
   lf_db_return dbStatus = lensfun_dbcheck(2, dirstr.toStdString());
 
-  if (dbStatus == LENSFUN_DBUPDATE_NOVERSION) {
-    lensfunStatus = "unavail";
+  if (dbStatus == LENSFUN_DBCHECK_OK) {
+    lensfunStatus = "success";
     emit lensfunStatusChanged();
   }
-  if (dbStatus == LENSFUN_DBUPDATE_NODATABASE) {
-    lensfunStatus = "nolocal";
-    emit lensfunStatusChanged();
-  }
-  if (dbStatus == LENSFUN_DBUPDATE_OLDVERSION) {
-    lensfunStatus = "avail";
-    emit lensfunStatusChanged();
-  }
-  if (dbStatus == LENSFUN_DBUPDATE_CURRENTVERSION) {
+  if (dbStatus == LENSFUN_DBCHECK_CURRENTVERSION) {
     lensfunStatus = "uptodate";
     emit lensfunStatusChanged();
   }
+  if (dbStatus == LENSFUN_DBCHECK_NOVERSION) {
+    lensfunStatus = "unavail";
+    emit lensfunStatusChanged();
+  }
+  if (dbStatus == LENSFUN_DBCHECK_RETRIEVE_INITFAILED) {
+    lensfunStatus = "initfail";
+    emit lensfunStatusChanged();
+  }
+  if (dbStatus == LENSFUN_DBCHECK_RETRIEVE_FILEOPENFAILED) {
+    lensfunStatus = "filefail";
+    emit lensfunStatusChanged();
+  }
+  if (dbStatus == LENSFUN_DBCHECK_RETRIEVE_RETRIEVEFAILED) {
+    lensfunStatus = "retrievefail";
+    emit lensfunStatusChanged();
+  }
 }
+
 void Settings::updateLensfun()
 {
   QDir dir = QDir::home();
   QString dirstr = qEnvironmentVariable("FILMULATOR_DB_DIR");
   if (dirstr.isEmpty()) {
     dirstr = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
-    dirstr.append("/filmulator");
+    dirstr.append("/filmulator/version_2/");
   }
 
   updateStatus = "updating";

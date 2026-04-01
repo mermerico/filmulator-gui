@@ -33,7 +33,8 @@
 #include <exiv2/exiv2.hpp>
 #include <fstream>
 #include <iostream>
-#include <libraw/libraw.h>
+//#include <libraw/libraw.h>
+#include "myLibraw.h"
 #include <setjmp.h>
 
 #ifndef NDEBUG

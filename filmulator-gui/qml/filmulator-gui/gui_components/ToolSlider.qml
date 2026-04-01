@@ -39,6 +39,14 @@ Rectangle {
 
     property alias boldTickEnabled: slider.boldTickEnabled
 
+    property alias secondTickValue: slider.secondTickValue
+
+    property alias secondTickEnabled: slider.secondTickEnabled
+
+    property alias thirdTickValue: slider.thirdTickValue
+
+    property alias thirdTickEnabled: slider.thirdTickEnabled
+
     signal tooltipWanted(string text, int coordX, int coordY)
 
     signal resetPerformed()
