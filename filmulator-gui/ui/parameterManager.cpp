@@ -1,7 +1,7 @@
 #include "parameterManager.h"
+#include "../core/logging.h"
 #include "../database/database.hpp"
 #include "../database/exifFunctions.h"
-#include "../core/logging.h"
 #include <QDir>
 #include <QFile>
 #include <QStandardPaths>

@@ -27,8 +27,7 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
   QDir dir(dirstr);
   QStringList filters;
   filters << "*.xml";
-  QFileInfoList fileList =
-    dir.entryInfoList(filters, static_cast<QDir::Filters>(QDir::Files | QDir::NoDotAndDotDot));
+  QFileInfoList fileList = dir.entryInfoList(filters, static_cast<QDir::Filters>(QDir::Files | QDir::NoDotAndDotDot));
 
   ldb = lf_db_new();
   if (!ldb) { FILM_ERROR("Failed to create database!"); }

@@ -6,8 +6,8 @@
 #include <QDir>
 #include <cmath>
 #include <iostream>
-#include <omp.h>
 #include <memory>
+#include <omp.h>
 
 using namespace std;
 
@@ -346,11 +346,9 @@ std::optional<RawImage>
         output.data[row][col] = RAW[rowoffset + col + leftmargin] - tempBlackpoint;
       }
     }
-  if (needs_phase_one_free) {
-      libraw->my_phase_one_free_tempbuffer();
-  }
+    if (needs_phase_one_free) { libraw->my_phase_one_free_tempbuffer(); }
 
-  return output;
-}
+    return output;
+  }
 
 }// namespace Pipeline
