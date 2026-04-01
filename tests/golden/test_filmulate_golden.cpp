@@ -29,7 +29,7 @@ TEST_CASE("exposure basic operation", "[golden][filmulate][exposure]")
   float rolloffBoundary = 51200.0f;
   float toeBoundary = 0.0f;
 
-  exposure(input, crystalsPerPixel, rolloffBoundary, toeBoundary);
+  exposure(input, crystalsPerPixel, rolloffBoundary, toeBoundary, 0.0f);
 
   // Verify output is valid (no NaN or Inf)
   REQUIRE(input.nr() == 8);
@@ -58,7 +58,7 @@ TEST_CASE("exposure rolloff behavior", "[golden][filmulate][exposure]")
   float rolloffBoundary = 32768.0f;// Should compress values above this
   float toeBoundary = 0.0f;
 
-  exposure(input, crystalsPerPixel, rolloffBoundary, toeBoundary);
+  exposure(input, crystalsPerPixel, rolloffBoundary, toeBoundary, 0.0f);
 
   // After rolloff, the difference between high values should be compressed
   float outR = input(0, 0);
@@ -79,7 +79,7 @@ TEST_CASE("exposure golden comparison", "[golden][filmulate][exposure]")
   float rolloffBoundary = 51200.0f;
   float toeBoundary = 1000.0f;
 
-  exposure(input, crystalsPerPixel, rolloffBoundary, toeBoundary);
+  exposure(input, crystalsPerPixel, rolloffBoundary, toeBoundary, 0.0f);
 
   std::string goldenPath = GOLDEN_DIR + "exposure_default.bin";
 
