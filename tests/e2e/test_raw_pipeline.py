@@ -9,6 +9,8 @@ import shutil
 import argparse
 import shlex
 
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 def poll_for_condition(condition_func, timeout=10, check_interval=0.1):
     start = time.time()
     while time.time() - start < timeout:
@@ -57,19 +59,22 @@ def mouse_double_click(proxy, object_name):
     time.sleep(0.05)
     proxy.mouseClick(path)
 
-def run_test(no_start=False, keep_output=False):
+def run_test(args, no_start=False, keep_output=False):
     raw_file_path = os.path.abspath("tests/data/raw/_DSC0355.NEF")
     raw_dir_path = os.path.dirname(raw_file_path)
     golden_file_path = os.path.abspath("tests/e2e/golden/golden_raw_pipeline.jpg")
     output_file_path = os.path.abspath("tests/data/raw/_DSC0355-output.jpg")
     
-    project_root = os.path.abspath(".")
     # Default binary path: try standard build first, then debug
     default_binary_path = os.path.join(project_root, "build", "Filmulator.app", "Contents", "MacOS", "filmulator")
     if not os.path.exists(default_binary_path):
         default_binary_path = os.path.join(project_root, "build", "debug", "Filmulator.app", "Contents", "MacOS", "filmulator")
 
     binary_path = os.environ.get("FILMULATOR_BIN", default_binary_path)
+
+    # Override with command line argument if provided
+    if args.bin:
+        binary_path = os.path.abspath(args.bin)
 
     if not os.path.exists(raw_file_path):
         print(f"Error: RAW file not found at {raw_file_path}")
@@ -246,6 +251,7 @@ def run_test(no_start=False, keep_output=False):
         # Paths are now mainWindow/editView/editTools/...
         proxy.setStringProperty("mainWindow/editView/editTools/exposureCompSlider", "value", "1.5")
         proxy.setStringProperty("mainWindow/editView/editTools/filmDramaSlider", "value", "50")
+        proxy.setStringProperty("mainWindow/editView/editTools/crosstalkSlider", "value", "0.5")
         
         print("  Enabling Noise Reduction...")
         # Enable NR switch
@@ -356,10 +362,12 @@ def run_test(no_start=False, keep_output=False):
                 pass
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run E2E raw pipeline test")
-    parser.add_argument("--no-start", action="store_true", help="Do not start Filmulator, connect to existing instance on port 9000")
-    parser.add_argument("--keep-output", action="store_true", help="Do not delete the output image after the test")
+    parser = argparse.ArgumentParser(description="E2E test for RAW processing pipeline.")
+    parser.add_argument("--no-start", action="store_true", help="Don't start the binary, connect to already running instance.")
+    parser.add_argument("--keep-output", action="store_true", help="Don't delete output files.")
+    parser.add_argument("--bin", help="Path to the binary to test.")
     args = parser.parse_args()
-    
-    success = run_test(no_start=args.no_start, keep_output=args.keep_output)
-    sys.exit(0 if success else 1)
+
+    success = run_test(args, no_start=args.no_start, keep_output=args.keep_output)
+    if not success:
+        sys.exit(1)

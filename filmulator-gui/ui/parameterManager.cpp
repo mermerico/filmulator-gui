@@ -714,6 +714,7 @@ std::tuple<Valid, AbortStatus, FilmParams> ParameterManager::claimFilmParams()
   params.layerTimeDivisor = m_layerTimeDivisor;
   params.rolloffBoundary = m_rolloffBoundary;
   params.toeBoundary = m_toeBoundary;
+  params.highlightCrosstalk = m_highlightCrosstalk;
   std::tuple<Valid, AbortStatus, FilmParams> tup(validity, abort, params);
   return tup;
 }
@@ -947,13 +948,27 @@ void ParameterManager::setRolloffBoundary(float rolloffBoundary)
 
 void ParameterManager::setToeBoundary(float toeBoundary)
 {
-  if (!justInitialized) {
+  if (!justInitialized)
+  {
     QMutexLocker paramLocker(&paramMutex);
     m_toeBoundary = toeBoundary;
     validity = min(validity, Valid::prefilmulation);
     paramLocker.unlock();
     QMutexLocker signalLocker(&signalMutex);
     paramChangeWrapper(QString("setToeBoundary"));
+  }
+}
+
+void ParameterManager::setHighlightCrosstalk(float highlightCrosstalk)
+{
+  if (!justInitialized)
+  {
+    QMutexLocker paramLocker(&paramMutex);
+    m_highlightCrosstalk = highlightCrosstalk;
+    validity = min(validity, Valid::prefilmulation);
+    paramLocker.unlock();
+    QMutexLocker signalLocker(&signalMutex);
+    paramChangeWrapper(QString("setHighlightCrosstalk"));
   }
 }
 
@@ -1862,6 +1877,7 @@ void ParameterManager::selectImage(const QString imageID)
   emit bwGmultChanged();
   emit bwBmultChanged();
   emit toeBoundaryChanged();
+  emit highlightCrosstalkChanged();
 
   emit defDemosaicMethodChanged();
   emit defCaEnabledChanged();
@@ -1911,6 +1927,7 @@ void ParameterManager::selectImage(const QString imageID)
   emit defBwGmultChanged();
   emit defBwBmultChanged();
   emit defToeBoundaryChanged();
+  emit defHighlightCrosstalkChanged();
 
   // Mark that it's safe for sliders to move again.
   QMutexLocker signalLocker(&signalMutex);
@@ -2204,6 +2221,14 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
   const float temp_toeBoundary = query.value(nameCol).toFloat();
   d_toeBoundary = temp_toeBoundary;
   if (copyDefaults == CopyDefaults::loadToParams) { m_toeBoundary = temp_toeBoundary; }
+
+  // Highlight crosstalk. This controls the desaturation of highlights.
+  // nameCol = rec.indexOf("ProfThighlightCrosstalk");
+  // if (-1 == nameCol) { FILM_ERROR("paramManager ProfThighlightCrosstalk"); }
+  // const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
+  const float temp_highlightCrosstalk = 0.0f;
+  d_highlightCrosstalk = temp_highlightCrosstalk;
+  if (copyDefaults == CopyDefaults::loadToParams) { m_highlightCrosstalk = temp_highlightCrosstalk; }
 
   // Post-filmulator black clipping point
   nameCol = rec.indexOf("ProfTblackpoint");
@@ -2689,6 +2714,17 @@ void ParameterManager::loadParams(QString imageID)
   if (temp_toeBoundary != m_toeBoundary) {
     // cout << "ParameterManager::loadParams toeBoundary" << endl;
     m_toeBoundary = temp_toeBoundary;
+    validity = min(validity, Valid::prefilmulation);
+  }
+
+  // Highlight crosstalk. This controls the desaturation of highlights.
+  // nameCol = rec.indexOf("ProcThighlightCrosstalk");
+  // if (-1 == nameCol) { FILM_ERROR("paramManager ProcThighlightCrosstalk"); }
+  // const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
+  const float temp_highlightCrosstalk = 0;
+  if (temp_highlightCrosstalk != m_highlightCrosstalk) {
+    // cout << "ParameterManager::loadParams highlightCrosstalk" << endl;
+    m_highlightCrosstalk = temp_highlightCrosstalk;
     validity = min(validity, Valid::prefilmulation);
   }
 
@@ -3272,6 +3308,14 @@ void ParameterManager::cloneParams(ParameterManager *sourceParams)
   if (temp_toeBoundary != m_toeBoundary) {
     // cout << "ParameterManager::cloneParams toeBoundary" << endl;
     m_toeBoundary = temp_toeBoundary;
+    validity = min(validity, Valid::prefilmulation);
+  }
+
+  // Highlight crosstalk. This controls the desaturation of highlights.
+  const float temp_highlightCrosstalk = sourceParams->getHighlightCrosstalk();
+  if (temp_highlightCrosstalk != m_highlightCrosstalk) {
+    // cout << "ParameterManager::cloneParams highlightCrosstalk" << endl;
+    m_highlightCrosstalk = temp_highlightCrosstalk;
     validity = min(validity, Valid::prefilmulation);
   }
 

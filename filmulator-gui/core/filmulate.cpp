@@ -52,6 +52,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
   float layer_time_divisor = filmParam.layerTimeDivisor;
   float rolloff_boundary = filmParam.rolloffBoundary;
   float toe_boundary = filmParam.toeBoundary;
+  float highlight_crosstalk = filmParam.highlightCrosstalk;
 
   // Set up timers
   std::chrono::steady_clock::time_point initialize_start, development_start, develop_start, diffuse_start,
@@ -66,7 +67,7 @@ bool ImagePipeline::filmulate(matrix<float> &input_image,
   // Now we activate some of the crystals on the film. This is literally
   // akin to exposing film to light.
   matrix<float> active_crystals_per_pixel = input_image;
-  exposure(active_crystals_per_pixel, crystals_per_pixel, rolloff_boundary, toe_boundary);
+  exposure(active_crystals_per_pixel, crystals_per_pixel, rolloff_boundary, toe_boundary, highlight_crosstalk);
   // We set the crystal radius to a small seed value for each color.
   matrix<float> &crystal_radius = output_density;
   crystal_radius.set_size(nrows, ncols * 3);
