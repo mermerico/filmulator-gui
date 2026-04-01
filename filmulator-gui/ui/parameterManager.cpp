@@ -2055,17 +2055,31 @@ void ParameterManager::selectImage(const QString imageID)
     //Check if sensor is monochrome
     //Monochrome images make some tools useless
     const bool isCR3 = fullFilenameQstr.endsWith(".cr3", Qt::CaseInsensitive);
+    const bool isDNG = fullFilenameQstr.endsWith(".dng", Qt::CaseInsensitive);
     isMonochrome = false;
     if (!isCR3) //no CR3 cameras are monochrome
     {
-        cout << "updateAvailability exiv filename: " << m_fullFilename << endl;
-        auto exifImage = Exiv2::ImageFactory::open(m_fullFilename);
-        exifImage->readMetadata();
-        Exiv2::ExifData exifData = exifImage->exifData();
-        std::string wb = exifData["Exif.Photo.WhiteBalance"].toString();
-        isMonochrome = wb.length()==0;
-        colorAvail = !isMonochrome;
-        emit colorAvailChanged();
+        if (isDNG) {
+            libraw->unpack();
+            int dngProfile = 1;
+            if(daylightScore(libraw->imgdata.color.dng_color[0].illuminant) <
+               daylightScore(libraw->imgdata.color.dng_color[1].illuminant)) {
+                dngProfile = 0;
+            }
+            const float rr_cam_xyz = libraw->imgdata.color.dng_color[dngProfile].colormatrix[0][0];
+            isMonochrome = abs(rr_cam_xyz) < 0.1f;
+            colorAvail = !isMonochrome;
+            emit colorAvailChanged();
+        } else {
+            cout << "updateAvailability exiv filename: " << m_fullFilename << endl;
+            auto exifImage = Exiv2::ImageFactory::open(m_fullFilename);
+            exifImage->readMetadata();
+            Exiv2::ExifData exifData = exifImage->exifData();
+            std::string wb = exifData["Exif.Photo.WhiteBalance"].toString();
+            isMonochrome = wb.length()==0;
+            colorAvail = !isMonochrome;
+            emit colorAvailChanged();
+        }
     } else {
         isMonochrome = false;
         colorAvail = true;

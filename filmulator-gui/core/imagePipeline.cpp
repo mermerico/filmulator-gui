@@ -579,18 +579,25 @@ matrix<unsigned short> &ImagePipeline::processImage(
       // So we have to check if the white balance tag exists.
       bool isWeird = (cfa[0][0] == 6 && cfa[0][1] == 6 && cfa[1][0] == 6 &&
                       cfa[1][1] == 6);
-      // cout << "is weird: " << isWeird << endl;
+       cout << "raw identification is weird: " << isWeird << endl;
+
       bool noWB = false;
-      if (!isCR3) // we can't use exiv2 on CR3 yet and no CR3 cameras are
-                  // monochrome
-      {
-        noWB = exifData["Exif.Photo.WhiteBalance"].toString().length() == 0;
+      if (!isCR3) { // we can't use exiv2 on CR3 yet and no CR3 cameras are mono
+        if (isDNG) {
+            //DNGs don't have an exif tag for white balance
+            //check cam_xyz
+            cout << "raw identification cam_xyz rr: " << xyzToCam[0][0] << endl;
+            noWB = abs(xyzToCam[0][0]) < 0.01f;
+            cout << "raw identification is dng" << endl;
+        } else {
+            noWB = exifData["Exif.Photo.WhiteBalance"].toString().length() == 0;
+        }
       }
-      // cout << "white balance: " << wb << endl;
+      cout << "raw identification no white balance: " << noWB << endl;
       isMonochrome = isWeird && noWB;
-      // cout << "is monochrome: " << isMonochrome << endl;
+      cout << "raw identification is monochrome: " << isMonochrome << endl;
       isSraw = isSraw || (isWeird && !isMonochrome);
-      // cout << "is full color raw: " << isSraw << endl;
+      cout << "raw identification is full color raw: " << isSraw << endl;
 
       isNikonSraw = libraw->is_nikon_sraw();
       if (isFloat && isSraw) { // floating point full-color-per-pixel raws
