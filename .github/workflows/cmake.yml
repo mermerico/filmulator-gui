@@ -14,6 +14,84 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  static-analysis:
+    name: Static Analysis (Format & Tidy)
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: Release
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json,readwrite"
+      VCPKG_DEFAULT_TRIPLET: x64-linux
+      VCPKG_TARGET_TRIPLET: x64-linux
+      CMAKE_GENERATOR: "Ninja"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        python-version: "3.14.3"
+        enable-cache: true
+
+    - name: Install dependencies
+      run: |
+        sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+        sudo apt-get update
+        sudo apt-get build-dep -y qtbase5-dev
+        sudo apt-get install -y \
+          ninja-build \
+          mold \
+          autoconf \
+          autoconf-archive \
+          automake \
+          libtool \
+          libltdl-dev \
+          mono-complete \
+          clang-tidy \
+          clang-format
+
+    - name: Setup vcpkg (lukka/run-vcpkg)
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: b5d1a94fb7f88fd835e360fd23a45a09ceedbf48
+        vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: Find NuGet
+      shell: bash
+      run: |
+        nuget_path=$(vcpkg fetch nuget | tail -n 1)
+        echo "NUGET_EXE=$nuget_path" >> "$GITHUB_ENV"
+
+    - name: Setup NuGet Credentials
+      shell: bash
+      run: |
+        mono "$NUGET_EXE" sources remove -Name GitHubPackages -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" || true
+        mono "$NUGET_EXE" sources add \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+          -StorePasswordInClearText \
+          -Name GitHubPackages \
+          -UserName "${{ github.repository_owner }}" \
+          -Password "${{ secrets.GITHUB_TOKEN }}"
+        mono "$NUGET_EXE" setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+    - name: Check Formatting
+      run: |
+        cmake --build build/release --target format
+        git diff --exit-code
+
+    - name: Run Clang-Tidy
+      run: cmake --build build/release --target tidy
+
   build:
     name: ${{ matrix.os }}-build
     runs-on: ${{ matrix.os }}
@@ -187,16 +265,6 @@ jobs:
 
     - name: Build
       run: cmake --build build/${{ matrix.preset }}
-
-    - name: Check Formatting
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cmake --build build/${{ matrix.preset }} --target format
-        git diff --exit-code
-
-    - name: Run Clang-Tidy
-      if: matrix.os == 'ubuntu-latest'
-      run: cmake --build build/${{ matrix.preset }} --target tidy
 
     - name: Test
       run: ctest --preset ${{ matrix.preset }} --output-on-failure
