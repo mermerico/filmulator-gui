@@ -26,7 +26,7 @@ std::optional<RawImage>
       image,// input, output
       params.temperature,
       params.tint,
-      (float(*)[3])input.xyzToCam,
+      (float (*)[3])input.xyzToCam,
       input.rPreMul,
       input.gPreMul,
       input.bPreMul,

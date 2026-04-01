@@ -948,8 +948,7 @@ void ParameterManager::setRolloffBoundary(float rolloffBoundary)
 
 void ParameterManager::setToeBoundary(float toeBoundary)
 {
-  if (!justInitialized)
-  {
+  if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_toeBoundary = toeBoundary;
     validity = min(validity, Valid::prefilmulation);
@@ -961,8 +960,7 @@ void ParameterManager::setToeBoundary(float toeBoundary)
 
 void ParameterManager::setHighlightCrosstalk(float highlightCrosstalk)
 {
-  if (!justInitialized)
-  {
+  if (!justInitialized) {
     QMutexLocker paramLocker(&paramMutex);
     m_highlightCrosstalk = highlightCrosstalk;
     validity = min(validity, Valid::prefilmulation);
