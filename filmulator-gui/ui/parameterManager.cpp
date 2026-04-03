@@ -1664,9 +1664,10 @@ void ParameterManager::writeToDB(QString imageID)
                   ",ProcTnlStrength"                     //52
                   ",ProcTimpulseThresh"                  //53
                   ",ProcTchromaStrength"                 //54
-                  ") values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
-                  //                            1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5
-                  //        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
+                  ",ProcThighlightCrosstalk"             //55
+                  ") values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+                  //                             1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5
+                  //         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
     query.bindValue( 0, imageID);
     query.bindValue( 1, m_initialDeveloperConcentration);
     query.bindValue( 2, m_reservoirThickness);
@@ -1722,6 +1723,7 @@ void ParameterManager::writeToDB(QString imageID)
     query.bindValue(52, m_nlStrength);
     query.bindValue(53, m_impulseThresh);
     query.bindValue(54, m_chromaStrength);
+    query.bindValue(55, m_highlightCrosstalk);
     query.exec();
     //Write that it's been edited to the SearchTable (actually writing the edit time)
     QDateTime now = QDateTime::currentDateTime();
@@ -2596,11 +2598,10 @@ void ParameterManager::loadDefaults(const CopyDefaults copyDefaults, const std::
         m_toeBoundary = temp_toeBoundary;
     }
 
-    //Highlight crosstalk. This controls the desaturation of highlights. =====================================
-    //nameCol = rec.indexOf("ProfThighlightCrosstalk");
-    //if (-1 == nameCol) { std::cout << "paramManager ProfThighlightCrosstalk" << endl; }
-    //const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
-    const float temp_highlightCrosstalk = 0.0f;
+    //Highlight crosstalk. This controls the desaturation of highlights.
+    nameCol = rec.indexOf("ProfThighlightCrosstalk");
+    if (-1 == nameCol) { std::cout << "paramManager ProfThighlightCrosstalk" << endl; }
+    const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
     d_highlightCrosstalk = temp_highlightCrosstalk;
     if (copyDefaults == CopyDefaults::loadToParams)
     {
@@ -3177,11 +3178,10 @@ void ParameterManager::loadParams(QString imageID)
         validity = min(validity, Valid::prefilmulation);
     }
 
-    //Highlight crosstalk. This controls the desaturation of highlights. ==========================================
-    //nameCol = rec.indexOf("ProcThighlightCrosstalk");
-    //if (-1 == nameCol) { std::cout << "paramManager ProcThighlightCrosstalk" << endl; }
-    //const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
-    const float temp_highlightCrosstalk = 0;
+    //Highlight crosstalk. This controls the desaturation of highlights.
+    nameCol = rec.indexOf("ProcThighlightCrosstalk");
+    if (-1 == nameCol) { std::cout << "paramManager ProcThighlightCrosstalk" << endl; }
+    const float temp_highlightCrosstalk = query.value(nameCol).toFloat();
     if ( temp_highlightCrosstalk != m_highlightCrosstalk)
     {
         //cout << "ParameterManager::loadParams highlightCrosstalk" << endl;
@@ -3839,7 +3839,7 @@ void ParameterManager::cloneParams(ParameterManager * sourceParams)
         validity = min(validity, Valid::prefilmulation);
     }
 
-    //Highlight crosstalk. This controls the desaturation of highlights. =============================================
+    //Highlight crosstalk. This controls the desaturation of highlights.
     const float temp_highlightCrosstalk = sourceParams->getHighlightCrosstalk();
     if (temp_highlightCrosstalk != m_highlightCrosstalk)
     {

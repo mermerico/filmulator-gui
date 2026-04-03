@@ -46,12 +46,12 @@ DBSuccess setupDB(QSqlDatabase *db)
     {
         std::cout << "First initialization." << std::endl;
     }
-    else if (oldVersion > 14)//=================================================================version check here!
+    else if (oldVersion > 15)//=================================================================version check here!
     {
         std::cout << "Newer database format. Aborting." << std::endl;
         return DBSuccess::failure;
     }
-    else if (oldVersion < 14)//============================================================version check here!
+    else if (oldVersion < 15)//============================================================version check here!
     {
         std::cout << "Backing up old database" << std::endl;
         QFile file(dir.absoluteFilePath("filmulatorDB"));
@@ -155,6 +155,7 @@ DBSuccess setupDB(QSqlDatabase *db)
                ",ProcTnlStrength real"                     //52
                ",ProcTimpulseThresh real"                  //53
                ",ProcTchromaStrength real"                 //54
+               ",ProcThighlightCrosstalk real"             //55
                ");"
                );
 
@@ -211,6 +212,7 @@ DBSuccess setupDB(QSqlDatabase *db)
                ",ProfTnlStrength real"                     //47
                ",ProfTimpulseThresh real"                  //48
                ",ProfTchromaStrength real"                 //49
+               ",ProfThighlightCrosstalk real"             //50
                ");"
                );
 
@@ -242,9 +244,9 @@ DBSuccess setupDB(QSqlDatabase *db)
 
     //Now we set the default Default profile.
     query.prepare("REPLACE INTO ProfileTable values "
-                  "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
-                  //                    1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4
-                  //0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
+                  "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
+                  //                    1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5
+                  //0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
     //Name of profile; must be unique.
     query.bindValue(0, "Default");
     //Initial Developer Concentration
@@ -333,6 +335,7 @@ DBSuccess setupDB(QSqlDatabase *db)
     query.bindValue(47, 0);//nlStrength
     query.bindValue(48, 0);//impulseStrength
     query.bindValue(49, 0);//chromaStrength
+    query.bindValue(50, 0);//highlightCrosstalk
 
     //Well, orientation and crop obviously don't get presets.
     query.exec();
@@ -544,6 +547,14 @@ DBSuccess setupDB(QSqlDatabase *db)
         query.exec("UPDATE ProfileTable SET ProfTchromaStrength = 0;");
         versionString = "PRAGMA user_version = 14;";
         std::cout << "Upgrading from old db version 13" << std::endl;
+        [[fallthrough]];
+    case 14:
+        query.exec("ALTER TABLE ProcessingTable ADD COLUMN ProcThighlightCrosstalk;");
+        query.exec("UPDATE ProcessingTable SET ProcThighlightCrosstalk = 0;");
+        query.exec("ALTER TABLE ProfileTable ADD COLUMN ProfThighlightCrosstalk;");
+        query.exec("UPDATE ProfileTable SET ProfThighlightCrosstalk = 0;");
+        versionString = "PRAGMA user_version = 15;";
+        std::cout << "Upgrading from old db version 14" << std::endl;
     }
     query.exec(versionString);
     query.exec("COMMIT TRANSACTION;");//finalize the transaction only after writing the version.
