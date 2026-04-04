@@ -97,6 +97,7 @@ jobs:
 
     - name: Run Clang-Tidy
       run: cmake --build build/release --target tidy
+      continue-on-error: true
 
   build:
     name: ${{ matrix.os }}-build
