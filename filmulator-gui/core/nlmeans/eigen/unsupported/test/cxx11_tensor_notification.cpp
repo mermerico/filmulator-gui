@@ -9,13 +9,15 @@
 
 #define EIGEN_USE_THREADS
 
+#include <stdlib.h>
 #include "main.h"
 #include <Eigen/CXX11/Tensor>
-#include <stdlib.h>
 
 #if EIGEN_OS_WIN || EIGEN_OS_WIN64
 #include <windows.h>
-void sleep(int seconds) { Sleep(seconds * 1000); }
+void sleep(int seconds) {
+  Sleep(seconds*1000);
+}
 #else
 #include <unistd.h>
 #endif
@@ -23,13 +25,12 @@ void sleep(int seconds) { Sleep(seconds * 1000); }
 
 namespace {
 
-void WaitAndAdd(Eigen::Notification *n, int *counter)
-{
+void WaitAndAdd(Eigen::Notification* n, int* counter) {
   n->Wait();
   *counter = *counter + 1;
 }
 
-}// namespace
+}  // namespace
 
 static void test_notification_single()
 {

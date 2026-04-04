@@ -8,12 +8,13 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "main.h"
-#include <Eigen/CXX11/Tensor>
 #include <sstream>
 #include <string>
+#include <Eigen/CXX11/Tensor>
 
 
-template<int DataLayout> static void test_output_0d()
+template<int DataLayout>
+static void test_output_0d()
 {
   Tensor<int, 0, DataLayout> tensor;
   tensor() = 123;
@@ -26,10 +27,13 @@ template<int DataLayout> static void test_output_0d()
 }
 
 
-template<int DataLayout> static void test_output_1d()
+template<int DataLayout>
+static void test_output_1d()
 {
   Tensor<int, 1, DataLayout> tensor(5);
-  for (int i = 0; i < 5; ++i) { tensor(i) = i; }
+  for (int i = 0; i < 5; ++i) {
+    tensor(i) = i;
+  }
 
   std::stringstream os;
   os << tensor;
@@ -37,7 +41,7 @@ template<int DataLayout> static void test_output_1d()
   std::string expected("0\n1\n2\n3\n4");
   VERIFY_IS_EQUAL(std::string(os.str()), expected);
 
-  Eigen::Tensor<double, 1, DataLayout> empty_tensor(0);
+  Eigen::Tensor<double,1,DataLayout> empty_tensor(0);
   std::stringstream empty_os;
   empty_os << empty_tensor;
   std::string empty_string;
@@ -45,11 +49,14 @@ template<int DataLayout> static void test_output_1d()
 }
 
 
-template<int DataLayout> static void test_output_2d()
+template<int DataLayout>
+static void test_output_2d()
 {
   Tensor<int, 2, DataLayout> tensor(5, 3);
   for (int i = 0; i < 5; ++i) {
-    for (int j = 0; j < 3; ++j) { tensor(i, j) = i * j; }
+    for (int j = 0; j < 3; ++j) {
+      tensor(i, j) = i*j;
+    }
   }
 
   std::stringstream os;
@@ -60,7 +67,8 @@ template<int DataLayout> static void test_output_2d()
 }
 
 
-template<int DataLayout> static void test_output_expr()
+template<int DataLayout>
+static void test_output_expr()
 {
   Tensor<int, 1, DataLayout> tensor1(5);
   Tensor<int, 1, DataLayout> tensor2(5);
@@ -77,7 +85,8 @@ template<int DataLayout> static void test_output_expr()
 }
 
 
-template<int DataLayout> static void test_output_string()
+template<int DataLayout>
+static void test_output_string()
 {
   Tensor<std::string, 2, DataLayout> tensor(5, 3);
   tensor.setConstant(std::string("foo"));
@@ -92,12 +101,15 @@ template<int DataLayout> static void test_output_string()
 }
 
 
-template<int DataLayout> static void test_output_const()
+template<int DataLayout>
+static void test_output_const()
 {
   Tensor<int, 1, DataLayout> tensor(5);
-  for (int i = 0; i < 5; ++i) { tensor(i) = i; }
+  for (int i = 0; i < 5; ++i) {
+    tensor(i) = i;
+  }
 
-  TensorMap<Tensor<const int, 1, DataLayout>> tensor_map(tensor.data(), 5);
+  TensorMap<Tensor<const int, 1, DataLayout> > tensor_map(tensor.data(), 5);
 
   std::stringstream os;
   os << tensor_map;

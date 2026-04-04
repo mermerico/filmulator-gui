@@ -272,8 +272,11 @@ if(CLANG_FORMAT)
         "tests/*.hpp"
         "tests/*.h"
     )
-    # Exclude third-party cJSON
-    list(REMOVE_ITEM ALL_S_FILES "${CMAKE_SOURCE_DIR}/filmulator-gui/database/cJSON.c")
+    # Exclude third-party directories
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/database/cJSON.c")
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/core/nlmeans/eigen/.*")
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/Halide/.*")
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/core/rawtherapee/.*")
     
     add_custom_target(
         format

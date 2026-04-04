@@ -8,13 +8,14 @@
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "main.h"
-#include <Eigen/CXX11/Tensor>
 #include <limits>
 #include <numeric>
+#include <Eigen/CXX11/Tensor>
 
 using Eigen::Tensor;
 
-template<int DataLayout, typename Type = float, bool Exclusive = false> static void test_1d_scan()
+template <int DataLayout, typename Type=float, bool Exclusive = false>
+static void test_1d_scan()
 {
   int size = 50;
   Tensor<Type, 1, DataLayout> tensor(size);
@@ -47,7 +48,8 @@ template<int DataLayout, typename Type = float, bool Exclusive = false> static v
   }
 }
 
-template<int DataLayout, typename Type = float> static void test_4d_scan()
+template <int DataLayout, typename Type=float>
+static void test_4d_scan()
 {
   int size = 5;
   Tensor<Type, 4, DataLayout> tensor(size, size, size, size);
@@ -81,10 +83,10 @@ template<int DataLayout, typename Type = float> static void test_4d_scan()
   }
 }
 
-template<int DataLayout> static void test_tensor_maps()
-{
+template <int DataLayout>
+static void test_tensor_maps() {
   int inputs[20];
-  TensorMap<Tensor<int, 1, DataLayout>> tensor_map(inputs, 20);
+  TensorMap<Tensor<int, 1, DataLayout> > tensor_map(inputs, 20);
   tensor_map.setRandom();
 
   Tensor<int, 1, DataLayout> result = tensor_map.cumsum(0);
@@ -96,8 +98,7 @@ template<int DataLayout> static void test_tensor_maps()
   }
 }
 
-void test_cxx11_tensor_scan()
-{
+void test_cxx11_tensor_scan() {
   CALL_SUBTEST((test_1d_scan<ColMajor, float, true>()));
   CALL_SUBTEST((test_1d_scan<ColMajor, float, false>()));
   CALL_SUBTEST((test_1d_scan<RowMajor, float, true>()));

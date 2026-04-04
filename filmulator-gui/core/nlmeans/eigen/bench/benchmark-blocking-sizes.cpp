@@ -7,13 +7,13 @@
 // Public License v. 2.0. If a copy of the MPL was not distributed
 // with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <fstream>
 #include <iostream>
-#include <memory>
+#include <cstdint>
+#include <cstdlib>
 #include <vector>
+#include <fstream>
+#include <memory>
+#include <cstdio>
 
 bool eigen_use_specific_block_size;
 int eigen_block_size_k, eigen_block_size_m, eigen_block_size_n;
@@ -64,7 +64,7 @@ struct size_triple_t
   size_t k, m, n;
   size_triple_t() : k(0), m(0), n(0) {}
   size_triple_t(size_t _k, size_t _m, size_t _n) : k(_k), m(_m), n(_n) {}
-  size_triple_t(const size_triple_t &o) : k(o.k), m(o.m), n(o.n) {}
+  size_triple_t(const size_triple_t& o) : k(o.k), m(o.m), n(o.n) {}
   size_triple_t(uint16_t compact)
   {
     k = 1 << ((compact & 0xf00) >> 8);
@@ -73,8 +73,7 @@ struct size_triple_t
   }
 };
 
-uint8_t log2_pot(size_t x)
-{
+uint8_t log2_pot(size_t x) {
   size_t l = 0;
   while (x >>= 1) l++;
   return l;
@@ -88,7 +87,10 @@ uint16_t compact_size_triple(size_t k, size_t m, size_t n)
   return (log2_pot(k) << 8) | (log2_pot(m) << 4) | log2_pot(n);
 }
 
-uint16_t compact_size_triple(const size_triple_t &t) { return compact_size_triple(t.k, t.m, t.n); }
+uint16_t compact_size_triple(const size_triple_t& t)
+{
+  return compact_size_triple(t.k, t.m, t.n);
+}
 
 // A single benchmark. Initially only contains benchmark params.
 // Then call run(), which stores the result in the gflops field.
@@ -98,20 +100,31 @@ struct benchmark_t
   uint16_t compact_block_size;
   bool use_default_block_size;
   float gflops;
-  benchmark_t() : compact_product_size(0), compact_block_size(0), use_default_block_size(false), gflops(0) {}
-  benchmark_t(size_t pk, size_t pm, size_t pn, size_t bk, size_t bm, size_t bn)
-    : compact_product_size(compact_size_triple(pk, pm, pn)), compact_block_size(compact_size_triple(bk, bm, bn)),
-      use_default_block_size(false), gflops(0)
+  benchmark_t()
+    : compact_product_size(0)
+    , compact_block_size(0)
+    , use_default_block_size(false)
+    , gflops(0)
+  {
+  }
+  benchmark_t(size_t pk, size_t pm, size_t pn,
+              size_t bk, size_t bm, size_t bn)
+    : compact_product_size(compact_size_triple(pk, pm, pn))
+    , compact_block_size(compact_size_triple(bk, bm, bn))
+    , use_default_block_size(false)
+    , gflops(0)
   {}
   benchmark_t(size_t pk, size_t pm, size_t pn)
-    : compact_product_size(compact_size_triple(pk, pm, pn)), compact_block_size(0), use_default_block_size(true),
-      gflops(0)
+    : compact_product_size(compact_size_triple(pk, pm, pn))
+    , compact_block_size(0)
+    , use_default_block_size(true)
+    , gflops(0)
   {}
 
   void run();
 };
 
-ostream &operator<<(ostream &s, const benchmark_t &b)
+ostream& operator<<(ostream& s, const benchmark_t& b)
 {
   s << hex << b.compact_product_size << dec;
   if (b.use_default_block_size) {
@@ -128,12 +141,13 @@ ostream &operator<<(ostream &s, const benchmark_t &b)
 
 // We sort first by increasing benchmark parameters,
 // then by decreasing performance.
-bool operator<(const benchmark_t &b1, const benchmark_t &b2)
-{
-  return b1.compact_product_size < b2.compact_product_size
-         || (b1.compact_product_size == b2.compact_product_size
-             && ((b1.compact_block_size < b2.compact_block_size
-                  || (b1.compact_block_size == b2.compact_block_size && b1.gflops > b2.gflops))));
+bool operator<(const benchmark_t& b1, const benchmark_t& b2)
+{ 
+  return b1.compact_product_size < b2.compact_product_size ||
+           (b1.compact_product_size == b2.compact_product_size && (
+             (b1.compact_block_size < b2.compact_block_size || (
+               b1.compact_block_size == b2.compact_block_size &&
+                 b1.gflops > b2.gflops))));
 }
 
 void benchmark_t::run()
@@ -154,22 +168,26 @@ void benchmark_t::run()
   // set up the matrix pool
 
   const size_t combined_three_matrices_sizes =
-    sizeof(Scalar)
-    * (productsizes.k * productsizes.m + productsizes.k * productsizes.n + productsizes.m * productsizes.n);
+    sizeof(Scalar) *
+      (productsizes.k * productsizes.m +
+       productsizes.k * productsizes.n +
+       productsizes.m * productsizes.n);
 
   // 64 M is large enough that nobody has a cache bigger than that,
   // while still being small enough that everybody has this much RAM,
   // so conveniently we don't need to special-case platforms here.
   const size_t unlikely_large_cache_size = 64 << 20;
 
-  const size_t working_set_size = min_working_set_size ? min_working_set_size : unlikely_large_cache_size;
+  const size_t working_set_size =
+    min_working_set_size ? min_working_set_size : unlikely_large_cache_size;
 
-  const size_t matrix_pool_size = 1 + working_set_size / combined_three_matrices_sizes;
+  const size_t matrix_pool_size =
+    1 + working_set_size / combined_three_matrices_sizes;
 
   MatrixType *lhs = new MatrixType[matrix_pool_size];
   MatrixType *rhs = new MatrixType[matrix_pool_size];
   MatrixType *dst = new MatrixType[matrix_pool_size];
-
+  
   for (size_t i = 0; i < matrix_pool_size; i++) {
     lhs[i] = MatrixType::Zero(productsizes.m, productsizes.k);
     rhs[i] = MatrixType::Zero(productsizes.k, productsizes.n);
@@ -187,7 +205,9 @@ void benchmark_t::run()
     for (int i = 0; i < iters_at_a_time; i++) {
       dst[matrix_index].noalias() = lhs[matrix_index] * rhs[matrix_index];
       matrix_index++;
-      if (matrix_index == matrix_pool_size) { matrix_index = 0; }
+      if (matrix_index == matrix_pool_size) {
+        matrix_index = 0;
+      }
     }
     double endtime = timer.getCpuTime();
 
@@ -215,7 +235,9 @@ void print_cpuinfo()
   string line;
   ifstream cpuinfo("/proc/cpuinfo");
   if (cpuinfo.is_open()) {
-    while (getline(cpuinfo, line)) { cout << line << endl; }
+    while (getline(cpuinfo, line)) {
+      cout << line << endl;
+    }
     cpuinfo.close();
   }
   cout << endl;
@@ -226,24 +248,33 @@ void print_cpuinfo()
 #endif
 }
 
-template<typename T> string type_name() { return "unknown"; }
+template <typename T>
+string type_name()
+{
+  return "unknown";
+}
 
-template<> string type_name<float>() { return "float"; }
+template<>
+string type_name<float>()
+{
+  return "float";
+}
 
-template<> string type_name<double>() { return "double"; }
+template<>
+string type_name<double>()
+{
+  return "double";
+}
 
 struct action_t
 {
-  virtual const char *invokation_name() const
-  {
-    abort();
-    return nullptr;
-  }
+  virtual const char* invokation_name() const { abort(); return nullptr; }
   virtual void run() const { abort(); }
   virtual ~action_t() {}
 };
 
-void show_usage_and_exit(int /*argc*/, char *argv[], const vector<unique_ptr<action_t>> &available_actions)
+void show_usage_and_exit(int /*argc*/, char* argv[],
+                         const vector<unique_ptr<action_t>>& available_actions)
 {
   cerr << "usage: " << argv[0] << " <action> [options...]" << endl << endl;
   cerr << "available actions:" << endl << endl;
@@ -262,11 +293,11 @@ void show_usage_and_exit(int /*argc*/, char *argv[], const vector<unique_ptr<act
   cerr << "       avoid warm caches." << endl;
   exit(1);
 }
-
+     
 float measure_clock_speed()
 {
   cerr << "Measuring clock speed...                              \r" << flush;
-
+          
   vector<float> all_gflops;
   for (int i = 0; i < 8; i++) {
     benchmark_t b(1024, 1024, 1024);
@@ -290,7 +321,7 @@ struct human_duration_t
   human_duration_t(int s) : seconds(s) {}
 };
 
-ostream &operator<<(ostream &s, const human_duration_t &d)
+ostream& operator<<(ostream& s, const human_duration_t& d)
 {
   int remainder = d.seconds;
   if (remainder > 3600) {
@@ -303,15 +334,17 @@ ostream &operator<<(ostream &s, const human_duration_t &d)
     s << minutes << " min ";
     remainder -= minutes * 60;
   }
-  if (d.seconds < 600) { s << remainder << " s"; }
+  if (d.seconds < 600) {
+    s << remainder << " s";
+  }
   return s;
 }
 
 const char session_filename[] = "/data/local/tmp/benchmark-blocking-sizes-session.data";
 
-void serialize_benchmarks(const char *filename, const vector<benchmark_t> &benchmarks, size_t first_benchmark_to_run)
+void serialize_benchmarks(const char* filename, const vector<benchmark_t>& benchmarks, size_t first_benchmark_to_run)
 {
-  FILE *file = fopen(filename, "w");
+  FILE* file = fopen(filename, "w");
   if (!file) {
     cerr << "Could not open file " << filename << " for writing." << endl;
     cerr << "Do you have write permissions on the current working directory?" << endl;
@@ -325,23 +358,38 @@ void serialize_benchmarks(const char *filename, const vector<benchmark_t> &bench
   fclose(file);
 }
 
-bool deserialize_benchmarks(const char *filename, vector<benchmark_t> &benchmarks, size_t &first_benchmark_to_run)
+bool deserialize_benchmarks(const char* filename, vector<benchmark_t>& benchmarks, size_t& first_benchmark_to_run)
 {
-  FILE *file = fopen(filename, "r");
-  if (!file) { return false; }
-  if (1 != fread(&max_clock_speed, sizeof(max_clock_speed), 1, file)) { return false; }
+  FILE* file = fopen(filename, "r");
+  if (!file) {
+    return false;
+  }
+  if (1 != fread(&max_clock_speed, sizeof(max_clock_speed), 1, file)) {
+    return false;
+  }
   size_t benchmarks_vector_size = 0;
-  if (1 != fread(&benchmarks_vector_size, sizeof(benchmarks_vector_size), 1, file)) { return false; }
-  if (1 != fread(&first_benchmark_to_run, sizeof(first_benchmark_to_run), 1, file)) { return false; }
+  if (1 != fread(&benchmarks_vector_size, sizeof(benchmarks_vector_size), 1, file)) {
+    return false;
+  }
+  if (1 != fread(&first_benchmark_to_run, sizeof(first_benchmark_to_run), 1, file)) {
+    return false;
+  }
   benchmarks.resize(benchmarks_vector_size);
-  if (benchmarks.size() != fread(benchmarks.data(), sizeof(benchmark_t), benchmarks.size(), file)) { return false; }
+  if (benchmarks.size() != fread(benchmarks.data(), sizeof(benchmark_t), benchmarks.size(), file)) {
+    return false;
+  }
   unlink(filename);
   return true;
 }
 
-void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start, size_t &first_benchmark_to_run)
+void try_run_some_benchmarks(
+  vector<benchmark_t>& benchmarks,
+  double time_start,
+  size_t& first_benchmark_to_run)
 {
-  if (first_benchmark_to_run == benchmarks.size()) { return; }
+  if (first_benchmark_to_run == benchmarks.size()) {
+    return;
+  }
 
   double time_last_progress_update = 0;
   double time_last_clock_speed_measurement = 0;
@@ -354,7 +402,9 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
     time_now = timer.getRealTime();
 
     // We check clock speed every minute and at the end.
-    if (benchmark_index == benchmarks.size() || time_now > time_last_clock_speed_measurement + 60.0f) {
+    if (benchmark_index == benchmarks.size() ||
+        time_now > time_last_clock_speed_measurement + 60.0f)
+    {
       time_last_clock_speed_measurement = time_now;
 
       // Ensure that clock speed is as expected
@@ -375,7 +425,8 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
         // which invalidates all benchmark results collected so far.
         // Either way, we better restart all over again now.
         if (benchmark_index) {
-          cerr << "Restarting at " << 100.0f * ratio_done << " % because clock speed increased.          " << endl;
+          cerr << "Restarting at " << 100.0f * ratio_done
+               << " % because clock speed increased.          " << endl;
         }
         max_clock_speed = current_clock_speed;
         first_benchmark_to_run = 0;
@@ -385,9 +436,12 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
       bool rerun_last_tests = false;
 
       if (current_clock_speed < (1 - clock_speed_tolerance) * max_clock_speed) {
-        cerr << "Measurements completed so far: " << 100.0f * ratio_done << " %                             " << endl;
-        cerr << "Clock speed seems to be only " << current_clock_speed / max_clock_speed << " times what it used to be."
-             << endl;
+        cerr << "Measurements completed so far: "
+             << 100.0f * ratio_done
+             << " %                             " << endl;
+        cerr << "Clock speed seems to be only "
+             << current_clock_speed/max_clock_speed
+             << " times what it used to be." << endl;
 
         unsigned int seconds_to_sleep_if_lower_clock_speed = 1;
 
@@ -400,8 +454,9 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
             exit(2);
           }
           rerun_last_tests = true;
-          cerr << "Sleeping " << seconds_to_sleep_if_lower_clock_speed << " s...                                   \r"
-               << endl;
+          cerr << "Sleeping "
+               << seconds_to_sleep_if_lower_clock_speed
+               << " s...                                   \r" << endl;
           sleep(seconds_to_sleep_if_lower_clock_speed);
           current_clock_speed = measure_clock_speed();
           seconds_to_sleep_if_lower_clock_speed *= 2;
@@ -409,7 +464,8 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
       }
 
       if (rerun_last_tests) {
-        cerr << "Redoing the last " << 100.0f * float(benchmark_index - first_benchmark_to_run) / benchmarks.size()
+        cerr << "Redoing the last "
+             << 100.0f * float(benchmark_index - first_benchmark_to_run) / benchmarks.size()
              << " % because clock speed had been low.   " << endl;
         return;
       }
@@ -430,7 +486,8 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
     // Display progress info on stderr
     if (time_now > time_last_progress_update + 1.0f) {
       time_last_progress_update = time_now;
-      cerr << "Measurements... " << 100.0f * ratio_done << " %, ETA "
+      cerr << "Measurements... " << 100.0f * ratio_done
+           << " %, ETA "
            << human_duration_t(float(time_now - time_start) * (1.0f - ratio_done) / ratio_done)
            << "                          \r" << flush;
     }
@@ -441,16 +498,19 @@ void try_run_some_benchmarks(vector<benchmark_t> &benchmarks, double time_start,
   }
 }
 
-void run_benchmarks(vector<benchmark_t> &benchmarks)
+void run_benchmarks(vector<benchmark_t>& benchmarks)
 {
   size_t first_benchmark_to_run;
   vector<benchmark_t> deserialized_benchmarks;
   bool use_deserialized_benchmarks = false;
   if (deserialize_benchmarks(session_filename, deserialized_benchmarks, first_benchmark_to_run)) {
-    cerr << "Found serialized session with " << 100.0f * first_benchmark_to_run / deserialized_benchmarks.size()
+    cerr << "Found serialized session with "
+         << 100.0f * first_benchmark_to_run / deserialized_benchmarks.size()
          << " % already done" << endl;
-    if (deserialized_benchmarks.size() == benchmarks.size() && first_benchmark_to_run > 0
-        && first_benchmark_to_run < benchmarks.size()) {
+    if (deserialized_benchmarks.size() == benchmarks.size() &&
+        first_benchmark_to_run > 0 &&
+        first_benchmark_to_run < benchmarks.size())
+    {
       use_deserialized_benchmarks = true;
     }
   }
@@ -468,12 +528,18 @@ void run_benchmarks(vector<benchmark_t> &benchmarks)
     random_shuffle(benchmarks.begin(), benchmarks.end());
   }
 
-  for (int i = 0; i < 4; i++) { max_clock_speed = max(max_clock_speed, measure_clock_speed()); }
-
+  for (int i = 0; i < 4; i++) {
+    max_clock_speed = max(max_clock_speed, measure_clock_speed());
+  }
+  
   double time_start = 0.0;
   while (first_benchmark_to_run < benchmarks.size()) {
-    if (first_benchmark_to_run == 0) { time_start = timer.getRealTime(); }
-    try_run_some_benchmarks(benchmarks, time_start, first_benchmark_to_run);
+    if (first_benchmark_to_run == 0) {
+      time_start = timer.getRealTime();
+    }
+    try_run_some_benchmarks(benchmarks,
+                            time_start,
+                            first_benchmark_to_run);
   }
 
   // Sort timings by increasing benchmark parameters, and decreasing gflops.
@@ -484,8 +550,10 @@ void run_benchmarks(vector<benchmark_t> &benchmarks)
   // Collect best (i.e. now first) results for each parameter values.
   vector<benchmark_t> best_benchmarks;
   for (auto it = benchmarks.begin(); it != benchmarks.end(); ++it) {
-    if (best_benchmarks.empty() || best_benchmarks.back().compact_product_size != it->compact_product_size
-        || best_benchmarks.back().compact_block_size != it->compact_block_size) {
+    if (best_benchmarks.empty() ||
+        best_benchmarks.back().compact_product_size != it->compact_product_size ||
+        best_benchmarks.back().compact_block_size != it->compact_block_size)
+    {
       best_benchmarks.push_back(*it);
     }
   }
@@ -496,7 +564,7 @@ void run_benchmarks(vector<benchmark_t> &benchmarks)
 
 struct measure_all_pot_sizes_action_t : action_t
 {
-  virtual const char *invokation_name() const { return "all-pot-sizes"; }
+  virtual const char* invokation_name() const { return "all-pot-sizes"; }
   virtual void run() const
   {
     vector<benchmark_t> benchmarks;
@@ -519,20 +587,24 @@ struct measure_all_pot_sizes_action_t : action_t
     run_benchmarks(benchmarks);
 
     cout << "BEGIN MEASUREMENTS ALL POT SIZES" << endl;
-    for (auto it = benchmarks.begin(); it != benchmarks.end(); ++it) { cout << *it << endl; }
+    for (auto it = benchmarks.begin(); it != benchmarks.end(); ++it) {
+      cout << *it << endl;
+    }
   }
 };
 
 struct measure_default_sizes_action_t : action_t
 {
-  virtual const char *invokation_name() const { return "default-sizes"; }
+  virtual const char* invokation_name() const { return "default-sizes"; }
   virtual void run() const
   {
     vector<benchmark_t> benchmarks;
     for (int repetition = 0; repetition < measurement_repetitions; repetition++) {
       for (size_t ksize = minsize; ksize <= maxsize; ksize *= 2) {
         for (size_t msize = minsize; msize <= maxsize; msize *= 2) {
-          for (size_t nsize = minsize; nsize <= maxsize; nsize *= 2) { benchmarks.emplace_back(ksize, msize, nsize); }
+          for (size_t nsize = minsize; nsize <= maxsize; nsize *= 2) {
+            benchmarks.emplace_back(ksize, msize, nsize);
+          }
         }
       }
     }
@@ -540,11 +612,13 @@ struct measure_default_sizes_action_t : action_t
     run_benchmarks(benchmarks);
 
     cout << "BEGIN MEASUREMENTS DEFAULT SIZES" << endl;
-    for (auto it = benchmarks.begin(); it != benchmarks.end(); ++it) { cout << *it << endl; }
+    for (auto it = benchmarks.begin(); it != benchmarks.end(); ++it) {
+      cout << *it << endl;
+    }
   }
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
   double time_start = timer.getRealTime();
   cout.precision(4);
@@ -556,7 +630,9 @@ int main(int argc, char *argv[])
 
   auto action = available_actions.end();
 
-  if (argc <= 1) { show_usage_and_exit(argc, argv, available_actions); }
+  if (argc <= 1) {
+    show_usage_and_exit(argc, argv, available_actions);
+  }
   for (auto it = available_actions.begin(); it != available_actions.end(); ++it) {
     if (!strcmp(argv[1], (*it)->invokation_name())) {
       action = it;
@@ -564,12 +640,14 @@ int main(int argc, char *argv[])
     }
   }
 
-  if (action == available_actions.end()) { show_usage_and_exit(argc, argv, available_actions); }
+  if (action == available_actions.end()) {
+    show_usage_and_exit(argc, argv, available_actions);
+  }
 
   for (int i = 2; i < argc; i++) {
     if (argv[i] == strstr(argv[i], "--min-working-set-size=")) {
-      const char *equals_sign = strchr(argv[i], '=');
-      min_working_set_size = strtoul(equals_sign + 1, nullptr, 10);
+      const char* equals_sign = strchr(argv[i], '=');
+      min_working_set_size = strtoul(equals_sign+1, nullptr, 10);
     } else {
       cerr << "unrecognized option: " << argv[i] << endl << endl;
       show_usage_and_exit(argc, argv, available_actions);
@@ -579,7 +657,7 @@ int main(int argc, char *argv[])
   print_cpuinfo();
 
   cout << "benchmark parameters:" << endl;
-  cout << "pointer size: " << 8 * sizeof(void *) << " bits" << endl;
+  cout << "pointer size: " << 8*sizeof(void*) << " bits" << endl;
   cout << "scalar type: " << type_name<Scalar>() << endl;
   cout << "packet size: " << internal::packet_traits<MatrixType::Scalar>::size << endl;
   cout << "minsize = " << minsize << endl;
@@ -587,7 +665,9 @@ int main(int argc, char *argv[])
   cout << "measurement_repetitions = " << measurement_repetitions << endl;
   cout << "min_accurate_time = " << min_accurate_time << endl;
   cout << "min_working_set_size = " << min_working_set_size;
-  if (min_working_set_size == 0) { cout << " (try to outsize caches)"; }
+  if (min_working_set_size == 0) {
+    cout << " (try to outsize caches)";
+  }
   cout << endl << endl;
 
   (*action)->run();
