@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
 include(DefineCMakeDefaults)
 
-project(Filmulator VERSION 0.11.2)
+project(Filmulator VERSION 0.12.0)
 
 include(GNUInstallDirs)
 include(CompilerChecks.cmake)
