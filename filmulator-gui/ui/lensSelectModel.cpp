@@ -30,7 +30,6 @@ LensSelectModel::LensSelectModel(QObject *parent) : QAbstractTableModel(parent)
   filters << "*.xml";
   QFileInfoList fileList = dir.entryInfoList(filters, QDir::Files | QDir::NoDotAndDotDot);
 
-
   ldb = lf_db_new();
   if (!ldb) { cout << "LensSelectModel lensfun failed to create database!" << endl; }
 
