@@ -112,8 +112,8 @@ void highDimBoxFilter(float *__restrict const A,
     // Cumulative sum in the vertical direction. TODO: change this comment when flipping order
     for (ptrdiff_t c = 0; c < 3; c++) {
       for (ptrdiff_t yWriteIdx = 1; yWriteIdx < expandedBlockSize;
-        yWriteIdx++) {// the cumsum of the first row is equal to the first row, so skip it. TODO: change this comment
-                      // when filpping order
+           yWriteIdx++) {// the cumsum of the first row is equal to the first row, so skip it. TODO: change this comment
+                         // when filpping order
         for (ptrdiff_t xIdx = 0; xIdx < blockSize; xIdx++) {
 
           ptrdiff_t W_sat_idx = yWriteIdx + xIdx * expandedBlockSize;

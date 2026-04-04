@@ -77,11 +77,18 @@ jobs:
         mono "$NUGET_EXE" setapikey "${{ secrets.GITHUB_TOKEN }}" \
           -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
 
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
     - name: Setup CMake
       uses: lukka/get-cmake@latest
 
     - name: Configure CMake
-      run: cmake --preset release -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      run: |
+        uv sync
+        cmake --preset release -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
     - name: Check Formatting
       run: |

@@ -60,8 +60,8 @@ std::tuple<std::vector<float>, std::vector<bool>, std::array<double, 2>, std::ar
 
   // While there are changes in cluster identities
   for (int iterNum = 0;
-    !equal(isInSecondCluster.begin(), isInSecondCluster.end(), wasInSecondCluster.begin()) & (iterNum < 100);
-    iterNum++) {
+       !equal(isInSecondCluster.begin(), isInSecondCluster.end(), wasInSecondCluster.begin()) & (iterNum < 100);
+       iterNum++) {
 
     // If the clusters are really close together, just throw everything except the first point in the first cluster
     float clusterDistance = 0;
