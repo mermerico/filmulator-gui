@@ -59,17 +59,18 @@ begin
   Result := sUnInstallString;
 end;
 
-function InitializeSetup: boolean;
+procedure CurStepChanged(CurStep: TSetupStep);
 var
   iResultCode: Integer;
   sUnInstallString: string;
 begin
-  Result := True; // Continue by default
-  sUnInstallString := GetUninstallString;
-  if sUnInstallString <> '' then begin
-    sUnInstallString := RemoveQuotes(sUnInstallString);
-    if Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then begin
-      // Uninstalled successfully
+  if (CurStep = ssInstall) then begin
+    sUnInstallString := GetUninstallString;
+    if sUnInstallString <> '' then begin
+      sUnInstallString := RemoveQuotes(sUnInstallString);
+      if Exec(sUnInstallString, '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then begin
+        // Uninstalled successfully
+      end;
     end;
   end;
 end;
