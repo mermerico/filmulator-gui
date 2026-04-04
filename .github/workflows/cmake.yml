@@ -81,8 +81,7 @@ jobs:
       uses: lukka/get-cmake@latest
 
     - name: Configure CMake
-      run: |
-        cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      run: cmake --preset release -DVCPKG_TARGET_TRIPLET=x64-linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
     - name: Check Formatting
       run: |
