@@ -257,6 +257,12 @@ else()
 
 endif()
 
+if(UNIX)
+    install(FILES "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/filmulator64icon.svg" DESTINATION share/icons/hicolor/scalable/apps)
+    install(FILES "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/linux/filmulator.desktop" DESTINATION share/applications)
+    install(FILES "${CMAKE_SOURCE_DIR}/filmulator-gui/resources/linux/org.filmulator.Filmulator.metainfo.xml" DESTINATION share/metainfo)
+endif()
+
 qt5_import_qml_plugins(filmulator)
 
 add_subdirectory(filmulator-gui/qml)
