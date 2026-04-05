@@ -1,13 +1,13 @@
 #ifndef BACKGROUNDQUEUE_H
 #define BACKGROUNDQUEUE_H
 
+#include <QObject>
 #include "../core/imagePipeline.h"
-#include <QList>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QObject>
-#include <QString>
 #include <QtSql/QSqlQuery>
+#include <QList>
+#include <QString>
 
 /* The background queue will handle:
  *
@@ -55,4 +55,5 @@ protected:
 };
 */
 
-#endif// BACKGROUNDQUEUE_H
+#endif // BACKGROUNDQUEUE_H
+
