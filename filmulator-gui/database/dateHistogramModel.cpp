@@ -189,23 +189,8 @@ void DateHistogramModel::setQuery(const int timezone,
     //DateHistogramModel::data() will fill in the rest of the info.
 
     //Preallocate the vector.
-    if ((int) m_dataVector.capacity() < (m_rowCount + 1)*VECTORCOUNT)
-    {
-//        cout << "m_rowcount: " << m_rowCount << endl;
-        m_dataVector.reserve((m_rowCount + 1)*VECTORCOUNT);
-    }
-    else
-    {
-        //do nothing. We don't really need to shrink it.
-    }
-
-    //Loop over the days in the vector, initializing to zero
-    for (int i = 0; i < m_rowCount; i++)
-    {
-        m_dataVector[i*VECTORCOUNT] = 0;
-        m_dataVector[i*VECTORCOUNT+1] = 0;
-    }
-
+    m_dataVector.clear();
+    m_dataVector.resize((m_rowCount + 1)*VECTORCOUNT, 0);
 
     //Loop over the days in the QSqlQueryModel.
     //Write the count in for the appropriate day.
