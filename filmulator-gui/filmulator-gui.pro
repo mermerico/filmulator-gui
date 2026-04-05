@@ -75,10 +75,16 @@ SOURCES += qml/filmulator-gui/*.qml \
 }
 
 # Installation path
-unix:target.path = /usr/lib/filmulator-gui
-unix:desktop.path = /usr/share/applications
+unix:target.path = $$(PREFIX)/lib/filmulator-gui
 
-unix:desktop.files += ./filmulator_gui.desktop
+unix:icon.path = $$(PREFIX)/share/icons/hicolor/scalable/apps
+unix:icon.files += ./resources/linux/filmulator64icon.svg
+
+unix:desktop.path = $$(PREFIX)/share/applications
+unix:desktop.files += ./resources/linux/filmulator.desktop
+
+unix:appstream.path = $$(PREFIX)/share/metainfo
+unix:appstream.files += ./resources/linux/org.filmulator.Filmulator.metainfo.xml
 
 # win32 {
 # target.path = ???
@@ -172,7 +178,7 @@ QT += sql core quick qml widgets
 
 CONFIG += qtquickcompiler
 
-INSTALLS += desktop extra
+INSTALLS += desktop appstream icon extra
 
 RESOURCES += \
     qml.qrc \
