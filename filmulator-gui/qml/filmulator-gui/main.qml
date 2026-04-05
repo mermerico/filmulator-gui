@@ -426,10 +426,28 @@ ApplicationWindow {
             property int maxWidth: 250 * uiScale
             property int minHeight: 30 * uiScale
             property int posPad: 10 * uiScale
+            property bool topAnchor: true //what side the tooltip is coming from
+            property bool leftAnchor: true
             width: Math.min(maxWidth, tooltipText.contentWidth + 2*padding)
             //For some reason, this switch needs to exist in height so that 1-line tooltips are displayed correctly the first time.
             height: parent.primed ? (tooltipText.contentHeight + 2*padding) : 12
             z: 10
+            Rectangle {
+                id: sharpOutline
+                color: parent.border.color
+                width: parent.radius
+                height: parent.radius
+                x: parent.leftAnchor ? 0 : parent.width-width
+                y: parent.topAnchor  ? 0 : parent.height-height
+            }
+            Rectangle {
+                id: sharpOutlineMask
+                color: parent.color
+                width: parent.radius
+                height: parent.radius
+                x: parent.leftAnchor ? parent.border.width : parent.width-width-parent.border.width
+                y: parent.topAnchor  ? parent.border.width : parent.height-height-parent.border.width
+            }
             Text {
                 id: tooltipText
                 x: parent.padding
@@ -443,15 +461,19 @@ ApplicationWindow {
         function setPosition(xIn, yIn) {
             if (tooltipBox.height + yIn < root.height) {
                 tooltipBox.y = yIn
+                tooltipBox.topAnchor = true
             }
             else {
                 tooltipBox.y = yIn - tooltipBox.height
+                tooltipBox.topAnchor = false
             }
             if (tooltipBox.width + xIn + tooltipBox.posPad < root.width) {
                 tooltipBox.x = xIn + tooltipBox.posPad
+                tooltipBox.leftAnchor = true
             }
             else {
                 tooltipBox.x = xIn - tooltipBox.width
+                tooltipBox.leftAnchor = false
             }
         }
     }
