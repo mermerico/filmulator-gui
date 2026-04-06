@@ -60,23 +60,24 @@ DBSuccess setupDB(QSqlDatabase *db)
         file.copy(dir.absoluteFilePath(name));
     }
 
+    // clang-format off
     //We need to set up 3 tables for the processing.
     //1. The master table for searching. This should be small
     //  for speed. It points at the other two.
     query.exec("create table if not exists SearchTable ("
                "STsearchID varchar primary key"
-               ",STcaptureTime integer"//unix time
-               ",STname varchar"//name of this instance
-               ",STfilename varchar"//name of source file
-               ",STsourceHash varchar(32)"//primary key in the file table
-               ",STrating integer"//for easy culling
+               ",STcaptureTime integer"             //unix time
+               ",STname varchar"                    //name of this instance
+               ",STfilename varchar"                //name of source file
+               ",STsourceHash varchar(32)"          //primary key in the file table
+               ",STrating integer"                  //for easy culling
                ",STlatitude real"
                ",STlongitude real"
-               ",STimportTime integer"//unix time
-               ",STlastProcessedTime integer"//unix time
-               ",STimportStartTime integer"//unix time
-               ",STthumbWritten integer"//-1 for error, 0 for not written or invalidated, 1 for written
-               ",STbigThumbWritten integer"//same as above
+               ",STimportTime integer"              //unix time
+               ",STlastProcessedTime integer"       //unix time
+               ",STimportStartTime integer"         //unix time
+               ",STthumbWritten integer"            //-1 for error, 0 for not written or invalidated, 1 for written
+               ",STbigThumbWritten integer"         //same as above
                ");"
                );
     query.exec("create index if not exists TimeIndex"
@@ -247,6 +248,7 @@ DBSuccess setupDB(QSqlDatabase *db)
                   "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
                   //                    1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5
                   //0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0
+    // clang-format on
     //Name of profile; must be unique.
     query.bindValue(0, "Default");
     //Initial Developer Concentration

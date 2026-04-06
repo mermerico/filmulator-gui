@@ -45,6 +45,7 @@ void DateHistogramModel::setQuery(const int timezone,
     QSqlDatabase db = getDB();
 
     //Set up the query.
+    // clang-format off
     std::string dateHistoString =
                            "SELECT";
     dateHistoString.append("    julianday(unixtime, 'unixepoch', '");
@@ -77,6 +78,7 @@ void DateHistogramModel::setQuery(const int timezone,
     dateHistoString.append("        thedate)");
     dateHistoString.append("ORDER BY");
     dateHistoString.append("    thedate ASC;");
+    // clang-format on
     m_modelQuery = QSqlQuery(QString::fromStdString(dateHistoString), db);
 
     QSqlQuery todayQuery(db);
@@ -90,6 +92,7 @@ void DateHistogramModel::setQuery(const int timezone,
 
     //Now we set up the query to get the earliest day
     //We don't do any filtering on this.
+    // clang-format off
     std::string dateHistoString2 =
                             "SELECT";
     dateHistoString2.append("    julianday(unixtime, 'unixepoch', '");
@@ -113,6 +116,7 @@ void DateHistogramModel::setQuery(const int timezone,
     dateHistoString2.append("        thedate)");
     dateHistoString2.append("ORDER BY");
     dateHistoString2.append("    thedate ASC;");
+    // clang-format on
     QSqlQuery dateQuery = QSqlQuery(QString::fromStdString(dateHistoString2), db);
 
     //Oldest day in the database
@@ -131,6 +135,7 @@ void DateHistogramModel::setQuery(const int timezone,
 
     //Now we set up the query to get the latest day
     //We don't do any filtering on this.
+    // clang-format off
     std::string dateHistoString3 =
                             "SELECT";
     dateHistoString3.append("    julianday(unixtime, 'unixepoch', '");
@@ -154,6 +159,7 @@ void DateHistogramModel::setQuery(const int timezone,
     dateHistoString3.append("        thedate)");
     dateHistoString3.append("ORDER BY");
     dateHistoString3.append("    thedate DESC;");
+    // clang-format on
     QSqlQuery dateQuery2 = QSqlQuery(QString::fromStdString(dateHistoString3), db);
 
     //Oldest day in the database

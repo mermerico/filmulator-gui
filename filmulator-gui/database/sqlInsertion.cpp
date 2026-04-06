@@ -58,8 +58,10 @@ void fileInsert(const QString hash,
             cout << "libraw error text: " << libraw_strerror(libraw_error) << endl;
         }
 
+        // clang-format off
         query.prepare("INSERT INTO FileTable values (?,?,?,?,?,?,?,?,?);");
                                                    //0 1 2 3 4 5 6 7 8
+        // clang-format on
         //Hash of the file:
         query.bindValue(0, hash);
         //Full path to the new location of the file:
@@ -111,6 +113,7 @@ QString createNewProfile(const QString fileHash,
     query.bindValue(1, fileHash);
     query.exec();
 
+    // clang-format off
     //Create a new search table entry
     query.prepare("INSERT INTO SearchTable ("
                   "STsearchID"
@@ -128,6 +131,7 @@ QString createNewProfile(const QString fileHash,
                   ",STbigThumbWritten)"
                   " values (?,?,?,?,?,?,?,?,?,?,?,?,?);");
                          //0 1 2 3 4 5 6 7 8 9 101112
+    // clang-format on
 
     //searchID (filehash with the increment appended)
     QString searchID = fileHash;

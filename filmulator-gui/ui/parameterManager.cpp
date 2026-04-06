@@ -1608,6 +1608,7 @@ void ParameterManager::writeToDB(QString imageID)
     //Write back the slider to the database.
     QSqlQuery query(db);
     query.exec("BEGIN;");//Stick these all into one db action for speed.
+    // clang-format off
     query.prepare("REPLACE INTO ProcessingTable ("
                   "ProcTprocID"                          // 0
                   ",ProcTinitialDeveloperConcentration"  // 1
@@ -1668,6 +1669,7 @@ void ParameterManager::writeToDB(QString imageID)
                   ") values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);");
                   //                             1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 3 3 3 3 4 4 4 4 4 4 4 4 4 4 5 5 5 5 5 5
                   //         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+    // clang-format on
     query.bindValue( 0, imageID);
     query.bindValue( 1, m_initialDeveloperConcentration);
     query.bindValue( 2, m_reservoirThickness);

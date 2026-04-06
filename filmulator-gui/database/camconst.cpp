@@ -120,6 +120,7 @@ camconst_status camconst_read(const QString inputMakeModel, const float iso, con
     QString makeModel;
     float apertureScaleFactor = 0;
 
+    // clang-format off
     //Only thing we care about for now is white level based on various things
     //also black level (check panasonic g9!!!) maybe?
 
@@ -139,6 +140,7 @@ camconst_status camconst_read(const QString inputMakeModel, const float iso, con
     //      aperture
     //      scale_factor
 
+    // clang-format on
 
     cJSON * camlist = cJSON_GetObjectItemCaseSensitive(json, "camera_constants");
     if (camlist)

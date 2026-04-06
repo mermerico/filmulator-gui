@@ -31,11 +31,13 @@ void rotate_image(matrix<float> &input, matrix<float> &output,
             output.set_size(nrows,ncols);
             for(int i = 0; i < nrows; i++)
             {
+                // clang-format off
                 // out   in
                 /* 12345 00000
                  * 00000 00000
                  * 00000 54321
                  */
+                // clang-format on
                 //Reversing the row index
                 int r = nrows-1-i;
                 for(int j = 0; j < ncols; j = j + 3)
@@ -53,6 +55,7 @@ void rotate_image(matrix<float> &input, matrix<float> &output,
             for(int j = 0; j < ncols/3; j++)
                 {
                     //index of an output row as a column on the input matrix
+                    // clang-format off
                     // out   in
                     /* 123   30000
                      * 000   20000
@@ -60,6 +63,7 @@ void rotate_image(matrix<float> &input, matrix<float> &output,
                      * 000
                      * 000
                      */
+                    // clang-format on
                     //Remember that the columns are interlaced.
                     int c = j*3;
                     for(int i = 0; i < nrows; i++)
@@ -77,6 +81,7 @@ void rotate_image(matrix<float> &input, matrix<float> &output,
             for(int j = 0; j < ncols/3; j++)
             {
                 //index of an output row as a column on the input matrix
+                // clang-format off
                 // out   in
                 /* 123   00001
                  * 000   00002
@@ -84,6 +89,7 @@ void rotate_image(matrix<float> &input, matrix<float> &output,
                  * 000
                  * 000
                  */
+                // clang-format on
                 //Remember that the columns are interlaced, and scanned in reverse.
                 int c = ncols - 3 - j*3;
                 for(int i = 0; i < nrows; i++)
