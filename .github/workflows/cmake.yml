@@ -105,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
         include:
           - os: ubuntu-latest
             preset: release
@@ -118,6 +118,10 @@ jobs:
           - os: macos-latest
             preset: release
             triplet: arm64-osx
+            generator: "Unix Makefiles"
+          - os: macos-15-intel
+            preset: release
+            triplet: x64-osx
             generator: "Unix Makefiles"
 
     env:
@@ -377,7 +381,7 @@ jobs:
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: filmulator-windows-installer
+        name: filmulator-windows-installer-${{ matrix.triplet }}
         path: build/installed/output/FilmulatorSetup.exe
 
     - name: Create AppImage (Linux)
@@ -428,7 +432,7 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
-        name: filmulator-linux-appimage
+        name: filmulator-linux-appimage-${{ matrix.triplet }}
         path: Filmulator-x86_64.AppImage
 
     - name: Bundle Qt (macOS)
@@ -517,7 +521,7 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
-        name: filmulator-macos-dmg
+        name: filmulator-macos-dmg-${{ matrix.triplet }}
         path: Filmulator-macOS-*.dmg
 
   test-installers:
@@ -528,7 +532,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest, macos-15-intel]
         include:
           - os: ubuntu-latest
             triplet: x64-linux
@@ -536,25 +540,27 @@ jobs:
             triplet: x64-mingw-dynamic
           - os: macos-latest
             triplet: arm64-osx
+          - os: macos-15-intel
+            triplet: x64-osx
 
     steps:
     - name: Download Linux Artifact
       if: runner.os == 'Linux'
       uses: actions/download-artifact@v4
       with:
-        name: filmulator-linux-appimage
+        name: filmulator-linux-appimage-${{ matrix.triplet }}
 
     - name: Download macOS Artifact
       if: runner.os == 'macOS'
       uses: actions/download-artifact@v4
       with:
-        name: filmulator-macos-dmg
+        name: filmulator-macos-dmg-${{ matrix.triplet }}
 
     - name: Download Windows Artifact
       if: runner.os == 'Windows'
       uses: actions/download-artifact@v4
       with:
-        name: filmulator-windows-installer
+        name: filmulator-windows-installer-${{ matrix.triplet }}
 
     - name: Test AppImage (Linux)
       if: runner.os == 'Linux'
