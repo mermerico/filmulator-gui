@@ -1,0 +1,13 @@
+[project]
+name = "filmulator-gui"
+version = "0.11.1"
+description = "A Qt Quick GUI film emulator for RAW photo processing"
+dependencies = [
+    "clang-format>=21",
+    "clang-tidy>=21",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+]

@@ -266,3 +266,47 @@ endif()
 qt5_import_qml_plugins(filmulator)
 
 add_subdirectory(filmulator-gui/qml)
+
+# Code formatting and linting
+find_program(UV_EXE uv)
+if(UV_EXE)
+    set(CLANG_FORMAT "uv" "run" "clang-format")
+    set(CLANG_TIDY "uv" "run" "clang-tidy")
+    message(STATUS "Using clang tools via uv (version 18.*)")
+else()
+    find_program(CLANG_FORMAT clang-format)
+    find_program(CLANG_TIDY clang-tidy)
+endif()
+
+if(CLANG_FORMAT)
+    file(GLOB_RECURSE ALL_S_FILES 
+        "filmulator-gui/*.cpp" 
+        "filmulator-gui/*.hpp" 
+        "filmulator-gui/*.h"
+        "tests/*.cpp"
+        "tests/*.hpp"
+        "tests/*.h"
+    )
+    # Exclude third-party directories
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/database/cJSON.c")
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/core/nlmeans/eigen/.*")
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/Halide/.*")
+    list(FILTER ALL_S_FILES EXCLUDE REGEX "filmulator-gui/core/rawtherapee/.*")
+    
+    add_custom_target(
+        format
+        COMMAND ${CLANG_FORMAT} -i -style=file ${ALL_S_FILES}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-format on all source files..."
+    )
+endif()
+
+if(CLANG_TIDY)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "" FORCE)
+    add_custom_target(
+        tidy
+        COMMAND ${CLANG_TIDY} -p ${CMAKE_BINARY_DIR} ${filmulator_CORE_SRCS} filmulator-gui/main.cpp
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy on core source files..."
+    )
+endif()
